@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketing IEAD | Cuiabá e Região</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,6 @@
     <div class="splash-screen" id="splashScreen">
         <div class="splash-content">
             <div class="splash-logo-wrapper">
-                <!-- SVG circular de progresso -->
                 <svg class="splash-svg" viewBox="0 0 200 200">
                     <circle class="splash-circle-bg" cx="100" cy="100" r="90"/>
                     <circle class="splash-circle-progress" cx="100" cy="100" r="90" id="splashCircle"/>
@@ -54,22 +53,10 @@
         <!-- ============ PÁGINA: HOME ============ -->
         <div class="page" id="page-home">
             
-            <!-- Hero -->
-            <section class="hero">
-                <div class="hero-content">
-                    <h1 id="heroTitulo">Carregando...</h1>
-                    <p id="heroDescricao"></p>
-                    <button class="btn-primary" data-route="downloads">
-                        <span id="heroBotao">Explorar Materiais</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                </div>
-            </section>
-
-            <!-- Carrossel de Banners (Avisos + Arquivos Novos) -->
+            <!-- 🎯 CARROSSEL NO TOPO -->
             <section class="carousel-section" id="carouselSection">
                 <div class="carousel-header">
-                    <h2><i class="fas fa-bullhorn"></i> Destaques</h2>
+                    <h2><i class="fas fa-bullhorn"></i> Destaques e Novidades</h2>
                     <div class="carousel-controls">
                         <button id="prevBtn" aria-label="Anterior"><i class="fas fa-chevron-left"></i></button>
                         <div class="dots" id="dotsContainer"></div>
@@ -78,6 +65,18 @@
                 </div>
                 <div class="carousel-container">
                     <div class="carousel-track" id="carouselTrack"></div>
+                </div>
+            </section>
+
+            <!-- HERO -->
+            <section class="hero">
+                <div class="hero-content">
+                    <h1 id="heroTitulo">Carregando...</h1>
+                    <p id="heroDescricao"></p>
+                    <button class="btn-primary" data-route="downloads">
+                        <span id="heroBotao">Explorar Materiais</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
                 </div>
             </section>
         </div>
@@ -177,7 +176,7 @@
 
     </div>
 
-    <script src="config.js"></script>
-    <script src="app.js"></script>
+    <script src="config.js?v=3"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>

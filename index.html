@@ -3,91 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marketing IEAD Cuiabá e Região</title>
+    <title>Marketing IEAD | Cuiabá e Região</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Font Awesome para ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Ícones Minimalistas -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Fonte Institucional (Inter - similar à San Francisco da Apple) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- Cabeçalho -->
-    <header>
-        <div class="logo-container">
-            <!-- Substitua pela URL da imagem do logo que você subiu no GitHub ou Drive -->
-            <img src="https://via.placeholder.com/150x50?text=Logo+IEAD" alt="Logo IEAD" class="logo">
-            <h1>Marketing IEAD <span>Cuiabá e Região</span></h1>
+    <!-- Cabeçalho Fixo (Glassmorphism) -->
+    <header class="glass-header">
+        <div class="header-content">
+            <div class="logo-area">
+                <!-- Substitua pelo link real do logo -->
+                <img src="https://via.placeholder.com/120x40/0a1c3a/d4af37?text=IEAD" alt="Logo IEAD" class="logo">
+                <span class="divider"></span>
+                <span class="subtitle">Marketing Cuiabá e Região</span>
+            </div>
+            <nav class="header-nav">
+                <a href="#downloads">Downloads</a>
+                <a href="#sobre">Sobre</a>
+            </nav>
         </div>
     </header>
 
-    <!-- Carrossel de Avisos -->
-    <section class="carousel-container">
-        <div class="carousel">
-            <div class="slide active">
-                <h2>Bem-vindo ao Portal de Marketing!</h2>
-                <p>Acesse materiais exclusivos, manuais e apresentações.</p>
-            </div>
-            <div class="slide">
-                <h2>Novo Manual Disponível</h2>
-                <p>Baixe o manual de identidade visual atualizado.</p>
-            </div>
-            <div class="slide">
-                <h2>Campanha de Missões</h2>
-                <p>Confira os materiais para download da campanha.</p>
-            </div>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Recursos Oficiais.<br>Excelência em Comunicação.</h1>
+            <p>Acesse materiais institucionais, manuais de marca, apresentações e conteúdos exclusivos para a obra em Cuiabá e Região.</p>
+            <a href="#downloads" class="btn-primary">Explorar Materiais</a>
         </div>
-        <div class="carousel-dots">
-            <span class="dot active" onclick="currentSlide(1)"></span>
-            <span class="dot" onclick="currentSlide(2)"></span>
-            <span class="dot" onclick="currentSlide(3)"></span>
+    </section>
+
+    <!-- Carrossel de Avisos (Estilo Apple Newsroom) -->
+    <section class="carousel-section">
+        <div class="carousel-container">
+            <div class="carousel-track" id="carouselTrack">
+                <div class="slide active">
+                    <span class="badge">Novo</span>
+                    <h3>Manual de Identidade Visual 2026</h3>
+                    <p>Garanta a padronização de todas as peças de comunicação da igreja.</p>
+                    <a href="#downloads" class="link-arrow">Baixar agora <i class="fas fa-chevron-right"></i></a>
+                </div>
+                <div class="slide">
+                    <span class="badge">Campanha</span>
+                    <h3>Materiais para Missões</h3>
+                    <p>Cartazes, folders e artes para redes sociais já estão disponíveis.</p>
+                    <a href="#downloads" class="link-arrow">Acessar materiais <i class="fas fa-chevron-right"></i></a>
+                </div>
+                <div class="slide">
+                    <span class="badge">Institucional</span>
+                    <h3>Apresentação da Igreja</h3>
+                    <p>Slides atualizados para cultos, reuniões e eventos oficiais.</p>
+                    <a href="#downloads" class="link-arrow">Ver apresentação <i class="fas fa-chevron-right"></i></a>
+                </div>
+            </div>
+            <div class="carousel-controls">
+                <button id="prevBtn"><i class="fas fa-chevron-left"></i></button>
+                <div class="dots" id="dotsContainer"></div>
+                <button id="nextBtn"><i class="fas fa-chevron-right"></i></button>
+            </div>
         </div>
     </section>
 
     <!-- Área de Downloads -->
-    <main>
-        <h2 class="section-title">Central de Downloads</h2>
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Buscar arquivo...">
-            <i class="fas fa-search"></i>
+    <main id="downloads" class="main-content">
+        <div class="section-header">
+            <h2>Central de Downloads</h2>
+            <p>Todos os arquivos são hospedados no Google Drive oficial.</p>
         </div>
+
+        <div class="search-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Buscar por nome ou tipo de arquivo...">
+        </div>
+
         <div class="downloads-grid" id="downloadsGrid">
-            <!-- Os cards serão inseridos aqui via JavaScript -->
-            <p class="loading">Carregando arquivos...</p>
+            <!-- Os cards serão inseridos via JavaScript -->
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Carregando acervo...</p>
+            </div>
         </div>
     </main>
 
-    <!-- Painel Administrativo (Cadeado no Rodapé) -->
-    <div class="admin-lock" id="adminLock">
-        <i class="fas fa-lock"></i>
-    </div>
+    <!-- Seção Sobre -->
+    <section id="sobre" class="about-section">
+        <div class="about-content">
+            <h2>Excelência no Ministério de Comunicação</h2>
+            <p>O departamento de Marketing da IEAD Cuiabá e Região tem como objetivo fornecer ferramentas de alta qualidade para que a mensagem do evangelho seja transmitida com clareza, beleza e padronização em todas as congregações.</p>
+        </div>
+    </section>
 
-    <!-- Modal de Login -->
-    <div class="modal" id="loginModal">
-        <div class="modal-content">
-            <span class="close-btn" id="closeModal">&times;</span>
-            <h2><i class="fas fa-user-shield"></i> Acesso Restrito</h2>
-            <p>Digite a senha para gerenciar os arquivos.</p>
+    <!-- Rodapé com Cadeado Administrativo -->
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2026 IEAD Cuiabá e Região. Todos os direitos reservados.</p>
+            <div class="admin-lock" id="adminLock" title="Acesso Restrito">
+                <i class="fas fa-lock"></i>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal de Login (Design Apple) -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-box">
+            <button class="modal-close" id="closeModal"><i class="fas fa-times"></i></button>
+            <div class="modal-icon"><i class="fas fa-shield-alt"></i></div>
+            <h2>Acesso Administrativo</h2>
+            <p>Insira a credencial para gerenciar o conteúdo.</p>
             <input type="password" id="adminPassword" placeholder="Senha de Administrador">
-            <button onclick="checkPassword()">Entrar</button>
+            <button class="btn-primary" onclick="checkPassword()">Autenticar</button>
             <p id="loginError" class="error-msg"></p>
         </div>
     </div>
 
-    <!-- Painel de Administração (Escondido) -->
+    <!-- Painel Administrativo -->
     <div class="admin-panel" id="adminPanel">
-        <div class="admin-header">
-            <h2>Painel de Administração</h2>
-            <button onclick="logoutAdmin()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Sair</button>
-        </div>
-        <div class="admin-content">
-            <p>Para adicionar ou remover arquivos, edite diretamente a <strong>Planilha do Google Sheets</strong> vinculada.</p>
-            <p>Os arquivos devem estar públicos no Google Drive.</p>
-            <a href="https://docs.google.com/spreadsheets/" target="_blank" class="btn-sheets">Abrir Planilha</a>
+        <div class="admin-panel-content">
+            <div class="admin-header">
+                <h2><i class="fas fa-cog"></i> Painel de Controle</h2>
+                <button onclick="logoutAdmin()" class="btn-logout">Sair</button>
+            </div>
+            <div class="admin-body">
+                <p>O gerenciamento de arquivos é feito diretamente pela planilha do Google Sheets vinculada a este site.</p>
+                <p>Para adicionar, editar ou remover um arquivo, acesse a planilha abaixo. As alterações refletirão automaticamente no site.</p>
+                <a href="https://docs.google.com/spreadsheets/" target="_blank" class="btn-primary" style="display:inline-block; margin-top: 20px;">
+                    <i class="fas fa-external-link-alt"></i> Abrir Planilha de Dados
+                </a>
+            </div>
         </div>
     </div>
-
-    <footer>
-        <p>&copy; 2026 Marketing IEAD Cuiabá e Região. Todos os direitos reservados.</p>
-    </footer>
 
     <script src="script.js"></script>
 </body>

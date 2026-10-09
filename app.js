@@ -1,6 +1,5 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD Cuiabá e Região
- * Versão 6.0 - Com aba Início
+ * SITE PÚBLICO - Marketing IEAD v10
  * ============================================================ */
 
 let estadoSite = {
@@ -10,8 +9,7 @@ let estadoSite = {
     menus: [],
     slideAtual: 0,
     carrosselInterval: null,
-    rotaAtual: 'inicio',
-    totalSlides: 0
+    rotaAtual: 'inicio'
 };
 
 // ============================================================
@@ -21,7 +19,6 @@ function atualizarProgresso(percent) {
     const circle = document.getElementById('splashCircle');
     const txt = document.getElementById('splashPercent');
     if (txt) txt.textContent = Math.round(percent) + '%';
-
     if (circle) {
         const perimetro = 565.48;
         const offset = perimetro - (perimetro * percent / 100);
@@ -53,7 +50,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     atualizarProgresso(55);
 
     aplicarConfiguracoes();
-    renderizarMenus();
     atualizarProgresso(70);
 
     renderizarCarrossel();
@@ -77,13 +73,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 function inicializarRotas() {
     window.addEventListener('hashchange', aplicarRota);
     aplicarRota();
-
-    document.querySelectorAll('[data-route]').forEach(el => {
-        el.addEventListener('click', e => {
-            e.preventDefault();
-            window.location.hash = el.getAttribute('data-route');
-        });
-    });
 }
 
 function aplicarRota() {
@@ -131,7 +120,6 @@ async function carregarDadosSite() {
 // ============================================================
 function aplicarConfiguracoes() {
     const c = estadoSite.config;
-    aplicarCores(c);
 
     if (c.Titulo_Site) document.title = c.Titulo_Site;
 
@@ -183,39 +171,6 @@ function aplicarConfiguracoes() {
         const sw = document.getElementById('searchWrapper');
         if (sw) sw.style.display = 'none';
     }
-}
-
-// ============================================================
-// MENUS
-// ============================================================
-function renderizarMenus() {
-    const nav = document.getElementById('siteMenus');
-    if (!nav) return;
-
-    if (estadoSite.menus.length > 0) {
-        nav.innerHTML = estadoSite.menus.map(m => {
-            const target = m.novaAba ? 'target="_blank" rel="noopener"' : '';
-            return `<a href="${m.link}" ${target}>${escapeHTML(m.nome)}</a>`;
-        }).join('');
-    } else {
-        // Menu padrão COM INÍCIO
-        nav.innerHTML = `
-            <a href="#inicio">Início</a>
-            <a href="#downloads">Downloads</a>
-            <a href="#sobre">Sobre</a>
-            <a href="#contato">Contato</a>
-        `;
-    }
-
-    nav.querySelectorAll('a[href^="#"]').forEach(el => {
-        el.addEventListener('click', e => {
-            const href = el.getAttribute('href');
-            if (['#inicio','#downloads','#sobre','#contato'].includes(href)) {
-                e.preventDefault();
-                window.location.hash = href.replace('#', '');
-            }
-        });
-    });
 }
 
 // ============================================================
@@ -306,8 +261,6 @@ function renderizarCarrossel() {
     dotsContainer.innerHTML = slides.map((_, i) =>
         `<span class="dot ${i === 0 ? 'active' : ''}" onclick="irParaSlide(${i})"></span>`
     ).join('');
-
-    estadoSite.totalSlides = slides.length;
 }
 
 function isImagem(tipo) {

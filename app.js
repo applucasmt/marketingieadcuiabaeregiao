@@ -9,22 +9,105 @@ let estadoSite = {
     carrossel: [],
     menus: [],
     slideAtual: 0,
-    carrosselInterval: null
+    carrosselInterval: null,
+    rotaAtual: 'home'
 };
+
+// ============================================================
+// SPLASH SCREEN - Animação de Carregamento
+// ============================================================
+function atualizarProgresso(percent) {
+    const bar = document.getElementById('splashProgressBar');
+    const txt = document.getElementById('splashPercent');
+    if (bar) bar.style.width = percent + '%';
+    if (txt) txt.textContent = Math.round(percent) + '%';
+}
+
+function esconderSplash() {
+    const splash = document.getElementById('splashScreen');
+    const wrapper = document.getElementById('siteWrapper');
+    if (splash) {
+        splash.classList.add('fade-out');
+        setTimeout(() => {
+            splash.style.display = 'none';
+            wrapper.classList.add('visible');
+        }, 700);
+    }
+}
 
 // ============================================================
 // INICIALIZAÇÃO
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+    // Animação fake de progresso inicial
+    atualizarProgresso(10);
+    
+    await new Promise(r => setTimeout(r, 200));
+    atualizarProgresso(30);
+
     await carregarDadosSite();
+    atualizarProgresso(60);
+
     aplicarConfiguracoes();
     renderizarMenus();
     renderizarCarrossel();
     renderizarArquivos();
+    renderizarContato();
+    atualizarProgresso(85);
+
     inicializarBusca();
     inicializarCarrossel();
     inicializarPreview();
+    inicializarRotas();
+
+    await new Promise(r => setTimeout(r, 400));
+    atualizarProgresso(100);
+
+    await new Promise(r => setTimeout(r, 300));
+    esconderSplash();
 });
+
+// ============================================================
+// ROTAS (Páginas separadas)
+// ============================================================
+function inicializarRotas() {
+    // Detecta mudanças no hash
+    window.addEventListener('hashchange', aplicarRota);
+    aplicarRota(); // Aplica a rota inicial
+
+    // Links com data-route
+    document.querySelectorAll('[data-route]').forEach(el => {
+        el.addEventListener('click', e => {
+            e.preventDefault();
+            const rota = el.getAttribute('data-route');
+            window.location.hash = rota;
+        });
+    });
+}
+
+function aplicarRota() {
+    const hash = window.location.hash.replace('#', '') || 'home';
+    const rotasValidas = ['home', 'downloads', 'sobre', 'contato'];
+    
+    const rota = rotasValidas.includes(hash) ? hash : 'home';
+    estadoSite.rotaAtual = rota;
+
+    // Esconde todas as páginas
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    
+    // Mostra a página correta
+    const page = document.getElementById('page-' + rota);
+    if (page) page.classList.add('active');
+
+    // Atualiza menu ativo
+    document.querySelectorAll('.header-nav a').forEach(a => {
+        const href = a.getAttribute('href')?.replace('#', '');
+        a.classList.toggle('active', href === rota);
+    });
+
+    // Scroll para o topo
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 // ============================================================
 // CARREGAR DADOS DO BACKEND
@@ -62,7 +145,7 @@ function aplicarConfiguracoes() {
         const logoImg = document.getElementById('siteLogo');
         logoImg.src = c.Logo_URL;
         logoImg.onerror = () => {
-            logoImg.src = "https://via.placeholder.com/120x40/0a1c3a/d4af37?text=IEAD";
+            logoImg.src = "https://i.ibb.co/3Y5PMRwz/2600211b-5791-45a6-8ce0-1c8eb30344f6.jpg";
         };
     }
 
@@ -76,6 +159,7 @@ function aplicarConfiguracoes() {
 
     document.getElementById('siteRodape').textContent = c.Texto_Rodape || CONFIG.TEXTOS_PADRAO.rodape;
 
+    // Social
     const socialDiv = document.getElementById('siteSocial');
     let socialHTML = '';
     if (c.Instagram) {
@@ -88,32 +172,49 @@ function aplicarConfiguracoes() {
     socialDiv.innerHTML = socialHTML;
 
     if (c.Mostrar_Carrossel === 'FALSE') {
-        document.getElementById('carouselSection').style.display = 'none';
+        const cs = document.getElementById('carouselSection');
+        if (cs) cs.style.display = 'none';
     }
-
     if (c.Mostrar_Busca === 'FALSE') {
-        document.querySelector('.search-wrapper').style.display = 'none';
+        const sw = document.getElementById('searchWrapper');
+        if (sw) sw.style.display = 'none';
     }
 }
 
 // ============================================================
-// MENUS
+// MENUS (AGORA COM ROTAS)
 // ============================================================
 function renderizarMenus() {
     const nav = document.getElementById('siteMenus');
     
-    if (!estadoSite.menus.length) {
+    // Se menus vierem da planilha
+    if (estadoSite.menus.length > 0) {
+        nav.innerHTML = estadoSite.menus.map(m => {
+            const isRota = m.link.startsWith('#');
+            const link = isRota ? m.link : m.link;
+            const target = m.novaAba ? 'target="_blank"' : '';
+            return `<a href="${link}" ${target}>${escapeHTML(m.nome)}</a>`;
+        }).join('');
+    } else {
+        // Menus padrão (rotas)
         nav.innerHTML = `
-            <a href="#downloads">Downloads</a>
-            <a href="#sobre">Sobre</a>
+            <a href="#home" data-route="home">Início</a>
+            <a href="#downloads" data-route="downloads">Downloads</a>
+            <a href="#sobre" data-route="sobre">Sobre</a>
+            <a href="#contato" data-route="contato">Contato</a>
         `;
-        return;
     }
 
-    nav.innerHTML = estadoSite.menus.map(m => {
-        const target = m.novaAba ? 'target="_blank"' : '';
-        return `<a href="${m.link}" ${target}>${escapeHTML(m.nome)}</a>`;
-    }).join('');
+    // Reaplica listeners nos novos links de rota
+    nav.querySelectorAll('[data-route], a[href^="#"]').forEach(el => {
+        el.addEventListener('click', e => {
+            const href = el.getAttribute('href') || '';
+            if (href.startsWith('#') && ['#home','#downloads','#sobre','#contato'].includes(href)) {
+                e.preventDefault();
+                window.location.hash = href.replace('#', '');
+            }
+        });
+    });
 }
 
 // ============================================================
@@ -122,10 +223,11 @@ function renderizarMenus() {
 function renderizarCarrossel() {
     const track = document.getElementById('carouselTrack');
     const dotsContainer = document.getElementById('dotsContainer');
+    if (!track) return;
 
     const slides = estadoSite.carrossel.length > 0 ? estadoSite.carrossel : [
-        { titulo: "Bem-vindo", descricao: "Acesse materiais exclusivos.", badge: "Novo", link: "#downloads", textoBotao: "Explorar" },
-        { titulo: "Materiais Oficiais", descricao: "Manuais e apresentações disponíveis.", badge: "Atualizado", link: "#downloads", textoBotao: "Acessar" }
+        { titulo: "Bem-vindo ao Portal", descricao: "Acesse materiais exclusivos, manuais e apresentações.", badge: "Novo", link: "#downloads", textoBotao: "Explorar" },
+        { titulo: "Manual de Identidade Visual", descricao: "Garanta a padronização de todas as peças.", badge: "Atualizado", link: "#downloads", textoBotao: "Baixar agora" }
     ];
 
     track.innerHTML = slides.map((s, i) => `
@@ -145,10 +247,8 @@ function renderizarCarrossel() {
 function inicializarCarrossel() {
     const prev = document.getElementById('prevBtn');
     const next = document.getElementById('nextBtn');
-
     if (prev) prev.addEventListener('click', () => { irParaSlide(estadoSite.slideAtual - 1); reiniciarAutoPlay(); });
     if (next) next.addEventListener('click', () => { irParaSlide(estadoSite.slideAtual + 1); reiniciarAutoPlay(); });
-
     iniciarAutoPlay();
 }
 
@@ -156,41 +256,34 @@ function irParaSlide(n) {
     const slides = document.querySelectorAll('.slide');
     const dots = document.querySelectorAll('.dot');
     if (!slides.length) return;
-
     slides.forEach(s => s.classList.remove('active'));
     dots.forEach(d => d.classList.remove('active'));
-
     estadoSite.slideAtual = (n + slides.length) % slides.length;
     slides[estadoSite.slideAtual].classList.add('active');
     dots[estadoSite.slideAtual].classList.add('active');
 }
 
 function iniciarAutoPlay() {
-    estadoSite.carrosselInterval = setInterval(() => {
-        irParaSlide(estadoSite.slideAtual + 1);
-    }, 6000);
-}
-
-function reiniciarAutoPlay() {
     clearInterval(estadoSite.carrosselInterval);
-    iniciarAutoPlay();
+    estadoSite.carrosselInterval = setInterval(() => irParaSlide(estadoSite.slideAtual + 1), 6000);
 }
+function reiniciarAutoPlay() { clearInterval(estadoSite.carrosselInterval); iniciarAutoPlay(); }
 
 // ============================================================
-// ARQUIVOS (GRID DE DOWNLOADS COM PREVIEW)
+// ARQUIVOS
 // ============================================================
 function renderizarArquivos() {
     const grid = document.getElementById('downloadsGrid');
+    if (!grid) return;
     const arquivos = estadoSite.arquivos;
 
     if (!arquivos.length) {
         grid.innerHTML = `
-            <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 60px 20px;">
-                <i class="fas fa-folder-open" style="font-size: 3rem; color: #D4AF37; margin-bottom: 20px;"></i>
+            <div class="empty-state" style="grid-column: 1/-1;">
+                <i class="fas fa-folder-open"></i>
                 <h3>Nenhum arquivo disponível</h3>
-                <p style="color: #86868B;">Os materiais serão adicionados em breve.</p>
-            </div>
-        `;
+                <p>Os materiais serão adicionados em breve.</p>
+            </div>`;
         return;
     }
 
@@ -198,64 +291,44 @@ function renderizarArquivos() {
         const icone = obterIcone(a.tipo);
         return `
             <div class="card" onclick="abrirPreview(${i})">
-                <div class="card-thumb">
-                    ${gerarThumb(a)}
-                </div>
+                <div class="card-thumb">${gerarThumb(a)}</div>
                 <div class="card-body">
-                    <i class="fas ${icone} card-icon"></i>
+                    <span class="card-tag"><i class="fas ${icone}"></i> ${escapeHTML(a.tipo)}</span>
                     <h3>${escapeHTML(a.nome)}</h3>
-                    <p>${escapeHTML(a.descricao || 'Clique para acessar')}</p>
+                    <p>${escapeHTML(a.descricao || 'Clique para visualizar')}</p>
                     ${a.tamanho ? `<span class="badge-size">${a.tamanho}</span>` : ''}
                 </div>
                 <button class="btn-download" onclick="event.stopPropagation(); abrirPreview(${i})">
-                    <i class="fas fa-eye"></i> Visualizar
+                    <i class="fas fa-eye"></i> <span>Visualizar</span>
                 </button>
             </div>
         `;
     }).join('');
 }
 
-/**
- * Gera um thumbnail de preview no card (imagem, PDF, vídeo ou ícone)
- */
 function gerarThumb(arquivo) {
     const ext = (arquivo.tipo || '').toUpperCase();
     const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
     const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
     const isPdf = ext === 'PDF';
 
-    // Se for imagem e tiver preview, mostra a miniatura real
     if (isImg && arquivo.preview) {
-        return `<img src="${arquivo.preview}" alt="${escapeHTML(arquivo.nome)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'thumb-fallback\\'><i class=\\'fas fa-image\\'></i></div>'">`;
+        return `<img src="${arquivo.preview}" alt="${escapeHTML(arquivo.nome)}" loading="lazy">`;
     }
-    
-    // Se for vídeo, tenta usar thumbnail
     if (isVid && arquivo.preview) {
-        return `
-            <div class="thumb-video">
-                <img src="${arquivo.preview}" onerror="this.style.display='none'">
-                <div class="play-overlay"><i class="fas fa-play"></i></div>
-            </div>
-        `;
+        return `<div class="thumb-video"><img src="${arquivo.preview}"><div class="play-overlay"><i class="fas fa-play"></i></div></div>`;
     }
-
-    // PDF - mostra ícone grande
-    if (isPdf) {
-        return `<div class="thumb-fallback pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></div>`;
-    }
-
-    // Fallback genérico
+    if (isPdf) return `<div class="thumb-fallback pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></div>`;
     return `<div class="thumb-fallback"><i class="fas fa-file"></i></div>`;
 }
 
 function obterIcone(tipo) {
     const t = (tipo || '').toLowerCase();
     if (t.includes('pdf')) return 'fa-file-pdf';
-    if (t.includes('png') || t.includes('jpg') || t.includes('jpeg') || t.includes('gif') || t.includes('webp')) return 'fa-file-image';
+    if (t.includes('png') || t.includes('jpg') || t.includes('jpeg') || t.includes('gif')) return 'fa-file-image';
     if (t.includes('ppt')) return 'fa-file-powerpoint';
     if (t.includes('doc')) return 'fa-file-word';
     if (t.includes('xls') || t.includes('csv')) return 'fa-file-excel';
-    if (t.includes('psd') || t.includes('ai')) return 'fa-file-alt';
     if (t.includes('zip') || t.includes('rar')) return 'fa-file-archive';
     if (t.includes('mp4') || t.includes('mov')) return 'fa-file-video';
     if (t.includes('mp3') || t.includes('wav')) return 'fa-file-audio';
@@ -268,21 +341,40 @@ function obterIcone(tipo) {
 function inicializarBusca() {
     const input = document.getElementById('searchInput');
     if (!input) return;
-
     input.addEventListener('input', function() {
         const termo = this.value.toLowerCase().trim();
         document.querySelectorAll('.card').forEach(card => {
-            const texto = card.textContent.toLowerCase();
-            card.style.display = texto.includes(termo) ? 'flex' : 'none';
+            card.style.display = card.textContent.toLowerCase().includes(termo) ? 'flex' : 'none';
         });
     });
 }
 
 // ============================================================
-// ⭐ MODAL DE PREVIEW (Visualização antes do download)
+// CONTATO (Preenche os links)
+// ============================================================
+function renderizarContato() {
+    const c = estadoSite.config;
+    const email = c.Email_Contato || 'marketing@ieadcuiaba.com.br';
+    const insta = (c.Instagram || '@ieadcuiaba').replace('@', '');
+
+    const eLink = document.getElementById('contatoEmail');
+    const eTxt = document.getElementById('contatoEmailTexto');
+    if (eLink) eLink.href = 'mailto:' + email;
+    if (eTxt) eTxt.textContent = email;
+
+    const iLink = document.getElementById('contatoInstagram');
+    const iTxt = document.getElementById('contatoInstagramTexto');
+    if (iLink) iLink.href = 'https://instagram.com/' + insta;
+    if (iTxt) iTxt.textContent = '@' + insta;
+
+    const wLink = document.getElementById('contatoWhatsapp');
+    if (wLink) wLink.href = 'https://wa.me/5565999999999';
+}
+
+// ============================================================
+// MODAL DE PREVIEW
 // ============================================================
 function inicializarPreview() {
-    // Cria o modal se não existir
     if (!document.getElementById('previewModal')) {
         const modal = document.createElement('div');
         modal.id = 'previewModal';
@@ -290,9 +382,7 @@ function inicializarPreview() {
         modal.innerHTML = `
             <div class="preview-modal-overlay" onclick="fecharPreview()"></div>
             <div class="preview-modal-content">
-                <button class="preview-close" onclick="fecharPreview()" title="Fechar (ESC)">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button class="preview-close" onclick="fecharPreview()"><i class="fas fa-times"></i></button>
                 <div class="preview-modal-header">
                     <div class="preview-title-area">
                         <i class="fas fa-file preview-title-icon" id="previewTitleIcon"></i>
@@ -302,13 +392,9 @@ function inicializarPreview() {
                         </div>
                     </div>
                 </div>
-                <div class="preview-modal-body" id="previewBody">
-                    <!-- Conteúdo dinâmico -->
-                </div>
+                <div class="preview-modal-body" id="previewBody"></div>
                 <div class="preview-modal-footer">
-                    <button onclick="fecharPreview()" class="btn-secondary-preview">
-                        <i class="fas fa-arrow-left"></i> Voltar
-                    </button>
+                    <button onclick="fecharPreview()" class="btn-secondary-preview"><i class="fas fa-arrow-left"></i> Voltar</button>
                     <a id="previewDownloadBtn" href="#" download target="_blank" rel="noopener noreferrer" class="btn-download-preview">
                         <i class="fas fa-download"></i> Baixar Arquivo
                     </a>
@@ -317,11 +403,7 @@ function inicializarPreview() {
         `;
         document.body.appendChild(modal);
     }
-
-    // Fecha com ESC
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') fecharPreview();
-    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharPreview(); });
 }
 
 function abrirPreview(index) {
@@ -330,18 +412,11 @@ function abrirPreview(index) {
 
     const modal = document.getElementById('previewModal');
     const body = document.getElementById('previewBody');
-    const titulo = document.getElementById('previewTitulo');
-    const meta = document.getElementById('previewMeta');
-    const iconTitle = document.getElementById('previewTitleIcon');
-    const downloadBtn = document.getElementById('previewDownloadBtn');
+    document.getElementById('previewTitulo').textContent = arquivo.nome;
+    document.getElementById('previewMeta').textContent = `${arquivo.tipo} ${arquivo.tamanho ? '• ' + arquivo.tamanho : ''} ${arquivo.categoria ? '• ' + arquivo.categoria : ''}`;
+    document.getElementById('previewTitleIcon').className = `fas ${obterIcone(arquivo.tipo)} preview-title-icon`;
+    document.getElementById('previewDownloadBtn').href = arquivo.link;
 
-    // Configura cabeçalho
-    titulo.textContent = arquivo.nome;
-    meta.textContent = `${arquivo.tipo} ${arquivo.tamanho ? '• ' + arquivo.tamanho : ''} ${arquivo.categoria ? '• ' + arquivo.categoria : ''}`;
-    iconTitle.className = `fas ${obterIcone(arquivo.tipo)} preview-title-icon`;
-    downloadBtn.href = arquivo.link;
-
-    // Gera o preview baseado no tipo
     const ext = (arquivo.tipo || '').toUpperCase();
     const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
     const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
@@ -349,53 +424,24 @@ function abrirPreview(index) {
     const fileId = extrairFileId(arquivo.link);
 
     if (isImg) {
-        // Preview de imagem em alta resolução
-        const urlHD = fileId 
-            ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`
-            : arquivo.link;
-        
-        body.innerHTML = `
-            <div class="preview-image-wrapper">
-                <img src="${urlHD}" alt="${escapeHTML(arquivo.nome)}" onerror="this.parentElement.innerHTML='<div class=\\'preview-error\\'><i class=\\'fas fa-exclamation-triangle\\'></i><p>Não foi possível carregar a imagem.</p></div>'">
-            </div>
-        `;
+        const urlHD = fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600` : arquivo.link;
+        body.innerHTML = `<div class="preview-image-wrapper"><img src="${urlHD}" alt="${escapeHTML(arquivo.nome)}"></div>`;
     } else if (isVid) {
-        // Preview de vídeo
-        const videoUrl = fileId 
-            ? `https://drive.google.com/file/d/${fileId}/preview`
-            : arquivo.link;
-        
-        body.innerHTML = `
-            <div class="preview-video-wrapper">
-                <iframe src="${videoUrl}" allow="autoplay" allowfullscreen frameborder="0"></iframe>
-            </div>
-        `;
+        const url = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : arquivo.link;
+        body.innerHTML = `<div class="preview-video-wrapper"><iframe src="${url}" allow="autoplay" allowfullscreen frameborder="0"></iframe></div>`;
     } else if (isPdf) {
-        // Preview de PDF via Google Drive Viewer
-        const pdfUrl = fileId 
-            ? `https://drive.google.com/file/d/${fileId}/preview`
-            : arquivo.link;
-        
-        body.innerHTML = `
-            <div class="preview-pdf-wrapper">
-                <iframe src="${pdfUrl}" allowfullscreen frameborder="0"></iframe>
-            </div>
-        `;
+        const url = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : arquivo.link;
+        body.innerHTML = `<div class="preview-pdf-wrapper"><iframe src="${url}" allowfullscreen frameborder="0"></iframe></div>`;
     } else {
-        // Outros tipos - mostra ícone grande + botão
         body.innerHTML = `
             <div class="preview-generic">
-                <div class="preview-generic-icon">
-                    <i class="fas ${obterIcone(arquivo.tipo)}"></i>
-                </div>
+                <div class="preview-generic-icon"><i class="fas ${obterIcone(arquivo.tipo)}"></i></div>
                 <h4>${escapeHTML(arquivo.nome)}</h4>
                 <p>${escapeHTML(arquivo.descricao || 'Este tipo de arquivo não possui pré-visualização.')}</p>
                 <p class="preview-hint">Clique em <strong>Baixar Arquivo</strong> para fazer o download.</p>
-            </div>
-        `;
+            </div>`;
     }
 
-    // Abre o modal
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -405,31 +451,17 @@ function fecharPreview() {
     if (!modal) return;
     modal.classList.remove('active');
     document.body.style.overflow = '';
-    
-    // Limpa o iframe/vídeo após fechar
     setTimeout(() => {
         const body = document.getElementById('previewBody');
         if (body) body.innerHTML = '';
     }, 300);
 }
 
-/**
- * Extrai o File ID do Google Drive a partir de uma URL
- */
 function extrairFileId(url) {
     if (!url) return null;
-    
-    // Formatos suportados:
-    // https://drive.google.com/file/d/FILE_ID/view
-    // https://drive.google.com/uc?id=FILE_ID
-    // https://drive.google.com/open?id=FILE_ID
-    // https://drive.google.com/uc?export=download&id=FILE_ID
-    
-    const match1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (match1) return match1[1];
-    
-    const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (match2) return match2[1];
-    
+    const m1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (m1) return m1[1];
+    const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m2) return m2[1];
     return null;
 }

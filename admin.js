@@ -1,5 +1,5 @@
 const CONFIG = {
-    SENHA_ADMIN: 'sua_senha_aqui',
+    SENHA_ADMIN: 'IEAD2026',
     LIMITE_UPLOAD_MB: 25,
     URL_API: 'https://script.google.com/macros/s/SEU_ID/exec'
     // ... etc

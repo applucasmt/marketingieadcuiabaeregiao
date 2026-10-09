@@ -1,6 +1,6 @@
 /* ============================================================
- * MARKETING IEAD — CSS DEFINITIVO
- * Fundo 100% AZUL • Dourado só em textos/destaques
+ * MARKETING IEAD — CSS DEFINITIVO v3
+ * Fundo 100% AZUL • Contraste correto em todos os botões
  * ============================================================ */
 
 :root {
@@ -227,103 +227,13 @@ body {
 }
 
 /* ============================================================
-   HERO — 100% AZUL
-   ============================================================ */
-.hero {
-    background: linear-gradient(135deg, #0A1C3A 0%, #1A3A6B 100%) !important;
-    padding: 120px 30px 100px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-}
-
-.hero::before {
-    content: '';
-    position: absolute;
-    top: -30%;
-    right: -15%;
-    width: 700px;
-    height: 700px;
-    background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 65%);
-    border-radius: 50%;
-    pointer-events: none;
-    animation: floatSlow 8s ease-in-out infinite;
-}
-
-@keyframes floatSlow {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(-30px, 30px) scale(1.05); }
-}
-
-.hero-content { max-width: 850px; margin: 0 auto; position: relative; z-index: 1; }
-
-.hero h1 {
-    font-size: 3.5rem;
-    font-weight: 800;
-    line-height: 1.1;
-    margin-bottom: 25px;
-    color: var(--branco);
-    letter-spacing: -1px;
-}
-
-.hero h1::after {
-    content: '';
-    display: block;
-    width: 80px;
-    height: 4px;
-    background: var(--dourado);
-    margin: 25px auto 0;
-    border-radius: 4px;
-}
-
-.hero p {
-    font-size: 1.2rem;
-    font-weight: 400;
-    color: rgba(255, 255, 255, 0.75);
-    margin-bottom: 40px;
-    max-width: 650px;
-    margin-left: auto;
-    margin-right: auto;
-    line-height: 1.7;
-}
-
-.btn-primary {
-    background: var(--dourado);
-    color: var(--azul-escuro) !important;
-    padding: 16px 38px;
-    border-radius: 50px;
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 0.95rem;
-    transition: var(--transicao);
-    border: none;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.35);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    font-family: inherit;
-}
-
-.btn-primary:hover {
-    background: var(--dourado-claro);
-    transform: translateY(-3px);
-    box-shadow: 0 15px 35px rgba(212, 175, 55, 0.5);
-}
-
-.btn-primary i { transition: transform 0.3s ease; }
-.btn-primary:hover i { transform: translateX(4px); }
-
-/* ============================================================
-   CARROSSEL DE DESTAQUES — AZUL
+   🎯 CARROSSEL DE DESTAQUES — AGORA NO TOPO
    ============================================================ */
 .carousel-section {
-    background: #0A1C3A !important;
-    padding: 80px 30px;
+    background: linear-gradient(180deg, #0F2247 0%, #0A1C3A 100%) !important;
+    padding: 60px 30px 80px;
     position: relative;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
 }
 
 .carousel-header {
@@ -351,7 +261,7 @@ body {
 
 .carousel-controls button {
     background: rgba(212, 175, 55, 0.1);
-    border: 1px solid rgba(212, 175, 55, 0.3);
+    border: 1px solid rgba(212, 175, 55, 0.4);
     width: 42px;
     height: 42px;
     border-radius: 50%;
@@ -423,7 +333,7 @@ body {
     align-items: center;
     gap: 8px;
     background: var(--dourado);
-    color: var(--azul-escuro);
+    color: var(--azul-escuro) !important;
     padding: 7px 16px;
     border-radius: 30px;
     font-size: 0.7rem;
@@ -444,7 +354,7 @@ body {
 .carousel-slide h3 {
     font-size: 2rem;
     font-weight: 800;
-    color: var(--dourado);
+    color: var(--branco);
     margin-bottom: 12px;
     line-height: 1.2;
 }
@@ -458,13 +368,51 @@ body {
 
 .slide-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 
-.btn-slide {
+/* ============================================================
+   BOTÕES DO CARROSSEL — CONTRASTE CORRETO
+   ============================================================ */
+
+/* ✅ BOTÃO DOURADO → TEXTO AZUL ESCURO */
+.btn-slide-primary {
+    background: var(--dourado) !important;
+    color: var(--azul-escuro) !important;
+    padding: 13px 24px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 800;
+    text-decoration: none;
+    border: 2px solid var(--dourado);
+    cursor: pointer;
+    transition: var(--transicao-rapida);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35);
+}
+
+.btn-slide-primary:hover {
+    background: var(--dourado-claro) !important;
+    color: var(--azul-escuro) !important;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(212, 175, 55, 0.5);
+}
+
+.btn-slide-primary i,
+.btn-slide-primary span { color: var(--azul-escuro) !important; }
+
+/* ✅ BOTÃO AZUL/TRANSPARENTE → TEXTO BRANCO ou DOURADO */
+.btn-slide-ghost {
+    background: transparent !important;
+    color: var(--branco) !important;
     padding: 13px 24px;
     border-radius: 12px;
     font-size: 0.9rem;
     font-weight: 700;
     text-decoration: none;
-    border: 2px solid transparent;
+    border: 2px solid rgba(255, 255, 255, 0.35);
     cursor: pointer;
     transition: var(--transicao-rapida);
     display: inline-flex;
@@ -475,29 +423,15 @@ body {
     letter-spacing: 0.5px;
 }
 
-.btn-slide-primary {
-    background: var(--dourado);
-    color: var(--azul-escuro) !important;
-    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35);
-}
-
-.btn-slide-primary:hover {
-    background: var(--dourado-claro);
-    transform: translateY(-3px);
-    box-shadow: 0 10px 25px rgba(212, 175, 55, 0.5);
-}
-
-.btn-slide-ghost {
-    background: transparent;
-    color: var(--branco) !important;
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
 .btn-slide-ghost:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: var(--dourado);
+    background: rgba(212, 175, 55, 0.15) !important;
     color: var(--dourado) !important;
+    border-color: var(--dourado);
+    transform: translateY(-3px);
 }
+
+.btn-slide-ghost i,
+.btn-slide-ghost span { color: inherit !important; }
 
 .slide-thumb {
     width: 240px;
@@ -511,7 +445,6 @@ body {
     border: 2px solid rgba(212, 175, 55, 0.3);
     box-shadow: 0 15px 40px rgba(0,0,0,0.4);
     flex-shrink: 0;
-    transition: var(--transicao);
 }
 
 .carousel-slide.active .slide-thumb { animation: thumbIn 1s cubic-bezier(0.25, 1, 0.5, 1); }
@@ -527,7 +460,102 @@ body {
 .slide-thumb-icon i { font-size: 5rem; color: var(--dourado); opacity: 0.8; }
 
 /* ============================================================
-   DOWNLOADS — FUNDO AZUL
+   HERO — Fundo AZUL
+   ============================================================ */
+.hero {
+    background: linear-gradient(135deg, #0A1C3A 0%, #1A3A6B 100%) !important;
+    padding: 100px 30px 120px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: -30%;
+    right: -15%;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 65%);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: floatSlow 8s ease-in-out infinite;
+}
+
+@keyframes floatSlow {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-30px, 30px) scale(1.05); }
+}
+
+.hero-content { max-width: 850px; margin: 0 auto; position: relative; z-index: 1; }
+
+.hero h1 {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 25px;
+    color: var(--branco);
+    letter-spacing: -1px;
+}
+
+.hero h1::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 4px;
+    background: var(--dourado);
+    margin: 25px auto 0;
+    border-radius: 4px;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.75);
+    margin-bottom: 40px;
+    max-width: 650px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.7;
+}
+
+/* ✅ BOTÃO PRINCIPAL — DOURADO COM TEXTO AZUL */
+.btn-primary {
+    background: var(--dourado) !important;
+    color: var(--azul-escuro) !important;
+    padding: 16px 38px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 0.95rem;
+    transition: var(--transicao);
+    border: 2px solid var(--dourado);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.35);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-family: inherit;
+}
+
+.btn-primary:hover {
+    background: var(--dourado-claro) !important;
+    color: var(--azul-escuro) !important;
+    transform: translateY(-3px);
+    box-shadow: 0 15px 35px rgba(212, 175, 55, 0.5);
+}
+
+.btn-primary i,
+.btn-primary span { color: var(--azul-escuro) !important; }
+.btn-primary i { transition: transform 0.3s ease; }
+.btn-primary:hover i { transform: translateX(4px); }
+
+/* ============================================================
+   DOWNLOADS
    ============================================================ */
 .main-content {
     background: #0A1C3A !important;
@@ -635,7 +663,7 @@ body {
     top: 15px;
     right: 15px;
     background: var(--dourado);
-    color: var(--azul-escuro);
+    color: var(--azul-escuro) !important;
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 0.7rem;
@@ -711,14 +739,15 @@ body {
     align-self: flex-start;
 }
 
+/* ✅ BOTÃO DE DOWNLOAD — AZUL COM TEXTO DOURADO */
 .card .btn-download {
     margin: 0 22px 22px;
-    background: var(--azul-escuro);
+    background: var(--azul-escuro) !important;
     color: var(--dourado) !important;
     padding: 14px;
     border-radius: 12px;
     border: 2px solid var(--azul-escuro);
-    font-weight: 700;
+    font-weight: 800;
     font-family: inherit;
     font-size: 0.9rem;
     cursor: pointer;
@@ -732,14 +761,17 @@ body {
 }
 
 .card .btn-download:hover {
-    background: var(--dourado);
+    background: var(--dourado) !important;
     color: var(--azul-escuro) !important;
     border-color: var(--dourado);
     transform: translateY(-2px);
 }
 
+.card .btn-download i,
+.card .btn-download span { color: inherit !important; }
+
 /* ============================================================
-   SOBRE / CONTATO — FUNDO AZUL
+   SOBRE / CONTATO
    ============================================================ */
 .about-section, .contact-section {
     background: #0A1C3A !important;
@@ -752,7 +784,7 @@ body {
 .page-tag {
     display: inline-block;
     background: var(--dourado);
-    color: var(--azul-escuro);
+    color: var(--azul-escuro) !important;
     padding: 6px 20px;
     border-radius: 30px;
     font-size: 0.75rem;
@@ -822,7 +854,7 @@ body {
 .about-card p, .contact-card p { color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; line-height: 1.6; word-break: break-word; }
 
 /* ============================================================
-   FOOTER — AZUL PROFUNDO
+   FOOTER
    ============================================================ */
 footer {
     background: #050F24 !important;
@@ -934,7 +966,7 @@ footer {
     background: var(--dourado);
     border: none;
     font-size: 1.1rem;
-    color: var(--azul-escuro);
+    color: var(--azul-escuro) !important;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1041,27 +1073,37 @@ footer {
     flex-shrink: 0;
 }
 
+/* ✅ BOTÃO SECUNDÁRIO DO MODAL — TRANSPARENTE COM BORDA BRANCA */
 .btn-secondary-preview {
-    background: transparent;
-    color: var(--branco);
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: transparent !important;
+    color: var(--branco) !important;
+    border: 2px solid rgba(255, 255, 255, 0.35);
     padding: 14px 25px;
     border-radius: 12px;
     font-size: 0.95rem;
-    font-weight: 600;
+    font-weight: 700;
     font-family: inherit;
     cursor: pointer;
     transition: var(--transicao-rapida);
     display: flex;
     align-items: center;
     gap: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.btn-secondary-preview:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--dourado); color: var(--dourado); }
+.btn-secondary-preview:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: var(--dourado);
+    color: var(--dourado) !important;
+}
 
+.btn-secondary-preview i { color: inherit !important; }
+
+/* ✅ BOTÃO DE DOWNLOAD DO MODAL — DOURADO COM TEXTO AZUL */
 .btn-download-preview {
-    background: var(--dourado);
-    color: var(--azul-escuro);
+    background: var(--dourado) !important;
+    color: var(--azul-escuro) !important;
     padding: 14px 30px;
     border-radius: 12px;
     font-size: 0.95rem;
@@ -1074,9 +1116,18 @@ footer {
     box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
     text-transform: uppercase;
     letter-spacing: 1px;
+    border: 2px solid var(--dourado);
 }
 
-.btn-download-preview:hover { background: var(--dourado-claro); transform: translateY(-2px); box-shadow: 0 10px 30px rgba(212, 175, 55, 0.6); }
+.btn-download-preview:hover {
+    background: var(--dourado-claro) !important;
+    color: var(--azul-escuro) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.6);
+}
+
+.btn-download-preview i,
+.btn-download-preview span { color: inherit !important; }
 
 /* ============================================================
    RESPONSIVO
@@ -1087,10 +1138,11 @@ footer {
     .header-nav a { padding: 8px 14px; font-size: 0.85rem; }
     .subtitle, .divider { display: none; }
 
-    .hero { padding: 80px 20px 60px; }
+    .hero { padding: 70px 20px 80px; }
     .hero h1 { font-size: 2.2rem; }
     .hero p { font-size: 1rem; }
 
+    .carousel-section { padding: 40px 20px 60px; }
     .carousel-slide { grid-template-columns: 1fr; padding: 35px 25px; text-align: center; }
     .slide-thumb { width: 180px; height: 180px; margin: 0 auto; }
     .slide-content { max-width: 100%; }

@@ -23,13 +23,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderizarArquivos();
     inicializarBusca();
     inicializarCarrossel();
+    inicializarPreview();
 });
 
 // ============================================================
 // CARREGAR DADOS DO BACKEND
 // ============================================================
 async function carregarDadosSite() {
-    // Carrega tudo de uma vez (otimizado)
     const dados = await apiGet('tudo');
 
     if (dados) {
@@ -38,7 +38,6 @@ async function carregarDadosSite() {
         estadoSite.carrossel = dados.carrossel || [];
         estadoSite.menus = dados.menus || [];
     } else {
-        // Fallback: usa config.js como padrão
         estadoSite.config = {
             Titulo_Site: CONFIG.TEXTOS_PADRAO.titulo,
             Subtitulo_Hero: CONFIG.TEXTOS_PADRAO.subtituloHero,
@@ -50,18 +49,15 @@ async function carregarDadosSite() {
 }
 
 // ============================================================
-// APLICAR CONFIGURAÇÕES (cores, logo, textos)
+// APLICAR CONFIGURAÇÕES
 // ============================================================
 function aplicarConfiguracoes() {
     const c = estadoSite.config;
 
-    // Aplica cores
     aplicarCores(c);
 
-    // Título do documento
     if (c.Titulo_Site) document.title = c.Titulo_Site;
 
-    // Logo
     if (c.Logo_URL) {
         const logoImg = document.getElementById('siteLogo');
         logoImg.src = c.Logo_URL;
@@ -70,20 +66,16 @@ function aplicarConfiguracoes() {
         };
     }
 
-    // Subtítulo no header
     if (c.Subtitulo_Hero) {
         document.getElementById('siteSubtitulo').textContent = c.Subtitulo_Hero.split('.')[0] || 'Cuiabá e Região';
     }
 
-    // Hero
     document.getElementById('heroTitulo').textContent = c.Titulo_Site || CONFIG.TEXTOS_PADRAO.titulo;
     document.getElementById('heroDescricao').textContent = c.Descricao_Hero || CONFIG.TEXTOS_PADRAO.descricaoHero;
     document.getElementById('heroBotao').textContent = c.Texto_Botao_Hero || CONFIG.TEXTOS_PADRAO.textoBotaoHero;
 
-    // Rodapé
     document.getElementById('siteRodape').textContent = c.Texto_Rodape || CONFIG.TEXTOS_PADRAO.rodape;
 
-    // Redes sociais no rodapé
     const socialDiv = document.getElementById('siteSocial');
     let socialHTML = '';
     if (c.Instagram) {
@@ -95,25 +87,22 @@ function aplicarConfiguracoes() {
     }
     socialDiv.innerHTML = socialHTML;
 
-    // Mostrar/ocultar carrossel
     if (c.Mostrar_Carrossel === 'FALSE') {
         document.getElementById('carouselSection').style.display = 'none';
     }
 
-    // Mostrar/ocultar busca
     if (c.Mostrar_Busca === 'FALSE') {
         document.querySelector('.search-wrapper').style.display = 'none';
     }
 }
 
 // ============================================================
-// MENUS DINÂMICOS
+// MENUS
 // ============================================================
 function renderizarMenus() {
     const nav = document.getElementById('siteMenus');
     
     if (!estadoSite.menus.length) {
-        // Menus padrão
         nav.innerHTML = `
             <a href="#downloads">Downloads</a>
             <a href="#sobre">Sobre</a>
@@ -128,13 +117,12 @@ function renderizarMenus() {
 }
 
 // ============================================================
-// CARROSSEL DINÂMICO
+// CARROSSEL
 // ============================================================
 function renderizarCarrossel() {
     const track = document.getElementById('carouselTrack');
     const dotsContainer = document.getElementById('dotsContainer');
 
-    // Se não há carrossel, usa padrão
     const slides = estadoSite.carrossel.length > 0 ? estadoSite.carrossel : [
         { titulo: "Bem-vindo", descricao: "Acesse materiais exclusivos.", badge: "Novo", link: "#downloads", textoBotao: "Explorar" },
         { titulo: "Materiais Oficiais", descricao: "Manuais e apresentações disponíveis.", badge: "Atualizado", link: "#downloads", textoBotao: "Acessar" }
@@ -189,7 +177,7 @@ function reiniciarAutoPlay() {
 }
 
 // ============================================================
-// ARQUIVOS (GRID DE DOWNLOADS)
+// ARQUIVOS (GRID DE DOWNLOADS COM PREVIEW)
 // ============================================================
 function renderizarArquivos() {
     const grid = document.getElementById('downloadsGrid');
@@ -206,22 +194,58 @@ function renderizarArquivos() {
         return;
     }
 
-    grid.innerHTML = arquivos.map(a => {
+    grid.innerHTML = arquivos.map((a, i) => {
         const icone = obterIcone(a.tipo);
         return `
-            <div class="card">
-                <div>
+            <div class="card" onclick="abrirPreview(${i})">
+                <div class="card-thumb">
+                    ${gerarThumb(a)}
+                </div>
+                <div class="card-body">
                     <i class="fas ${icone} card-icon"></i>
                     <h3>${escapeHTML(a.nome)}</h3>
                     <p>${escapeHTML(a.descricao || 'Clique para acessar')}</p>
                     ${a.tamanho ? `<span class="badge-size">${a.tamanho}</span>` : ''}
                 </div>
-                <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="btn-download">
-                    <i class="fas fa-download"></i> Baixar
-                </a>
+                <button class="btn-download" onclick="event.stopPropagation(); abrirPreview(${i})">
+                    <i class="fas fa-eye"></i> Visualizar
+                </button>
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Gera um thumbnail de preview no card (imagem, PDF, vídeo ou ícone)
+ */
+function gerarThumb(arquivo) {
+    const ext = (arquivo.tipo || '').toUpperCase();
+    const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
+    const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
+    const isPdf = ext === 'PDF';
+
+    // Se for imagem e tiver preview, mostra a miniatura real
+    if (isImg && arquivo.preview) {
+        return `<img src="${arquivo.preview}" alt="${escapeHTML(arquivo.nome)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'thumb-fallback\\'><i class=\\'fas fa-image\\'></i></div>'">`;
+    }
+    
+    // Se for vídeo, tenta usar thumbnail
+    if (isVid && arquivo.preview) {
+        return `
+            <div class="thumb-video">
+                <img src="${arquivo.preview}" onerror="this.style.display='none'">
+                <div class="play-overlay"><i class="fas fa-play"></i></div>
+            </div>
+        `;
+    }
+
+    // PDF - mostra ícone grande
+    if (isPdf) {
+        return `<div class="thumb-fallback pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></div>`;
+    }
+
+    // Fallback genérico
+    return `<div class="thumb-fallback"><i class="fas fa-file"></i></div>`;
 }
 
 function obterIcone(tipo) {
@@ -252,4 +276,160 @@ function inicializarBusca() {
             card.style.display = texto.includes(termo) ? 'flex' : 'none';
         });
     });
+}
+
+// ============================================================
+// ⭐ MODAL DE PREVIEW (Visualização antes do download)
+// ============================================================
+function inicializarPreview() {
+    // Cria o modal se não existir
+    if (!document.getElementById('previewModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'previewModal';
+        modal.className = 'preview-modal';
+        modal.innerHTML = `
+            <div class="preview-modal-overlay" onclick="fecharPreview()"></div>
+            <div class="preview-modal-content">
+                <button class="preview-close" onclick="fecharPreview()" title="Fechar (ESC)">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="preview-modal-header">
+                    <div class="preview-title-area">
+                        <i class="fas fa-file preview-title-icon" id="previewTitleIcon"></i>
+                        <div>
+                            <h3 id="previewTitulo">Nome do arquivo</h3>
+                            <p id="previewMeta">Tipo • Tamanho</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="preview-modal-body" id="previewBody">
+                    <!-- Conteúdo dinâmico -->
+                </div>
+                <div class="preview-modal-footer">
+                    <button onclick="fecharPreview()" class="btn-secondary-preview">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                    <a id="previewDownloadBtn" href="#" download target="_blank" rel="noopener noreferrer" class="btn-download-preview">
+                        <i class="fas fa-download"></i> Baixar Arquivo
+                    </a>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // Fecha com ESC
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') fecharPreview();
+    });
+}
+
+function abrirPreview(index) {
+    const arquivo = estadoSite.arquivos[index];
+    if (!arquivo) return;
+
+    const modal = document.getElementById('previewModal');
+    const body = document.getElementById('previewBody');
+    const titulo = document.getElementById('previewTitulo');
+    const meta = document.getElementById('previewMeta');
+    const iconTitle = document.getElementById('previewTitleIcon');
+    const downloadBtn = document.getElementById('previewDownloadBtn');
+
+    // Configura cabeçalho
+    titulo.textContent = arquivo.nome;
+    meta.textContent = `${arquivo.tipo} ${arquivo.tamanho ? '• ' + arquivo.tamanho : ''} ${arquivo.categoria ? '• ' + arquivo.categoria : ''}`;
+    iconTitle.className = `fas ${obterIcone(arquivo.tipo)} preview-title-icon`;
+    downloadBtn.href = arquivo.link;
+
+    // Gera o preview baseado no tipo
+    const ext = (arquivo.tipo || '').toUpperCase();
+    const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
+    const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
+    const isPdf = ext === 'PDF';
+    const fileId = extrairFileId(arquivo.link);
+
+    if (isImg) {
+        // Preview de imagem em alta resolução
+        const urlHD = fileId 
+            ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`
+            : arquivo.link;
+        
+        body.innerHTML = `
+            <div class="preview-image-wrapper">
+                <img src="${urlHD}" alt="${escapeHTML(arquivo.nome)}" onerror="this.parentElement.innerHTML='<div class=\\'preview-error\\'><i class=\\'fas fa-exclamation-triangle\\'></i><p>Não foi possível carregar a imagem.</p></div>'">
+            </div>
+        `;
+    } else if (isVid) {
+        // Preview de vídeo
+        const videoUrl = fileId 
+            ? `https://drive.google.com/file/d/${fileId}/preview`
+            : arquivo.link;
+        
+        body.innerHTML = `
+            <div class="preview-video-wrapper">
+                <iframe src="${videoUrl}" allow="autoplay" allowfullscreen frameborder="0"></iframe>
+            </div>
+        `;
+    } else if (isPdf) {
+        // Preview de PDF via Google Drive Viewer
+        const pdfUrl = fileId 
+            ? `https://drive.google.com/file/d/${fileId}/preview`
+            : arquivo.link;
+        
+        body.innerHTML = `
+            <div class="preview-pdf-wrapper">
+                <iframe src="${pdfUrl}" allowfullscreen frameborder="0"></iframe>
+            </div>
+        `;
+    } else {
+        // Outros tipos - mostra ícone grande + botão
+        body.innerHTML = `
+            <div class="preview-generic">
+                <div class="preview-generic-icon">
+                    <i class="fas ${obterIcone(arquivo.tipo)}"></i>
+                </div>
+                <h4>${escapeHTML(arquivo.nome)}</h4>
+                <p>${escapeHTML(arquivo.descricao || 'Este tipo de arquivo não possui pré-visualização.')}</p>
+                <p class="preview-hint">Clique em <strong>Baixar Arquivo</strong> para fazer o download.</p>
+            </div>
+        `;
+    }
+
+    // Abre o modal
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharPreview() {
+    const modal = document.getElementById('previewModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+    
+    // Limpa o iframe/vídeo após fechar
+    setTimeout(() => {
+        const body = document.getElementById('previewBody');
+        if (body) body.innerHTML = '';
+    }, 300);
+}
+
+/**
+ * Extrai o File ID do Google Drive a partir de uma URL
+ */
+function extrairFileId(url) {
+    if (!url) return null;
+    
+    // Formatos suportados:
+    // https://drive.google.com/file/d/FILE_ID/view
+    // https://drive.google.com/uc?id=FILE_ID
+    // https://drive.google.com/open?id=FILE_ID
+    // https://drive.google.com/uc?export=download&id=FILE_ID
+    
+    const match1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (match1) return match1[1];
+    
+    const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match2) return match2[1];
+    
+    return null;
 }

@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Administrativo | Marketing IEAD</title>
-    
-    <!-- ✅ 3 CDNs de Font Awesome em redundância - se uma falhar, as outras funcionam -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.5.1/css/all.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.5.1/css/all.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <!-- ⚠️ CSS ISOLADO DO PAINEL ADMIN (NÃO CONFLITA COM style.css DO SITE) -->
     <style>
         :root {
             --cms-azul-escuro: #0A1C3A;
@@ -38,9 +36,11 @@
             background: #F5F5F7;
             color: #1D1D1F;
             min-height: 100vh;
+            margin: 0;
+            padding: 0;
         }
 
-        /* LOGIN */
+        /* LOGIN SCREEN */
         .cms-login {
             min-height: 100vh;
             display: flex;
@@ -75,6 +75,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .cms-login-icon i {
             font-size: 2.2rem;
             color: #D4AF37;
         }
@@ -141,8 +144,7 @@
             box-shadow: 0 8px 20px rgba(212, 175, 55, 0.4);
         }
 
-        .cms-btn-primary i,
-        .cms-btn-primary span { color: #0A1C3A; }
+        .cms-btn-primary i { color: #0A1C3A; }
 
         .cms-btn-primary.cms-full { width: 100%; }
 
@@ -166,7 +168,7 @@
 
         .cms-back-link:hover { color: #0A1C3A; }
 
-        /* WRAPPER */
+        /* CMS WRAPPER */
         .cms-wrapper {
             display: grid;
             grid-template-columns: 260px 1fr;
@@ -198,7 +200,7 @@
             margin-bottom: 20px;
         }
 
-        .cms-logo i { font-size: 1.4rem; color: #D4AF37; }
+        .cms-logo i { font-size: 1.4rem; }
 
         .cms-nav {
             flex: 1;
@@ -209,7 +211,7 @@
         }
 
         .cms-nav a {
-            color: rgba(255,255,255,0.75);
+            color: rgba(255,255,255,0.7);
             padding: 12px 15px;
             text-decoration: none;
             border-radius: 10px;
@@ -222,28 +224,18 @@
             cursor: pointer;
         }
 
-        .cms-nav a i {
-            font-size: 1rem;
-            width: 20px;
-            text-align: center;
-            color: rgba(255,255,255,0.6);
-            transition: var(--cms-transicao);
-        }
+        .cms-nav a i { font-size: 0.95rem; width: 20px; text-align: center; }
 
         .cms-nav a:hover {
             background: rgba(212, 175, 55, 0.1);
             color: #D4AF37;
         }
 
-        .cms-nav a:hover i { color: #D4AF37; }
-
         .cms-nav a.active {
             background: rgba(212, 175, 55, 0.15);
             color: #D4AF37;
-            font-weight: 700;
+            font-weight: 600;
         }
-
-        .cms-nav a.active i { color: #D4AF37; }
 
         .cms-sidebar-footer {
             padding: 20px 15px 0;
@@ -256,7 +248,7 @@
 
         .cms-sidebar-footer a,
         .cms-sidebar-footer button {
-            color: rgba(255,255,255,0.7);
+            color: rgba(255,255,255,0.65);
             padding: 10px 15px;
             text-decoration: none;
             border-radius: 10px;
@@ -272,19 +264,11 @@
             transition: var(--cms-transicao);
         }
 
-        .cms-sidebar-footer a i,
-        .cms-sidebar-footer button i {
-            color: rgba(255,255,255,0.6);
-        }
-
         .cms-sidebar-footer a:hover,
         .cms-sidebar-footer button:hover {
             background: rgba(255,255,255,0.05);
             color: #D4AF37;
         }
-
-        .cms-sidebar-footer a:hover i,
-        .cms-sidebar-footer button:hover i { color: #D4AF37; }
 
         /* MAIN */
         .cms-main {
@@ -358,10 +342,9 @@
         }
 
         .cms-stat-card i {
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             color: #D4AF37;
             margin-bottom: 12px;
-            display: inline-block;
         }
 
         .cms-stat-card h2 {
@@ -378,7 +361,7 @@
             font-weight: 500;
         }
 
-        /* PANEL */
+        /* INFO PANEL */
         .cms-panel {
             background: white;
             padding: 30px;
@@ -399,7 +382,7 @@
 
         .cms-panel h3 i { color: #D4AF37; }
 
-        /* ARQUIVOS */
+        /* ARQUIVOS LIST */
         .cms-arquivos-list {
             display: flex;
             flex-direction: column;
@@ -449,12 +432,17 @@
 
         .cms-preview-icon.cms-pdf { color: #DC3545; }
         .cms-preview-icon.cms-video { color: #D4AF37; }
+        .cms-preview-icon.cms-big { font-size: 4rem; }
 
         .cms-arquivo-info { flex: 1; min-width: 0; }
         .cms-arquivo-info h4 { color: #0A1C3A; margin-bottom: 5px; font-size: 1rem; font-weight: 700; }
         .cms-arquivo-info p { color: #86868B; font-size: 0.85rem; margin-bottom: 8px; word-break: break-word; }
 
-        .cms-arquivo-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+        .cms-arquivo-meta {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
 
         .cms-tag {
             background: #F5F5F7;
@@ -464,6 +452,7 @@
             color: #0A1C3A;
             font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .cms-arquivo-actions { display: flex; gap: 8px; }
@@ -484,22 +473,16 @@
             font-size: 0.95rem;
         }
 
-        .cms-btn-icon i { color: #0A1C3A; }
-
         .cms-btn-icon:hover {
             background: #D4AF37;
             color: white;
             transform: scale(1.05);
         }
 
-        .cms-btn-icon:hover i { color: white; }
-
         .cms-btn-icon.cms-danger:hover {
             background: #FF3B30;
             color: white;
         }
-
-        .cms-btn-icon.cms-danger:hover i { color: white; }
 
         /* UPLOAD */
         .cms-upload-area {
@@ -540,8 +523,18 @@
             border: 1px solid #E5E5EA;
         }
 
-        .cms-upload-preview h3 { color: #0A1C3A; margin-bottom: 15px; font-size: 1rem; }
-        .cms-upload-thumb { max-width: 200px; max-height: 200px; border-radius: 10px; margin-bottom: 10px; }
+        .cms-upload-preview h3 {
+            color: #0A1C3A;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+
+        .cms-upload-thumb {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
 
         /* FORMS */
         .cms-form-grid {
@@ -584,10 +577,18 @@
             box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
         }
 
-        .cms-form-group textarea { resize: vertical; min-height: 80px; }
-        .cms-form-group input[type="color"] { padding: 5px; height: 48px; cursor: pointer; }
+        .cms-form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
 
-        /* ITEM */
+        .cms-form-group input[type="color"] {
+            padding: 5px;
+            height: 48px;
+            cursor: pointer;
+        }
+
+        /* SLIDE / MENU ITEM */
         .cms-item {
             background: white;
             padding: 20px;
@@ -619,11 +620,12 @@
             font-weight: 800;
             margin-bottom: 8px;
             text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .cms-item-actions { display: flex; gap: 8px; }
 
-        /* LOGO */
+        /* LOGO PREVIEW */
         .cms-logo-preview {
             background: #F5F5F7;
             padding: 25px;
@@ -637,7 +639,11 @@
             border: 2px dashed #E5E5EA;
         }
 
-        .cms-logo-preview img { max-height: 90px; max-width: 250px; object-fit: contain; }
+        .cms-logo-preview img {
+            max-height: 90px;
+            max-width: 250px;
+            object-fit: contain;
+        }
 
         /* TOGGLE */
         .cms-toggle {
@@ -653,7 +659,14 @@
         }
 
         .cms-toggle:hover { background: #E8E8ED; }
-        .cms-toggle input { width: 20px; height: 20px; accent-color: #D4AF37; cursor: pointer; }
+
+        .cms-toggle input {
+            width: 20px;
+            height: 20px;
+            accent-color: #D4AF37;
+            cursor: pointer;
+        }
+
         .cms-toggle span { color: #0A1C3A; font-weight: 500; font-size: 0.95rem; }
 
         /* MODAL */
@@ -682,7 +695,11 @@
             animation: cmsFadeIn 0.3s ease;
         }
 
-        .cms-modal-box h2 { color: #0A1C3A; margin-bottom: 25px; font-size: 1.4rem; }
+        .cms-modal-box h2 {
+            color: #0A1C3A;
+            margin-bottom: 25px;
+            font-size: 1.4rem;
+        }
 
         .cms-modal-actions {
             display: flex;
@@ -704,10 +721,19 @@
             transition: var(--cms-transicao);
         }
 
-        .cms-btn-secondary:hover { background: #E5E5EA; border-color: #D4AF37; }
+        .cms-btn-secondary:hover {
+            background: #E5E5EA;
+            border-color: #D4AF37;
+        }
 
-        .cms-empty { text-align: center; color: #86868B; padding: 60px 20px; font-size: 0.95rem; }
+        .cms-empty {
+            text-align: center;
+            color: #86868B;
+            padding: 60px 20px;
+            font-size: 0.95rem;
+        }
 
+        /* FILTRO */
         .cms-filter {
             width: 100%;
             padding: 14px 20px;
@@ -721,7 +747,10 @@
             transition: var(--cms-transicao);
         }
 
-        .cms-filter:focus { border-color: #D4AF37; box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1); }
+        .cms-filter:focus {
+            border-color: #D4AF37;
+            box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+        }
 
         .cms-status-msg {
             padding: 15px 20px;
@@ -734,32 +763,66 @@
             font-size: 0.95rem;
         }
 
-        .cms-status-msg.cms-error { background: #FFE5E5; color: #FF3B30; }
-        .cms-status-msg.cms-success { background: #E8F5E9; color: #28A745; }
+        .cms-status-msg.cms-error {
+            background: #FFE5E5;
+            color: #FF3B30;
+        }
 
+        .cms-status-msg.cms-success {
+            background: #E8F5E9;
+            color: #28A745;
+        }
+
+        /* RESPONSIVO */
         @media (max-width: 900px) {
             .cms-wrapper { grid-template-columns: 1fr; }
-            .cms-sidebar { position: relative; height: auto; padding: 15px 0; }
+            .cms-sidebar {
+                position: relative;
+                height: auto;
+                padding: 15px 0;
+            }
             .cms-logo { padding: 0 20px 15px; }
-            .cms-nav { flex-direction: row; overflow-x: auto; padding: 0 15px 10px; gap: 6px; }
-            .cms-nav a { flex-shrink: 0; padding: 10px 15px; font-size: 0.85rem; white-space: nowrap; }
+            .cms-nav {
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 0 15px 10px;
+                gap: 6px;
+            }
+            .cms-nav a {
+                flex-shrink: 0;
+                padding: 10px 15px;
+                font-size: 0.85rem;
+                white-space: nowrap;
+            }
             .cms-nav a span { display: none; }
             .cms-nav a i { font-size: 1.1rem; }
-            .cms-sidebar-footer { flex-direction: row; border-top: none; padding: 10px 15px; margin-top: 0; }
+            .cms-sidebar-footer {
+                flex-direction: row;
+                border-top: none;
+                padding: 10px 15px;
+                margin-top: 0;
+            }
             .cms-main { padding: 20px; }
             .cms-stats { grid-template-columns: 1fr; }
             .cms-form-grid { grid-template-columns: 1fr; }
             .cms-header { flex-direction: column; gap: 15px; text-align: center; }
-            .cms-arquivo-item { flex-direction: column; text-align: center; }
+            .cms-arquivo-item {
+                flex-direction: column;
+                text-align: center;
+            }
             .cms-arquivo-info { width: 100%; }
             .cms-arquivo-meta { justify-content: center; }
-            .cms-item { flex-direction: column; gap: 15px; text-align: center; }
+            .cms-item {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
         }
     </style>
 </head>
 <body class="cms-body">
 
-    <!-- LOGIN -->
+    <!-- ============ LOGIN ============ -->
     <div class="cms-login" id="cmsLoginScreen">
         <div class="cms-login-box">
             <div class="cms-login-icon">
@@ -767,7 +830,13 @@
             </div>
             <h1>Painel Administrativo</h1>
             <p>Marketing IEAD Cuiabá e Região</p>
-            <input type="password" id="cmsPassword" class="cms-input" placeholder="Digite a senha" autocomplete="current-password">
+            <input 
+                type="password" 
+                id="cmsPassword" 
+                class="cms-input" 
+                placeholder="Digite a senha"
+                autocomplete="current-password"
+            >
             <button onclick="cmsFazerLogin()" class="cms-btn-primary cms-full">
                 <i class="fas fa-sign-in-alt"></i>
                 <span>Entrar no Painel</span>
@@ -779,9 +848,10 @@
         </div>
     </div>
 
-    <!-- PAINEL -->
+    <!-- ============ PAINEL ============ -->
     <div class="cms-wrapper" id="cmsWrapper" style="display: none;">
         
+        <!-- SIDEBAR -->
         <aside class="cms-sidebar">
             <div class="cms-logo">
                 <i class="fas fa-church"></i>
@@ -823,6 +893,7 @@
             </div>
         </aside>
 
+        <!-- MAIN -->
         <main class="cms-main">
             <header class="cms-header">
                 <h1 id="cmsPageTitle">Dashboard</h1>
@@ -837,7 +908,13 @@
                 <div class="cms-stats" id="cmsStats"></div>
                 <div class="cms-panel">
                     <h3><i class="fas fa-folder-open"></i> Pasta no Google Drive</h3>
-                    <a id="cmsLinkPastaDrive" href="#" target="_blank" rel="noopener" class="cms-btn-primary">
+                    <a 
+                        id="cmsLinkPastaDrive" 
+                        href="#" 
+                        target="_blank" 
+                        rel="noopener" 
+                        class="cms-btn-primary"
+                    >
                         <i class="fas fa-external-link-alt"></i>
                         <span>Abrir Pasta no Drive</span>
                     </a>
@@ -846,7 +923,12 @@
 
             <!-- ARQUIVOS -->
             <section class="cms-section" id="cmsTabArquivos">
-                <input type="text" id="cmsFiltroArquivos" class="cms-filter" placeholder="🔍 Filtrar arquivos...">
+                <input 
+                    type="text" 
+                    id="cmsFiltroArquivos" 
+                    class="cms-filter" 
+                    placeholder="🔍 Filtrar arquivos..."
+                >
                 <div class="cms-arquivos-list" id="cmsArquivosList"></div>
             </section>
 
@@ -923,15 +1005,15 @@
                     <h3><i class="fas fa-palette"></i> Paleta de Cores</h3>
                     <div class="cms-form-grid">
                         <div class="cms-form-group">
-                            <label>Cor Primária</label>
+                            <label>Cor Primária (Azul Escuro)</label>
                             <input type="color" id="cmsCorPrimaria" value="#0A1C3A">
                         </div>
                         <div class="cms-form-group">
-                            <label>Cor Secundária</label>
+                            <label>Cor Secundária (Azul Médio)</label>
                             <input type="color" id="cmsCorSecundaria" value="#1A3A6B">
                         </div>
                         <div class="cms-form-group">
-                            <label>Cor de Destaque</label>
+                            <label>Cor de Destaque (Dourado)</label>
                             <input type="color" id="cmsCorDestaque" value="#D4AF37">
                         </div>
                     </div>
@@ -1006,7 +1088,7 @@
         <div class="cms-modal-box" id="cmsModalBox"></div>
     </div>
 
-    <script src="config.js?v=11"></script>
-    <script src="admin.js?v=11"></script>
+    <script src="config.js?v=3"></script>
+    <script src="admin.js?v=3"></script>
 </body>
 </html>

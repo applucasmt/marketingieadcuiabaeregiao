@@ -1,6 +1,6 @@
 /* ============================================================
  * SITE PÚBLICO - Marketing IEAD Cuiabá e Região
- * Versão: 5.0 (Carrossel no topo + contraste corrigido)
+ * Versão 6.0 - Com aba Início
  * ============================================================ */
 
 let estadoSite = {
@@ -10,12 +10,12 @@ let estadoSite = {
     menus: [],
     slideAtual: 0,
     carrosselInterval: null,
-    rotaAtual: 'home',
+    rotaAtual: 'inicio',
     totalSlides: 0
 };
 
 // ============================================================
-// SPLASH SCREEN CIRCULAR
+// SPLASH
 // ============================================================
 function atualizarProgresso(percent) {
     const circle = document.getElementById('splashCircle');
@@ -23,7 +23,6 @@ function atualizarProgresso(percent) {
     if (txt) txt.textContent = Math.round(percent) + '%';
 
     if (circle) {
-        // Raio 90 → perímetro = 2 * π * 90 ≈ 565.48
         const perimetro = 565.48;
         const offset = perimetro - (perimetro * percent / 100);
         circle.style.strokeDashoffset = offset;
@@ -73,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============================================================
-// ROTAS (Navegação por abas)
+// ROTAS
 // ============================================================
 function inicializarRotas() {
     window.addEventListener('hashchange', aplicarRota);
@@ -88,9 +87,9 @@ function inicializarRotas() {
 }
 
 function aplicarRota() {
-    const hash = window.location.hash.replace('#', '') || 'home';
-    const rotasValidas = ['home', 'downloads', 'sobre', 'contato'];
-    const rota = rotasValidas.includes(hash) ? hash : 'home';
+    const hash = window.location.hash.replace('#', '') || 'inicio';
+    const rotasValidas = ['inicio', 'downloads', 'sobre', 'contato'];
+    const rota = rotasValidas.includes(hash) ? hash : 'inicio';
     estadoSite.rotaAtual = rota;
 
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -106,7 +105,7 @@ function aplicarRota() {
 }
 
 // ============================================================
-// CARREGAR DADOS DO BACKEND
+// DADOS
 // ============================================================
 async function carregarDadosSite() {
     const dados = await apiGet('tudo');
@@ -128,7 +127,7 @@ async function carregarDadosSite() {
 }
 
 // ============================================================
-// APLICAR CONFIGURAÇÕES
+// CONFIGURAÇÕES
 // ============================================================
 function aplicarConfiguracoes() {
     const c = estadoSite.config;
@@ -163,7 +162,6 @@ function aplicarConfiguracoes() {
     const rod = document.getElementById('siteRodape');
     if (rod) rod.textContent = c.Texto_Rodape || CONFIG.TEXTOS_PADRAO.rodape;
 
-    // Redes sociais
     const socialDiv = document.getElementById('siteSocial');
     if (socialDiv) {
         let socialHTML = '';
@@ -200,8 +198,9 @@ function renderizarMenus() {
             return `<a href="${m.link}" ${target}>${escapeHTML(m.nome)}</a>`;
         }).join('');
     } else {
+        // Menu padrão COM INÍCIO
         nav.innerHTML = `
-            <a href="#home">Início</a>
+            <a href="#inicio">Início</a>
             <a href="#downloads">Downloads</a>
             <a href="#sobre">Sobre</a>
             <a href="#contato">Contato</a>
@@ -211,7 +210,7 @@ function renderizarMenus() {
     nav.querySelectorAll('a[href^="#"]').forEach(el => {
         el.addEventListener('click', e => {
             const href = el.getAttribute('href');
-            if (['#home','#downloads','#sobre','#contato'].includes(href)) {
+            if (['#inicio','#downloads','#sobre','#contato'].includes(href)) {
                 e.preventDefault();
                 window.location.hash = href.replace('#', '');
             }
@@ -220,15 +219,15 @@ function renderizarMenus() {
 }
 
 // ============================================================
-// CARROSSEL DE DESTAQUES
+// CARROSSEL
 // ============================================================
 function renderizarCarrossel() {
     const track = document.getElementById('carouselTrack');
     const dotsContainer = document.getElementById('dotsContainer');
     if (!track) return;
 
-    // 1. Slides manuais (avisos da planilha)
     const slides = [];
+
     estadoSite.carrossel.forEach(s => {
         slides.push({
             tipo: 'aviso',
@@ -241,7 +240,6 @@ function renderizarCarrossel() {
         });
     });
 
-    // 2. Arquivos novos (5 primeiros) com tag "Novo"
     estadoSite.arquivos.slice(0, 5).forEach((arq, index) => {
         slides.push({
             tipo: 'arquivo',
@@ -253,7 +251,6 @@ function renderizarCarrossel() {
         });
     });
 
-    // Fallback
     if (slides.length === 0) {
         slides.push({
             tipo: 'aviso',
@@ -288,7 +285,7 @@ function renderizarCarrossel() {
                                    <i class="fas fa-arrow-right"></i> <span>${escapeHTML(s.textoBotao)}</span>
                                </a>`
                         }
-                        <a href="#downloads" class="btn-slide btn-slide-ghost" data-route="downloads">
+                        <a href="#downloads" class="btn-slide btn-slide-ghost">
                             <i class="fas fa-download"></i> <span>Downloads</span>
                         </a>
                     </div>
@@ -349,7 +346,7 @@ function reiniciarAutoPlay() {
 }
 
 // ============================================================
-// ARQUIVOS (GRID DE DOWNLOADS)
+// ARQUIVOS
 // ============================================================
 function renderizarArquivos() {
     const grid = document.getElementById('downloadsGrid');
@@ -460,7 +457,7 @@ function renderizarContato() {
 }
 
 // ============================================================
-// MODAL DE PREVIEW
+// MODAL PREVIEW
 // ============================================================
 function inicializarPreview() {
     if (!document.getElementById('previewModal')) {
@@ -506,15 +503,10 @@ function abrirPreview(index) {
 
     const modal = document.getElementById('previewModal');
     const body = document.getElementById('previewBody');
-    const titulo = document.getElementById('previewTitulo');
-    const meta = document.getElementById('previewMeta');
-    const iconTitle = document.getElementById('previewTitleIcon');
-    const downloadBtn = document.getElementById('previewDownloadBtn');
-
-    titulo.textContent = arquivo.nome;
-    meta.textContent = `${arquivo.tipo}${arquivo.tamanho ? ' • ' + arquivo.tamanho : ''}${arquivo.categoria ? ' • ' + arquivo.categoria : ''}`;
-    iconTitle.className = `fas ${obterIcone(arquivo.tipo)} preview-title-icon`;
-    downloadBtn.href = arquivo.link;
+    document.getElementById('previewTitulo').textContent = arquivo.nome;
+    document.getElementById('previewMeta').textContent = `${arquivo.tipo}${arquivo.tamanho ? ' • ' + arquivo.tamanho : ''}${arquivo.categoria ? ' • ' + arquivo.categoria : ''}`;
+    document.getElementById('previewTitleIcon').className = `fas ${obterIcone(arquivo.tipo)} preview-title-icon`;
+    document.getElementById('previewDownloadBtn').href = arquivo.link;
 
     const ext = (arquivo.tipo || '').toUpperCase();
     const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
@@ -523,19 +515,13 @@ function abrirPreview(index) {
     const fileId = extrairFileId(arquivo.link);
 
     if (isImg) {
-        const urlHD = fileId
-            ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`
-            : arquivo.link;
+        const urlHD = fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600` : arquivo.link;
         body.innerHTML = `<div class="preview-image-wrapper"><img src="${urlHD}" alt="${escapeHTML(arquivo.nome)}"></div>`;
     } else if (isVid) {
-        const url = fileId
-            ? `https://drive.google.com/file/d/${fileId}/preview`
-            : arquivo.link;
+        const url = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : arquivo.link;
         body.innerHTML = `<div class="preview-video-wrapper"><iframe src="${url}" allow="autoplay" allowfullscreen frameborder="0"></iframe></div>`;
     } else if (isPdf) {
-        const url = fileId
-            ? `https://drive.google.com/file/d/${fileId}/preview`
-            : arquivo.link;
+        const url = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : arquivo.link;
         body.innerHTML = `<div class="preview-pdf-wrapper"><iframe src="${url}" allowfullscreen frameborder="0"></iframe></div>`;
     } else {
         body.innerHTML = `

@@ -10,7 +10,7 @@
 </head>
 <body class="admin-body">
 
-    <!-- Login -->
+    <!-- LOGIN -->
     <div class="login-screen" id="loginScreen">
         <div class="login-box">
             <div class="login-icon"><i class="fas fa-shield-alt"></i></div>
@@ -19,24 +19,25 @@
             <input type="password" id="adminPassword" placeholder="Digite a senha">
             <button onclick="fazerLogin()" class="btn-primary">Entrar no Painel</button>
             <p id="loginError" class="error-msg"></p>
+            <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Voltar ao site</a>
         </div>
     </div>
 
-    <!-- Painel CMS -->
+    <!-- PAINEL -->
     <div class="cms-wrapper" id="cmsWrapper" style="display: none;">
         
-        <!-- Sidebar -->
+        <!-- SIDEBAR -->
         <aside class="cms-sidebar">
             <div class="cms-logo">
                 <i class="fas fa-church"></i>
                 <span>Marketing IEAD</span>
             </div>
-            <nav class="cms-nav">
+            <nav class="cms-nav" id="cmsNav">
                 <a href="#" class="active" data-tab="dashboard"><i class="fas fa-chart-line"></i> Dashboard</a>
                 <a href="#" data-tab="arquivos"><i class="fas fa-file"></i> Arquivos</a>
                 <a href="#" data-tab="upload"><i class="fas fa-cloud-upload-alt"></i> Upload</a>
                 <a href="#" data-tab="carrossel"><i class="fas fa-images"></i> Carrossel</a>
-                <a href="#" data-tab="menus"><i class="fas fa-bars"></i> Menus</a>
+                <a href="#" data-tab="menus"><i class="fas fa-bars"></i> Abas / Menus</a>
                 <a href="#" data-tab="aparencia"><i class="fas fa-palette"></i> Aparência</a>
                 <a href="#" data-tab="textos"><i class="fas fa-font"></i> Textos</a>
                 <a href="#" data-tab="config"><i class="fas fa-cog"></i> Configurações</a>
@@ -47,7 +48,7 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
+        <!-- MAIN -->
         <main class="cms-main">
             <header class="cms-header">
                 <h1 id="pageTitle">Dashboard</h1>
@@ -57,20 +58,16 @@
                 </div>
             </header>
 
-            <!-- Dashboard -->
+            <!-- DASHBOARD -->
             <section class="cms-section active" id="tab-dashboard">
-                <div class="stats-grid" id="statsGrid">
-                    <div class="stat-card"><i class="fas fa-file"></i><h2>0</h2><p>Arquivos</p></div>
-                    <div class="stat-card"><i class="fas fa-database"></i><h2>0 MB</h2><p>Total</p></div>
-                    <div class="stat-card"><i class="fas fa-folder"></i><h2>0</h2><p>Categorias</p></div>
-                </div>
+                <div class="stats-grid" id="statsGrid"></div>
                 <div class="info-panel">
                     <h3><i class="fas fa-folder-open"></i> Pasta no Drive</h3>
                     <a id="linkPastaDrive" href="#" target="_blank" class="btn-primary">Abrir Pasta no Drive</a>
                 </div>
             </section>
 
-            <!-- Arquivos -->
+            <!-- ARQUIVOS -->
             <section class="cms-section" id="tab-arquivos">
                 <div class="section-actions">
                     <input type="text" id="filtroArquivos" placeholder="🔍 Filtrar arquivos...">
@@ -78,7 +75,7 @@
                 <div class="arquivos-list" id="arquivosList"></div>
             </section>
 
-            <!-- Upload -->
+            <!-- UPLOAD -->
             <section class="cms-section" id="tab-upload">
                 <div class="upload-area" id="uploadArea">
                     <i class="fas fa-cloud-upload-alt"></i>
@@ -114,7 +111,7 @@
                 <div id="uploadStatus"></div>
             </section>
 
-            <!-- Carrossel -->
+            <!-- CARROSSEL -->
             <section class="cms-section" id="tab-carrossel">
                 <button onclick="abrirModalSlide()" class="btn-primary">
                     <i class="fas fa-plus"></i> Novo Slide
@@ -122,15 +119,15 @@
                 <div class="carrossel-list" id="carrosselList"></div>
             </section>
 
-            <!-- Menus -->
+            <!-- MENUS -->
             <section class="cms-section" id="tab-menus">
                 <button onclick="abrirModalMenu()" class="btn-primary">
-                    <i class="fas fa-plus"></i> Novo Menu
+                    <i class="fas fa-plus"></i> Nova Aba / Menu
                 </button>
                 <div class="menus-list" id="menusList"></div>
             </section>
 
-            <!-- Aparência -->
+            <!-- APARÊNCIA -->
             <section class="cms-section" id="tab-aparencia">
                 <div class="appearance-card">
                     <h3><i class="fas fa-image"></i> Logo do Site</h3>
@@ -147,15 +144,15 @@
                     <h3><i class="fas fa-palette"></i> Paleta de Cores</h3>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Cor Primária (Azul Escuro)</label>
+                            <label>Cor Primária</label>
                             <input type="color" id="corPrimaria" value="#0A1C3A">
                         </div>
                         <div class="form-group">
-                            <label>Cor Secundária (Azul Médio)</label>
+                            <label>Cor Secundária</label>
                             <input type="color" id="corSecundaria" value="#1A3A6B">
                         </div>
                         <div class="form-group">
-                            <label>Cor de Destaque (Dourado)</label>
+                            <label>Cor Destaque</label>
                             <input type="color" id="corDestaque" value="#D4AF37">
                         </div>
                     </div>
@@ -163,7 +160,7 @@
                 </div>
             </section>
 
-            <!-- Textos -->
+            <!-- TEXTOS -->
             <section class="cms-section" id="tab-textos">
                 <div class="form-grid">
                     <div class="form-group full">
@@ -171,11 +168,11 @@
                         <input type="text" id="txtTitulo">
                     </div>
                     <div class="form-group full">
-                        <label>Subtítulo do Hero</label>
+                        <label>Subtítulo Hero</label>
                         <input type="text" id="txtSubtituloHero">
                     </div>
                     <div class="form-group full">
-                        <label>Descrição do Hero</label>
+                        <label>Descrição Hero</label>
                         <textarea id="txtDescricaoHero"></textarea>
                     </div>
                     <div class="form-group">
@@ -187,7 +184,7 @@
                         <input type="text" id="txtInstagram">
                     </div>
                     <div class="form-group full">
-                        <label>Email de Contato</label>
+                        <label>Email</label>
                         <input type="email" id="txtEmail">
                     </div>
                     <div class="form-group full">
@@ -198,7 +195,7 @@
                 <button onclick="salvarTextos()" class="btn-primary big"><i class="fas fa-save"></i> Salvar Textos</button>
             </section>
 
-            <!-- Configurações -->
+            <!-- CONFIGURAÇÕES -->
             <section class="cms-section" id="tab-config">
                 <div class="config-card">
                     <h3>Opções do Site</h3>
@@ -210,22 +207,19 @@
                         <input type="checkbox" id="optBusca">
                         <span>Mostrar barra de busca</span>
                     </label>
-                    <label class="toggle">
-                        <input type="checkbox" id="optEstatisticas">
-                        <span>Mostrar estatísticas no admin</span>
-                    </label>
                     <button onclick="salvarOpcoes()" class="btn-primary"><i class="fas fa-save"></i> Salvar Opções</button>
                 </div>
             </section>
         </main>
     </div>
 
-    <!-- Modal Genérico -->
+    <!-- MODAL -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal-box" id="modalBox"></div>
     </div>
 
-    <!-- Scripts -->
+    <!-- ⭐ CONFIG PRIMEIRO, DEPOIS ADMIN -->
+    <script src="config.js"></script>
     <script src="admin.js"></script>
 </body>
 </html>

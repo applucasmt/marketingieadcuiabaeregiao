@@ -1,0 +1,395 @@
+/* Paleta de Cores baseada na imagem */
+:root {
+    --azul-escuro: #0a1c3a;
+    --azul-medio: #1a3a6b;
+    --dourado: #d4af37;
+    --dourado-claro: #f1d570;
+    --branco: #ffffff;
+    --cinza-claro: #f4f4f4;
+    --sombra: rgba(0, 0, 0, 0.3);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--azul-escuro);
+    color: var(--branco);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Cabeçalho */
+header {
+    background: linear-gradient(135deg, var(--azul-escuro), var(--azul-medio));
+    padding: 20px;
+    text-align: center;
+    border-bottom: 3px solid var(--dourado);
+    box-shadow: 0 4px 10px var(--sombra);
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.logo {
+    height: 60px;
+}
+
+header h1 {
+    font-size: 1.8rem;
+    color: var(--dourado);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+header h1 span {
+    color: var(--branco);
+    font-weight: 300;
+    font-size: 1.2rem;
+    display: block;
+}
+
+/* Carrossel */
+.carousel-container {
+    position: relative;
+    max-width: 1000px;
+    margin: 30px auto;
+    overflow: hidden;
+    border-radius: 15px;
+    box-shadow: 0 10px 20px var(--sombra);
+    border: 1px solid var(--dourado);
+}
+
+.carousel {
+    display: flex;
+    transition: transform 0.5s ease-in-out;
+}
+
+.slide {
+    min-width: 100%;
+    padding: 60px 40px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--azul-medio), var(--azul-escuro));
+    display: none;
+}
+
+.slide.active {
+    display: block;
+    animation: fadeIn 1s;
+}
+
+.slide h2 {
+    color: var(--dourado);
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.slide p {
+    color: var(--branco);
+    font-size: 1.1rem;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.carousel-dots {
+    text-align: center;
+    padding: 15px;
+    background: rgba(0,0,0,0.2);
+}
+
+.dot {
+    cursor: pointer;
+    height: 12px;
+    width: 12px;
+    margin: 0 5px;
+    background-color: #bbb;
+    border-radius: 50%;
+    display: inline-block;
+    transition: background-color 0.3s;
+}
+
+.dot.active, .dot:hover {
+    background-color: var(--dourado);
+}
+
+/* Área de Downloads */
+main {
+    flex: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    width: 100%;
+}
+
+.section-title {
+    text-align: center;
+    color: var(--dourado);
+    font-size: 2rem;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--dourado);
+    display: inline-block;
+    padding-bottom: 5px;
+}
+
+.search-box {
+    position: relative;
+    max-width: 500px;
+    margin: 0 auto 30px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 12px 40px 12px 20px;
+    border-radius: 30px;
+    border: 1px solid var(--dourado);
+    background: rgba(255,255,255,0.1);
+    color: var(--branco);
+    font-size: 1rem;
+    outline: none;
+    transition: 0.3s;
+}
+
+.search-box input:focus {
+    background: rgba(255,255,255,0.2);
+    box-shadow: 0 0 10px var(--dourado);
+}
+
+.search-box i {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--dourado);
+}
+
+.downloads-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: var(--branco);
+    color: var(--azul-escuro);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 5px 15px var(--sombra);
+    transition: transform 0.3s, box-shadow 0.3s;
+    border-bottom: 4px solid var(--dourado);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(212, 175, 55, 0.3);
+}
+
+.card-icon {
+    font-size: 3rem;
+    color: var(--azul-medio);
+    margin-bottom: 15px;
+}
+
+.card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: var(--azul-escuro);
+}
+
+.card p {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.btn-download {
+    display: inline-block;
+    background: var(--dourado);
+    color: var(--azul-escuro);
+    padding: 10px 20px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.btn-download:hover {
+    background: var(--azul-medio);
+    color: var(--branco);
+}
+
+/* Cadeado Admin */
+.admin-lock {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--dourado);
+    color: var(--azul-escuro);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    transition: 0.3s;
+    z-index: 100;
+}
+
+.admin-lock:hover {
+    transform: scale(1.1);
+    background: var(--branco);
+}
+
+/* Modal de Login */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 200;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: var(--azul-escuro);
+    padding: 30px;
+    border-radius: 15px;
+    border: 2px solid var(--dourado);
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    position: relative;
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px; right: 15px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--dourado);
+}
+
+.modal-content h2 {
+    color: var(--dourado);
+    margin-bottom: 10px;
+}
+
+.modal-content input {
+    width: 100%;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 8px;
+    border: 1px solid var(--dourado);
+    background: rgba(255,255,255,0.1);
+    color: var(--branco);
+}
+
+.modal-content button {
+    background: var(--dourado);
+    color: var(--azul-escuro);
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.modal-content button:hover {
+    background: var(--branco);
+}
+
+.error-msg {
+    color: #ff6b6b;
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
+
+/* Painel Admin */
+.admin-panel {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--azul-medio);
+    padding: 30px;
+    border-radius: 15px;
+    border: 2px solid var(--dourado);
+    z-index: 150;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 0 50px rgba(0,0,0,0.8);
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--dourado);
+    padding-bottom: 10px;
+}
+
+.admin-header h2 {
+    color: var(--dourado);
+}
+
+.logout-btn {
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.admin-content {
+    text-align: center;
+}
+
+.btn-sheets {
+    display: inline-block;
+    margin-top: 20px;
+    background: var(--dourado);
+    color: var(--azul-escuro);
+    padding: 12px 25px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    background: rgba(0,0,0,0.3);
+    border-top: 1px solid var(--dourado);
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+.loading {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--dourado);
+    font-size: 1.2rem;
+}

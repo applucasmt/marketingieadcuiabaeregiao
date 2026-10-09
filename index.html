@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketing IEAD Cuiabá e Região</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Cabeçalho -->
+    <header>
+        <div class="logo-container">
+            <!-- Substitua pela URL da imagem do logo que você subiu no GitHub ou Drive -->
+            <img src="https://via.placeholder.com/150x50?text=Logo+IEAD" alt="Logo IEAD" class="logo">
+            <h1>Marketing IEAD <span>Cuiabá e Região</span></h1>
+        </div>
+    </header>
+
+    <!-- Carrossel de Avisos -->
+    <section class="carousel-container">
+        <div class="carousel">
+            <div class="slide active">
+                <h2>Bem-vindo ao Portal de Marketing!</h2>
+                <p>Acesse materiais exclusivos, manuais e apresentações.</p>
+            </div>
+            <div class="slide">
+                <h2>Novo Manual Disponível</h2>
+                <p>Baixe o manual de identidade visual atualizado.</p>
+            </div>
+            <div class="slide">
+                <h2>Campanha de Missões</h2>
+                <p>Confira os materiais para download da campanha.</p>
+            </div>
+        </div>
+        <div class="carousel-dots">
+            <span class="dot active" onclick="currentSlide(1)"></span>
+            <span class="dot" onclick="currentSlide(2)"></span>
+            <span class="dot" onclick="currentSlide(3)"></span>
+        </div>
+    </section>
+
+    <!-- Área de Downloads -->
+    <main>
+        <h2 class="section-title">Central de Downloads</h2>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Buscar arquivo...">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="downloads-grid" id="downloadsGrid">
+            <!-- Os cards serão inseridos aqui via JavaScript -->
+            <p class="loading">Carregando arquivos...</p>
+        </div>
+    </main>
+
+    <!-- Painel Administrativo (Cadeado no Rodapé) -->
+    <div class="admin-lock" id="adminLock">
+        <i class="fas fa-lock"></i>
+    </div>
+
+    <!-- Modal de Login -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2><i class="fas fa-user-shield"></i> Acesso Restrito</h2>
+            <p>Digite a senha para gerenciar os arquivos.</p>
+            <input type="password" id="adminPassword" placeholder="Senha de Administrador">
+            <button onclick="checkPassword()">Entrar</button>
+            <p id="loginError" class="error-msg"></p>
+        </div>
+    </div>
+
+    <!-- Painel de Administração (Escondido) -->
+    <div class="admin-panel" id="adminPanel">
+        <div class="admin-header">
+            <h2>Painel de Administração</h2>
+            <button onclick="logoutAdmin()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Sair</button>
+        </div>
+        <div class="admin-content">
+            <p>Para adicionar ou remover arquivos, edite diretamente a <strong>Planilha do Google Sheets</strong> vinculada.</p>
+            <p>Os arquivos devem estar públicos no Google Drive.</p>
+            <a href="https://docs.google.com/spreadsheets/" target="_blank" class="btn-sheets">Abrir Planilha</a>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Marketing IEAD Cuiabá e Região. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

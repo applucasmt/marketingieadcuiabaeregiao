@@ -1,5 +1,6 @@
 /* ============================================================
  * SITE PÚBLICO - Marketing IEAD Cuiabá e Região
+ * Versão: 5.0 (Carrossel no topo + contraste corrigido)
  * ============================================================ */
 
 let estadoSite = {
@@ -9,7 +10,8 @@ let estadoSite = {
     menus: [],
     slideAtual: 0,
     carrosselInterval: null,
-    rotaAtual: 'home'
+    rotaAtual: 'home',
+    totalSlides: 0
 };
 
 // ============================================================
@@ -19,9 +21,9 @@ function atualizarProgresso(percent) {
     const circle = document.getElementById('splashCircle');
     const txt = document.getElementById('splashPercent');
     if (txt) txt.textContent = Math.round(percent) + '%';
-    
+
     if (circle) {
-        // Círculo com raio 90 → perímetro = 2 * π * 90 ≈ 565.48
+        // Raio 90 → perímetro = 2 * π * 90 ≈ 565.48
         const perimetro = 565.48;
         const offset = perimetro - (perimetro * percent / 100);
         circle.style.strokeDashoffset = offset;
@@ -35,7 +37,7 @@ function esconderSplash() {
         splash.classList.add('fade-out');
         setTimeout(() => {
             splash.style.display = 'none';
-            wrapper.classList.add('visible');
+            if (wrapper) wrapper.classList.add('visible');
         }, 900);
     }
 }
@@ -71,7 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============================================================
-// ROTAS
+// ROTAS (Navegação por abas)
 // ============================================================
 function inicializarRotas() {
     window.addEventListener('hashchange', aplicarRota);
@@ -104,10 +106,11 @@ function aplicarRota() {
 }
 
 // ============================================================
-// CARREGAR DADOS
+// CARREGAR DADOS DO BACKEND
 // ============================================================
 async function carregarDadosSite() {
     const dados = await apiGet('tudo');
+
     if (dados) {
         estadoSite.config = dados.config || {};
         estadoSite.arquivos = dados.arquivos || [];
@@ -135,31 +138,53 @@ function aplicarConfiguracoes() {
 
     if (c.Logo_URL) {
         const logoImg = document.getElementById('siteLogo');
-        logoImg.src = c.Logo_URL;
-        logoImg.onerror = () => {
-            logoImg.src = "https://i.ibb.co/3Y5PMRwz/2600211b-5791-45a6-8ce0-1c8eb30344f6.jpg";
-        };
+        if (logoImg) {
+            logoImg.src = c.Logo_URL;
+            logoImg.onerror = () => {
+                logoImg.src = "https://i.ibb.co/3Y5PMRwz/2600211b-5791-45a6-8ce0-1c8eb30344f6.jpg";
+            };
+        }
     }
 
     if (c.Subtitulo_Hero) {
-        document.getElementById('siteSubtitulo').textContent = c.Subtitulo_Hero.split('.')[0] || 'Cuiabá e Região';
+        const sub = document.getElementById('siteSubtitulo');
+        if (sub) sub.textContent = c.Subtitulo_Hero.split('.')[0] || 'Cuiabá e Região';
     }
 
-    document.getElementById('heroTitulo').textContent = c.Titulo_Site || CONFIG.TEXTOS_PADRAO.titulo;
-    document.getElementById('heroDescricao').textContent = c.Descricao_Hero || CONFIG.TEXTOS_PADRAO.descricaoHero;
-    document.getElementById('heroBotao').textContent = c.Texto_Botao_Hero || CONFIG.TEXTOS_PADRAO.textoBotaoHero;
-    document.getElementById('siteRodape').textContent = c.Texto_Rodape || CONFIG.TEXTOS_PADRAO.rodape;
+    const heroT = document.getElementById('heroTitulo');
+    if (heroT) heroT.textContent = c.Titulo_Site || CONFIG.TEXTOS_PADRAO.titulo;
 
+    const heroD = document.getElementById('heroDescricao');
+    if (heroD) heroD.textContent = c.Descricao_Hero || CONFIG.TEXTOS_PADRAO.descricaoHero;
+
+    const heroB = document.getElementById('heroBotao');
+    if (heroB) heroB.textContent = c.Texto_Botao_Hero || CONFIG.TEXTOS_PADRAO.textoBotaoHero;
+
+    const rod = document.getElementById('siteRodape');
+    if (rod) rod.textContent = c.Texto_Rodape || CONFIG.TEXTOS_PADRAO.rodape;
+
+    // Redes sociais
     const socialDiv = document.getElementById('siteSocial');
-    let socialHTML = '';
-    if (c.Instagram) {
-        const insta = c.Instagram.replace('@', '');
-        socialHTML += `<a href="https://instagram.com/${insta}" target="_blank"><i class="fab fa-instagram"></i></a>`;
+    if (socialDiv) {
+        let socialHTML = '';
+        if (c.Instagram) {
+            const insta = c.Instagram.replace('@', '');
+            socialHTML += `<a href="https://instagram.com/${insta}" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>`;
+        }
+        if (c.Email_Contato) {
+            socialHTML += `<a href="mailto:${c.Email_Contato}"><i class="fas fa-envelope"></i></a>`;
+        }
+        socialDiv.innerHTML = socialHTML;
     }
-    if (c.Email_Contato) {
-        socialHTML += `<a href="mailto:${c.Email_Contato}"><i class="fas fa-envelope"></i></a>`;
+
+    if (c.Mostrar_Carrossel === 'FALSE') {
+        const cs = document.getElementById('carouselSection');
+        if (cs) cs.style.display = 'none';
     }
-    socialDiv.innerHTML = socialHTML;
+    if (c.Mostrar_Busca === 'FALSE') {
+        const sw = document.getElementById('searchWrapper');
+        if (sw) sw.style.display = 'none';
+    }
 }
 
 // ============================================================
@@ -167,10 +192,11 @@ function aplicarConfiguracoes() {
 // ============================================================
 function renderizarMenus() {
     const nav = document.getElementById('siteMenus');
+    if (!nav) return;
+
     if (estadoSite.menus.length > 0) {
         nav.innerHTML = estadoSite.menus.map(m => {
-            const isRota = m.link.startsWith('#');
-            const target = m.novaAba ? 'target="_blank"' : '';
+            const target = m.novaAba ? 'target="_blank" rel="noopener"' : '';
             return `<a href="${m.link}" ${target}>${escapeHTML(m.nome)}</a>`;
         }).join('');
     } else {
@@ -194,17 +220,15 @@ function renderizarMenus() {
 }
 
 // ============================================================
-// ⭐ CARROSSEL INTELIGENTE (Avisos + Arquivos Novos)
+// CARROSSEL DE DESTAQUES
 // ============================================================
 function renderizarCarrossel() {
     const track = document.getElementById('carouselTrack');
     const dotsContainer = document.getElementById('dotsContainer');
     if (!track) return;
 
-    // Monta slides: primeiro os avisos manuais, depois os arquivos novos
+    // 1. Slides manuais (avisos da planilha)
     const slides = [];
-
-    // 1. Slides manuais (vindos da planilha Carrossel)
     estadoSite.carrossel.forEach(s => {
         slides.push({
             tipo: 'aviso',
@@ -217,7 +241,7 @@ function renderizarCarrossel() {
         });
     });
 
-    // 2. Arquivos novos (com tag "NOVO")
+    // 2. Arquivos novos (5 primeiros) com tag "Novo"
     estadoSite.arquivos.slice(0, 5).forEach((arq, index) => {
         slides.push({
             tipo: 'arquivo',
@@ -229,7 +253,7 @@ function renderizarCarrossel() {
         });
     });
 
-    // Se não houver nada, usa fallback
+    // Fallback
     if (slides.length === 0) {
         slides.push({
             tipo: 'aviso',
@@ -241,42 +265,48 @@ function renderizarCarrossel() {
         });
     }
 
-    track.innerHTML = slides.map((s, i) => `
-        <div class="carousel-slide ${i === 0 ? 'active' : ''}">
-            <div class="slide-content">
-                <span class="slide-badge ${s.tipo === 'arquivo' ? 'badge-novo' : ''}">
-                    ${s.tipo === 'arquivo' ? '<i class="fas fa-star"></i>' : '<i class="fas fa-bullhorn"></i>'}
-                    ${escapeHTML(s.badge)}
-                </span>
-                <h3>${escapeHTML(s.titulo)}</h3>
-                <p>${escapeHTML(s.descricao)}</p>
-                <div class="slide-actions">
-                    ${s.tipo === 'arquivo' 
-                        ? `<button class="btn-slide btn-slide-primary" onclick="abrirPreview(${s.arquivoIndex})">
-                               <i class="fas fa-eye"></i> Ver Arquivo
-                           </button>`
-                        : `<a href="${s.link || '#downloads'}" class="btn-slide btn-slide-primary">
-                               <i class="fas fa-arrow-right"></i> ${escapeHTML(s.textoBotao)}
-                           </a>`
-                    }
-                    <a href="#downloads" class="btn-slide btn-slide-ghost">
-                        <i class="fas fa-download"></i> Downloads
-                    </a>
-                </div>
-            </div>
-            ${s.tipo === 'arquivo' && s.arquivo.preview && isImagem(s.arquivo.tipo) ? `
-                <div class="slide-thumb">
-                    <img src="${s.arquivo.preview}" alt="${escapeHTML(s.arquivo.nome)}">
-                </div>
-            ` : `
-                <div class="slide-thumb slide-thumb-icon">
-                    <i class="fas ${obterIcone(s.arquivo?.tipo || 'file')}"></i>
-                </div>
-            `}
-        </div>
-    `).join('');
+    track.innerHTML = slides.map((s, i) => {
+        const isArquivo = s.tipo === 'arquivo';
+        const badgeIcon = isArquivo ? 'fa-star' : 'fa-bullhorn';
+        const temPreviewImg = isArquivo && s.arquivo.preview && isImagem(s.arquivo.tipo);
 
-    dotsContainer.innerHTML = slides.map((_, i) => 
+        return `
+            <div class="carousel-slide ${i === 0 ? 'active' : ''}">
+                <div class="slide-content">
+                    <span class="slide-badge ${isArquivo ? 'badge-novo' : ''}">
+                        <i class="fas ${badgeIcon}"></i>
+                        <span>${escapeHTML(s.badge)}</span>
+                    </span>
+                    <h3>${escapeHTML(s.titulo)}</h3>
+                    <p>${escapeHTML(s.descricao)}</p>
+                    <div class="slide-actions">
+                        ${isArquivo
+                            ? `<button class="btn-slide btn-slide-primary" onclick="abrirPreview(${s.arquivoIndex})">
+                                   <i class="fas fa-eye"></i> <span>Ver Arquivo</span>
+                               </button>`
+                            : `<a href="${s.link || '#downloads'}" class="btn-slide btn-slide-primary">
+                                   <i class="fas fa-arrow-right"></i> <span>${escapeHTML(s.textoBotao)}</span>
+                               </a>`
+                        }
+                        <a href="#downloads" class="btn-slide btn-slide-ghost" data-route="downloads">
+                            <i class="fas fa-download"></i> <span>Downloads</span>
+                        </a>
+                    </div>
+                </div>
+                ${temPreviewImg ? `
+                    <div class="slide-thumb">
+                        <img src="${s.arquivo.preview}" alt="${escapeHTML(s.arquivo.nome)}" loading="lazy">
+                    </div>
+                ` : `
+                    <div class="slide-thumb slide-thumb-icon">
+                        <i class="fas ${obterIcone(s.arquivo?.tipo || 'file')}"></i>
+                    </div>
+                `}
+            </div>
+        `;
+    }).join('');
+
+    dotsContainer.innerHTML = slides.map((_, i) =>
         `<span class="dot ${i === 0 ? 'active' : ''}" onclick="irParaSlide(${i})"></span>`
     ).join('');
 
@@ -308,16 +338,23 @@ function irParaSlide(n) {
 
 function iniciarAutoPlay() {
     clearInterval(estadoSite.carrosselInterval);
-    estadoSite.carrosselInterval = setInterval(() => irParaSlide(estadoSite.slideAtual + 1), 7000);
+    estadoSite.carrosselInterval = setInterval(() => {
+        irParaSlide(estadoSite.slideAtual + 1);
+    }, 7000);
 }
-function reiniciarAutoPlay() { clearInterval(estadoSite.carrosselInterval); iniciarAutoPlay(); }
+
+function reiniciarAutoPlay() {
+    clearInterval(estadoSite.carrosselInterval);
+    iniciarAutoPlay();
+}
 
 // ============================================================
-// ARQUIVOS
+// ARQUIVOS (GRID DE DOWNLOADS)
 // ============================================================
 function renderizarArquivos() {
     const grid = document.getElementById('downloadsGrid');
     if (!grid) return;
+
     const arquivos = estadoSite.arquivos;
 
     if (!arquivos.length) {
@@ -337,10 +374,12 @@ function renderizarArquivos() {
             <div class="card" onclick="abrirPreview(${i})">
                 <div class="card-thumb">
                     ${gerarThumb(a)}
-                    ${isNovo ? '<span class="tag-novo-card"><i class="fas fa-star"></i> Novo</span>' : ''}
+                    ${isNovo ? '<span class="tag-novo-card"><i class="fas fa-star"></i> <span>Novo</span></span>' : ''}
                 </div>
                 <div class="card-body">
-                    <span class="card-tag"><i class="fas ${icone}"></i> ${escapeHTML(a.tipo)}</span>
+                    <span class="card-tag">
+                        <i class="fas ${icone}"></i> <span>${escapeHTML(a.tipo)}</span>
+                    </span>
                     <h3>${escapeHTML(a.nome)}</h3>
                     <p>${escapeHTML(a.descricao || 'Clique para visualizar')}</p>
                     ${a.tamanho ? `<span class="badge-size">${a.tamanho}</span>` : ''}
@@ -363,7 +402,7 @@ function gerarThumb(arquivo) {
         return `<img src="${arquivo.preview}" alt="${escapeHTML(arquivo.nome)}" loading="lazy">`;
     }
     if (isVid && arquivo.preview) {
-        return `<div class="thumb-video"><img src="${arquivo.preview}"><div class="play-overlay"><i class="fas fa-play"></i></div></div>`;
+        return `<div class="thumb-video"><img src="${arquivo.preview}" alt=""><div class="play-overlay"><i class="fas fa-play"></i></div></div>`;
     }
     if (isPdf) return `<div class="thumb-fallback pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></div>`;
     return `<div class="thumb-fallback"><i class="fas fa-file"></i></div>`;
@@ -372,10 +411,11 @@ function gerarThumb(arquivo) {
 function obterIcone(tipo) {
     const t = (tipo || '').toLowerCase();
     if (t.includes('pdf')) return 'fa-file-pdf';
-    if (t.includes('png') || t.includes('jpg') || t.includes('jpeg') || t.includes('gif')) return 'fa-file-image';
+    if (t.includes('png') || t.includes('jpg') || t.includes('jpeg') || t.includes('gif') || t.includes('webp')) return 'fa-file-image';
     if (t.includes('ppt')) return 'fa-file-powerpoint';
     if (t.includes('doc')) return 'fa-file-word';
     if (t.includes('xls') || t.includes('csv')) return 'fa-file-excel';
+    if (t.includes('psd') || t.includes('ai')) return 'fa-file-alt';
     if (t.includes('zip') || t.includes('rar')) return 'fa-file-archive';
     if (t.includes('mp4') || t.includes('mov')) return 'fa-file-video';
     if (t.includes('mp3') || t.includes('wav')) return 'fa-file-audio';
@@ -388,7 +428,8 @@ function obterIcone(tipo) {
 function inicializarBusca() {
     const input = document.getElementById('searchInput');
     if (!input) return;
-    input.addEventListener('input', function() {
+
+    input.addEventListener('input', function () {
         const termo = this.value.toLowerCase().trim();
         document.querySelectorAll('.card').forEach(card => {
             card.style.display = card.textContent.toLowerCase().includes(termo) ? 'flex' : 'none';
@@ -429,7 +470,9 @@ function inicializarPreview() {
         modal.innerHTML = `
             <div class="preview-modal-overlay" onclick="fecharPreview()"></div>
             <div class="preview-modal-content">
-                <button class="preview-close" onclick="fecharPreview()"><i class="fas fa-times"></i></button>
+                <button class="preview-close" onclick="fecharPreview()" aria-label="Fechar">
+                    <i class="fas fa-times"></i>
+                </button>
                 <div class="preview-modal-header">
                     <div class="preview-title-area">
                         <i class="fas fa-file preview-title-icon" id="previewTitleIcon"></i>
@@ -441,16 +484,20 @@ function inicializarPreview() {
                 </div>
                 <div class="preview-modal-body" id="previewBody"></div>
                 <div class="preview-modal-footer">
-                    <button onclick="fecharPreview()" class="btn-secondary-preview"><i class="fas fa-arrow-left"></i> Voltar</button>
+                    <button onclick="fecharPreview()" class="btn-secondary-preview">
+                        <i class="fas fa-arrow-left"></i> <span>Voltar</span>
+                    </button>
                     <a id="previewDownloadBtn" href="#" download target="_blank" rel="noopener noreferrer" class="btn-download-preview">
-                        <i class="fas fa-download"></i> Baixar Arquivo
+                        <i class="fas fa-download"></i> <span>Baixar Arquivo</span>
                     </a>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
     }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharPreview(); });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') fecharPreview();
+    });
 }
 
 function abrirPreview(index) {
@@ -459,10 +506,15 @@ function abrirPreview(index) {
 
     const modal = document.getElementById('previewModal');
     const body = document.getElementById('previewBody');
-    document.getElementById('previewTitulo').textContent = arquivo.nome;
-    document.getElementById('previewMeta').textContent = `${arquivo.tipo} ${arquivo.tamanho ? '• ' + arquivo.tamanho : ''} ${arquivo.categoria ? '• ' + arquivo.categoria : ''}`;
-    document.getElementById('previewTitleIcon').className = `fas ${obterIcone(arquivo.tipo)} preview-title-icon`;
-    document.getElementById('previewDownloadBtn').href = arquivo.link;
+    const titulo = document.getElementById('previewTitulo');
+    const meta = document.getElementById('previewMeta');
+    const iconTitle = document.getElementById('previewTitleIcon');
+    const downloadBtn = document.getElementById('previewDownloadBtn');
+
+    titulo.textContent = arquivo.nome;
+    meta.textContent = `${arquivo.tipo}${arquivo.tamanho ? ' • ' + arquivo.tamanho : ''}${arquivo.categoria ? ' • ' + arquivo.categoria : ''}`;
+    iconTitle.className = `fas ${obterIcone(arquivo.tipo)} preview-title-icon`;
+    downloadBtn.href = arquivo.link;
 
     const ext = (arquivo.tipo || '').toUpperCase();
     const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
@@ -471,13 +523,19 @@ function abrirPreview(index) {
     const fileId = extrairFileId(arquivo.link);
 
     if (isImg) {
-        const urlHD = fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600` : arquivo.link;
+        const urlHD = fileId
+            ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`
+            : arquivo.link;
         body.innerHTML = `<div class="preview-image-wrapper"><img src="${urlHD}" alt="${escapeHTML(arquivo.nome)}"></div>`;
     } else if (isVid) {
-        const url = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : arquivo.link;
+        const url = fileId
+            ? `https://drive.google.com/file/d/${fileId}/preview`
+            : arquivo.link;
         body.innerHTML = `<div class="preview-video-wrapper"><iframe src="${url}" allow="autoplay" allowfullscreen frameborder="0"></iframe></div>`;
     } else if (isPdf) {
-        const url = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : arquivo.link;
+        const url = fileId
+            ? `https://drive.google.com/file/d/${fileId}/preview`
+            : arquivo.link;
         body.innerHTML = `<div class="preview-pdf-wrapper"><iframe src="${url}" allowfullscreen frameborder="0"></iframe></div>`;
     } else {
         body.innerHTML = `

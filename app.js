@@ -1,6 +1,5 @@
 /* ============================================================
  * SITE PÚBLICO - Marketing IEAD Cuiabá e Região
- * Depende de: config.js
  * ============================================================ */
 
 let estadoSite = {
@@ -14,13 +13,19 @@ let estadoSite = {
 };
 
 // ============================================================
-// SPLASH SCREEN - Animação de Carregamento
+// SPLASH SCREEN CIRCULAR
 // ============================================================
 function atualizarProgresso(percent) {
-    const bar = document.getElementById('splashProgressBar');
+    const circle = document.getElementById('splashCircle');
     const txt = document.getElementById('splashPercent');
-    if (bar) bar.style.width = percent + '%';
     if (txt) txt.textContent = Math.round(percent) + '%';
+    
+    if (circle) {
+        // Círculo com raio 90 → perímetro = 2 * π * 90 ≈ 565.48
+        const perimetro = 565.48;
+        const offset = perimetro - (perimetro * percent / 100);
+        circle.style.strokeDashoffset = offset;
+    }
 }
 
 function esconderSplash() {
@@ -31,7 +36,7 @@ function esconderSplash() {
         setTimeout(() => {
             splash.style.display = 'none';
             wrapper.classList.add('visible');
-        }, 700);
+        }, 900);
     }
 }
 
@@ -39,48 +44,43 @@ function esconderSplash() {
 // INICIALIZAÇÃO
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
-    // Animação fake de progresso inicial
-    atualizarProgresso(10);
-    
-    await new Promise(r => setTimeout(r, 200));
-    atualizarProgresso(30);
+    atualizarProgresso(5);
+    await new Promise(r => setTimeout(r, 150));
+    atualizarProgresso(20);
 
     await carregarDadosSite();
-    atualizarProgresso(60);
+    atualizarProgresso(55);
 
     aplicarConfiguracoes();
     renderizarMenus();
+    atualizarProgresso(70);
+
     renderizarCarrossel();
     renderizarArquivos();
     renderizarContato();
-    atualizarProgresso(85);
+    atualizarProgresso(90);
 
     inicializarBusca();
     inicializarCarrossel();
     inicializarPreview();
     inicializarRotas();
-
-    await new Promise(r => setTimeout(r, 400));
     atualizarProgresso(100);
 
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 500));
     esconderSplash();
 });
 
 // ============================================================
-// ROTAS (Páginas separadas)
+// ROTAS
 // ============================================================
 function inicializarRotas() {
-    // Detecta mudanças no hash
     window.addEventListener('hashchange', aplicarRota);
-    aplicarRota(); // Aplica a rota inicial
+    aplicarRota();
 
-    // Links com data-route
     document.querySelectorAll('[data-route]').forEach(el => {
         el.addEventListener('click', e => {
             e.preventDefault();
-            const rota = el.getAttribute('data-route');
-            window.location.hash = rota;
+            window.location.hash = el.getAttribute('data-route');
         });
     });
 }
@@ -88,33 +88,26 @@ function inicializarRotas() {
 function aplicarRota() {
     const hash = window.location.hash.replace('#', '') || 'home';
     const rotasValidas = ['home', 'downloads', 'sobre', 'contato'];
-    
     const rota = rotasValidas.includes(hash) ? hash : 'home';
     estadoSite.rotaAtual = rota;
 
-    // Esconde todas as páginas
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    
-    // Mostra a página correta
     const page = document.getElementById('page-' + rota);
     if (page) page.classList.add('active');
 
-    // Atualiza menu ativo
     document.querySelectorAll('.header-nav a').forEach(a => {
         const href = a.getAttribute('href')?.replace('#', '');
         a.classList.toggle('active', href === rota);
     });
 
-    // Scroll para o topo
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ============================================================
-// CARREGAR DADOS DO BACKEND
+// CARREGAR DADOS
 // ============================================================
 async function carregarDadosSite() {
     const dados = await apiGet('tudo');
-
     if (dados) {
         estadoSite.config = dados.config || {};
         estadoSite.arquivos = dados.arquivos || [];
@@ -136,7 +129,6 @@ async function carregarDadosSite() {
 // ============================================================
 function aplicarConfiguracoes() {
     const c = estadoSite.config;
-
     aplicarCores(c);
 
     if (c.Titulo_Site) document.title = c.Titulo_Site;
@@ -156,10 +148,8 @@ function aplicarConfiguracoes() {
     document.getElementById('heroTitulo').textContent = c.Titulo_Site || CONFIG.TEXTOS_PADRAO.titulo;
     document.getElementById('heroDescricao').textContent = c.Descricao_Hero || CONFIG.TEXTOS_PADRAO.descricaoHero;
     document.getElementById('heroBotao').textContent = c.Texto_Botao_Hero || CONFIG.TEXTOS_PADRAO.textoBotaoHero;
-
     document.getElementById('siteRodape').textContent = c.Texto_Rodape || CONFIG.TEXTOS_PADRAO.rodape;
 
-    // Social
     const socialDiv = document.getElementById('siteSocial');
     let socialHTML = '';
     if (c.Instagram) {
@@ -170,46 +160,32 @@ function aplicarConfiguracoes() {
         socialHTML += `<a href="mailto:${c.Email_Contato}"><i class="fas fa-envelope"></i></a>`;
     }
     socialDiv.innerHTML = socialHTML;
-
-    if (c.Mostrar_Carrossel === 'FALSE') {
-        const cs = document.getElementById('carouselSection');
-        if (cs) cs.style.display = 'none';
-    }
-    if (c.Mostrar_Busca === 'FALSE') {
-        const sw = document.getElementById('searchWrapper');
-        if (sw) sw.style.display = 'none';
-    }
 }
 
 // ============================================================
-// MENUS (AGORA COM ROTAS)
+// MENUS
 // ============================================================
 function renderizarMenus() {
     const nav = document.getElementById('siteMenus');
-    
-    // Se menus vierem da planilha
     if (estadoSite.menus.length > 0) {
         nav.innerHTML = estadoSite.menus.map(m => {
             const isRota = m.link.startsWith('#');
-            const link = isRota ? m.link : m.link;
             const target = m.novaAba ? 'target="_blank"' : '';
-            return `<a href="${link}" ${target}>${escapeHTML(m.nome)}</a>`;
+            return `<a href="${m.link}" ${target}>${escapeHTML(m.nome)}</a>`;
         }).join('');
     } else {
-        // Menus padrão (rotas)
         nav.innerHTML = `
-            <a href="#home" data-route="home">Início</a>
-            <a href="#downloads" data-route="downloads">Downloads</a>
-            <a href="#sobre" data-route="sobre">Sobre</a>
-            <a href="#contato" data-route="contato">Contato</a>
+            <a href="#home">Início</a>
+            <a href="#downloads">Downloads</a>
+            <a href="#sobre">Sobre</a>
+            <a href="#contato">Contato</a>
         `;
     }
 
-    // Reaplica listeners nos novos links de rota
-    nav.querySelectorAll('[data-route], a[href^="#"]').forEach(el => {
+    nav.querySelectorAll('a[href^="#"]').forEach(el => {
         el.addEventListener('click', e => {
-            const href = el.getAttribute('href') || '';
-            if (href.startsWith('#') && ['#home','#downloads','#sobre','#contato'].includes(href)) {
+            const href = el.getAttribute('href');
+            if (['#home','#downloads','#sobre','#contato'].includes(href)) {
                 e.preventDefault();
                 window.location.hash = href.replace('#', '');
             }
@@ -218,30 +194,97 @@ function renderizarMenus() {
 }
 
 // ============================================================
-// CARROSSEL
+// ⭐ CARROSSEL INTELIGENTE (Avisos + Arquivos Novos)
 // ============================================================
 function renderizarCarrossel() {
     const track = document.getElementById('carouselTrack');
     const dotsContainer = document.getElementById('dotsContainer');
     if (!track) return;
 
-    const slides = estadoSite.carrossel.length > 0 ? estadoSite.carrossel : [
-        { titulo: "Bem-vindo ao Portal", descricao: "Acesse materiais exclusivos, manuais e apresentações.", badge: "Novo", link: "#downloads", textoBotao: "Explorar" },
-        { titulo: "Manual de Identidade Visual", descricao: "Garanta a padronização de todas as peças.", badge: "Atualizado", link: "#downloads", textoBotao: "Baixar agora" }
-    ];
+    // Monta slides: primeiro os avisos manuais, depois os arquivos novos
+    const slides = [];
+
+    // 1. Slides manuais (vindos da planilha Carrossel)
+    estadoSite.carrossel.forEach(s => {
+        slides.push({
+            tipo: 'aviso',
+            titulo: s.titulo,
+            descricao: s.descricao,
+            badge: s.badge || 'Aviso',
+            link: s.link,
+            textoBotao: s.textoBotao || 'Saber mais',
+            arquivoIndex: null
+        });
+    });
+
+    // 2. Arquivos novos (com tag "NOVO")
+    estadoSite.arquivos.slice(0, 5).forEach((arq, index) => {
+        slides.push({
+            tipo: 'arquivo',
+            titulo: arq.nome,
+            descricao: arq.descricao || `Novo material disponível: ${arq.tipo}`,
+            badge: 'Novo',
+            arquivoIndex: index,
+            arquivo: arq
+        });
+    });
+
+    // Se não houver nada, usa fallback
+    if (slides.length === 0) {
+        slides.push({
+            tipo: 'aviso',
+            titulo: 'Bem-vindo ao Portal',
+            descricao: 'Acesse materiais exclusivos, manuais e apresentações.',
+            badge: 'Novo',
+            link: '#downloads',
+            textoBotao: 'Explorar'
+        });
+    }
 
     track.innerHTML = slides.map((s, i) => `
-        <div class="slide ${i === 0 ? 'active' : ''}">
-            ${s.badge ? `<span class="badge">${escapeHTML(s.badge)}</span>` : ''}
-            <h3>${escapeHTML(s.titulo)}</h3>
-            <p>${escapeHTML(s.descricao)}</p>
-            ${s.textoBotao ? `<a href="${s.link || '#downloads'}" class="link-arrow">${escapeHTML(s.textoBotao)} <i class="fas fa-chevron-right"></i></a>` : ''}
+        <div class="carousel-slide ${i === 0 ? 'active' : ''}">
+            <div class="slide-content">
+                <span class="slide-badge ${s.tipo === 'arquivo' ? 'badge-novo' : ''}">
+                    ${s.tipo === 'arquivo' ? '<i class="fas fa-star"></i>' : '<i class="fas fa-bullhorn"></i>'}
+                    ${escapeHTML(s.badge)}
+                </span>
+                <h3>${escapeHTML(s.titulo)}</h3>
+                <p>${escapeHTML(s.descricao)}</p>
+                <div class="slide-actions">
+                    ${s.tipo === 'arquivo' 
+                        ? `<button class="btn-slide btn-slide-primary" onclick="abrirPreview(${s.arquivoIndex})">
+                               <i class="fas fa-eye"></i> Ver Arquivo
+                           </button>`
+                        : `<a href="${s.link || '#downloads'}" class="btn-slide btn-slide-primary">
+                               <i class="fas fa-arrow-right"></i> ${escapeHTML(s.textoBotao)}
+                           </a>`
+                    }
+                    <a href="#downloads" class="btn-slide btn-slide-ghost">
+                        <i class="fas fa-download"></i> Downloads
+                    </a>
+                </div>
+            </div>
+            ${s.tipo === 'arquivo' && s.arquivo.preview && isImagem(s.arquivo.tipo) ? `
+                <div class="slide-thumb">
+                    <img src="${s.arquivo.preview}" alt="${escapeHTML(s.arquivo.nome)}">
+                </div>
+            ` : `
+                <div class="slide-thumb slide-thumb-icon">
+                    <i class="fas ${obterIcone(s.arquivo?.tipo || 'file')}"></i>
+                </div>
+            `}
         </div>
     `).join('');
 
     dotsContainer.innerHTML = slides.map((_, i) => 
         `<span class="dot ${i === 0 ? 'active' : ''}" onclick="irParaSlide(${i})"></span>`
     ).join('');
+
+    estadoSite.totalSlides = slides.length;
+}
+
+function isImagem(tipo) {
+    return ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes((tipo || '').toUpperCase());
 }
 
 function inicializarCarrossel() {
@@ -253,7 +296,7 @@ function inicializarCarrossel() {
 }
 
 function irParaSlide(n) {
-    const slides = document.querySelectorAll('.slide');
+    const slides = document.querySelectorAll('.carousel-slide');
     const dots = document.querySelectorAll('.dot');
     if (!slides.length) return;
     slides.forEach(s => s.classList.remove('active'));
@@ -265,7 +308,7 @@ function irParaSlide(n) {
 
 function iniciarAutoPlay() {
     clearInterval(estadoSite.carrosselInterval);
-    estadoSite.carrosselInterval = setInterval(() => irParaSlide(estadoSite.slideAtual + 1), 6000);
+    estadoSite.carrosselInterval = setInterval(() => irParaSlide(estadoSite.slideAtual + 1), 7000);
 }
 function reiniciarAutoPlay() { clearInterval(estadoSite.carrosselInterval); iniciarAutoPlay(); }
 
@@ -289,9 +332,13 @@ function renderizarArquivos() {
 
     grid.innerHTML = arquivos.map((a, i) => {
         const icone = obterIcone(a.tipo);
+        const isNovo = i < 3;
         return `
             <div class="card" onclick="abrirPreview(${i})">
-                <div class="card-thumb">${gerarThumb(a)}</div>
+                <div class="card-thumb">
+                    ${gerarThumb(a)}
+                    ${isNovo ? '<span class="tag-novo-card"><i class="fas fa-star"></i> Novo</span>' : ''}
+                </div>
                 <div class="card-body">
                     <span class="card-tag"><i class="fas ${icone}"></i> ${escapeHTML(a.tipo)}</span>
                     <h3>${escapeHTML(a.nome)}</h3>
@@ -350,7 +397,7 @@ function inicializarBusca() {
 }
 
 // ============================================================
-// CONTATO (Preenche os links)
+// CONTATO
 // ============================================================
 function renderizarContato() {
     const c = estadoSite.config;

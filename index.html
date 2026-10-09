@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketing IEAD | Cuiabá e Região</title>
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=6">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +12,7 @@
 </head>
 <body>
 
-    <!-- ============ SPLASH SCREEN ============ -->
+    <!-- SPLASH -->
     <div class="splash-screen" id="splashScreen">
         <div class="splash-content">
             <div class="splash-logo-wrapper">
@@ -32,7 +32,7 @@
         </div>
     </div>
 
-    <!-- ============ SITE ============ -->
+    <!-- SITE -->
     <div class="site-wrapper" id="siteWrapper">
 
         <!-- HEADER -->
@@ -50,10 +50,19 @@
             </div>
         </header>
 
-        <!-- ============ PÁGINA: HOME ============ -->
-        <div class="page" id="page-home">
-            
-            <!-- 🎯 CARROSSEL NO TOPO -->
+        <!-- ========== PÁGINA: INÍCIO ========== -->
+        <div class="page" id="page-inicio">
+            <section class="hero">
+                <div class="hero-content">
+                    <h1 id="heroTitulo">Carregando...</h1>
+                    <p id="heroDescricao"></p>
+                    <button class="btn-primary" data-route="downloads">
+                        <span id="heroBotao">Explorar Materiais</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </section>
+
             <section class="carousel-section" id="carouselSection">
                 <div class="carousel-header">
                     <h2><i class="fas fa-bullhorn"></i> Destaques e Novidades</h2>
@@ -67,21 +76,9 @@
                     <div class="carousel-track" id="carouselTrack"></div>
                 </div>
             </section>
-
-            <!-- HERO -->
-            <section class="hero">
-                <div class="hero-content">
-                    <h1 id="heroTitulo">Carregando...</h1>
-                    <p id="heroDescricao"></p>
-                    <button class="btn-primary" data-route="downloads">
-                        <span id="heroBotao">Explorar Materiais</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                </div>
-            </section>
         </div>
 
-        <!-- ============ PÁGINA: DOWNLOADS ============ -->
+        <!-- ========== PÁGINA: DOWNLOADS ========== -->
         <div class="page" id="page-downloads">
             <main class="main-content">
                 <div class="page-header">
@@ -103,7 +100,7 @@
             </main>
         </div>
 
-        <!-- ============ PÁGINA: SOBRE ============ -->
+        <!-- ========== PÁGINA: SOBRE ========== -->
         <div class="page" id="page-sobre">
             <section class="about-section">
                 <div class="about-content">
@@ -137,7 +134,7 @@
             </section>
         </div>
 
-        <!-- ============ PÁGINA: CONTATO ============ -->
+        <!-- ========== PÁGINA: CONTATO ========== -->
         <div class="page" id="page-contato">
             <section class="contact-section">
                 <div class="contact-content">
@@ -146,17 +143,17 @@
                     <p class="contact-lead">Precisa de algum material específico ou tem dúvidas? Entre em contato com nossa equipe.</p>
 
                     <div class="contact-grid">
-                        <a href="#" id="contatoEmail" class="contact-card" target="_blank">
+                        <a href="#" id="contatoEmail" class="contact-card" target="_blank" rel="noopener">
                             <i class="fas fa-envelope"></i>
                             <h3>E-mail</h3>
                             <p id="contatoEmailTexto">marketing@ieadcuiaba.com.br</p>
                         </a>
-                        <a href="#" id="contatoInstagram" class="contact-card" target="_blank">
+                        <a href="#" id="contatoInstagram" class="contact-card" target="_blank" rel="noopener">
                             <i class="fab fa-instagram"></i>
                             <h3>Instagram</h3>
                             <p id="contatoInstagramTexto">@ieadcuiaba</p>
                         </a>
-                        <a href="#" id="contatoWhatsapp" class="contact-card" target="_blank">
+                        <a href="#" id="contatoWhatsapp" class="contact-card" target="_blank" rel="noopener">
                             <i class="fab fa-whatsapp"></i>
                             <h3>WhatsApp</h3>
                             <p>Solicite materiais</p>
@@ -176,7 +173,7 @@
 
     </div>
 
-    <script src="config.js?v=3"></script>
-    <script src="app.js?v=3"></script>
+    <script src="config.js?v=6"></script>
+    <script src="app.js?v=6"></script>
 </body>
 </html>

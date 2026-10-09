@@ -1,36 +1,18 @@
 /* ============================================================
  * CONFIGURAÇÃO CENTRAL DO SISTEMA
  * Marketing IEAD Cuiabá e Região
- * 
- * ⚠️ ALTERE APENAS ESTE ARQUIVO PARA CONFIGURAR O SISTEMA
  * ============================================================ */
 
 const CONFIG = {
-    // ============================================================
-    // 🔗 URL DO BACKEND (Google Apps Script)
-    // Cole aqui a URL gerada em: Implantar > Aplicativo da Web
-    // ============================================================
     API_URL: "https://script.google.com/macros/s/AKfycbziXZvHTiX2qQI2VQrHf19fUc3ihOnirfOlCMa1_D-O0z4e8BMKArYpaXFX0YIv0ka8XA/exec",
-
-    // ============================================================
-    // 🔐 SENHA DO PAINEL ADMINISTRATIVO
-    // ============================================================
     SENHA_ADMIN: "IEAD2026",
 
-    // ============================================================
-    // 🎨 IDENTIDADE VISUAL PADRÃO (fallback se não vier da planilha)
-    // ============================================================
     CORES_PADRAO: {
         primaria: "#0A1C3A",
         secundaria: "#1A3A6B",
-        destaque: "#D4AF37",
-        texto: "#1D1D1F",
-        fundo: "#FFFFFF"
+        destaque: "#D4AF37"
     },
 
-    // ============================================================
-    // 📝 TEXTOS PADRÃO (fallback)
-    // ============================================================
     TEXTOS_PADRAO: {
         titulo: "Marketing IEAD Cuiabá e Região",
         subtituloHero: "Recursos Oficiais. Excelência em Comunicação.",
@@ -39,20 +21,14 @@ const CONFIG = {
         rodape: "© 2026 IEAD Cuiabá e Região. Todos os direitos reservados."
     },
 
-    // ============================================================
-    // ⚙️ OUTRAS CONFIGURAÇÕES
-    // ============================================================
     LIMITE_UPLOAD_MB: 25,
-    VERSAO: "4.0"
+    VERSAO: "5.0"
 };
 
-// ============================================================
-// UTILITÁRIOS COMPARTILHADOS
-// ============================================================
+/* ============================================================
+   UTILITÁRIOS COMPARTILHADOS
+   ============================================================ */
 
-/**
- * Faz requisição GET à API
- */
 async function apiGet(acao, params = {}) {
     if (!CONFIG.API_URL || CONFIG.API_URL.includes("COLE_AQUI")) {
         console.warn("⚠️ API_URL não configurada em config.js");
@@ -80,9 +56,6 @@ async function apiGet(acao, params = {}) {
     }
 }
 
-/**
- * Faz requisição POST à API
- */
 async function apiPost(dados) {
     if (!CONFIG.API_URL || CONFIG.API_URL.includes("COLE_AQUI")) {
         console.warn("⚠️ API_URL não configurada em config.js");
@@ -105,9 +78,6 @@ async function apiPost(dados) {
     }
 }
 
-/**
- * Converte arquivo para Base64
- */
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -117,9 +87,6 @@ function fileToBase64(file) {
     });
 }
 
-/**
- * Escapa HTML para prevenir XSS
- */
 function escapeHTML(texto) {
     if (!texto) return '';
     const div = document.createElement('div');
@@ -128,9 +95,13 @@ function escapeHTML(texto) {
 }
 
 /**
- * Aplica cores dinâmicas do CONFIG/planilha nos CSS Variables
+ * ⚠️ IMPORTANTE: Aplica cores APENAS no site público.
+ * Detecta se está no admin.html e NÃO aplica.
  */
 function aplicarCores(config = {}) {
+    // Detecta se está no painel admin
+    if (document.body.classList.contains('cms-body')) return;
+    
     const cores = {
         primaria: config.Cor_Primaria || CONFIG.CORES_PADRAO.primaria,
         secundaria: config.Cor_Secundaria || CONFIG.CORES_PADRAO.secundaria,

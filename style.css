@@ -1,6 +1,6 @@
 /* ============================================================
- * MARKETING IEAD — CSS DEFINITIVO v3
- * Fundo 100% AZUL • Contraste correto em todos os botões
+ * MARKETING IEAD — SITE PÚBLICO
+ * Fundo 100% AZUL • Contraste garantido em TODOS os botões
  * ============================================================ */
 
 :root {
@@ -227,7 +227,7 @@ body {
 }
 
 /* ============================================================
-   🎯 CARROSSEL DE DESTAQUES — AGORA NO TOPO
+   CARROSSEL NO TOPO
    ============================================================ */
 .carousel-section {
     background: linear-gradient(180deg, #0F2247 0%, #0A1C3A 100%) !important;
@@ -266,7 +266,7 @@ body {
     height: 42px;
     border-radius: 50%;
     cursor: pointer;
-    color: var(--dourado);
+    color: var(--dourado) !important;
     transition: var(--transicao-rapida);
     display: flex;
     align-items: center;
@@ -276,7 +276,7 @@ body {
 
 .carousel-controls button:hover {
     background: var(--dourado);
-    color: var(--azul-escuro);
+    color: var(--azul-escuro) !important;
     transform: scale(1.08);
 }
 
@@ -344,6 +344,9 @@ body {
     box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
 }
 
+.slide-badge span { color: var(--azul-escuro) !important; }
+.slide-badge i { color: var(--azul-escuro) !important; }
+
 .slide-badge.badge-novo { animation: badgePulse 2s ease-in-out infinite; }
 
 @keyframes badgePulse {
@@ -367,10 +370,6 @@ body {
 }
 
 .slide-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-
-/* ============================================================
-   BOTÕES DO CARROSSEL — CONTRASTE CORRETO
-   ============================================================ */
 
 /* ✅ BOTÃO DOURADO → TEXTO AZUL ESCURO */
 .btn-slide-primary {
@@ -403,7 +402,7 @@ body {
 .btn-slide-primary i,
 .btn-slide-primary span { color: var(--azul-escuro) !important; }
 
-/* ✅ BOTÃO AZUL/TRANSPARENTE → TEXTO BRANCO ou DOURADO */
+/* ✅ BOTÃO GHOST → TEXTO BRANCO */
 .btn-slide-ghost {
     background: transparent !important;
     color: var(--branco) !important;
@@ -460,7 +459,7 @@ body {
 .slide-thumb-icon i { font-size: 5rem; color: var(--dourado); opacity: 0.8; }
 
 /* ============================================================
-   HERO — Fundo AZUL
+   HERO
    ============================================================ */
 .hero {
     background: linear-gradient(135deg, #0A1C3A 0%, #1A3A6B 100%) !important;
@@ -520,7 +519,7 @@ body {
     line-height: 1.7;
 }
 
-/* ✅ BOTÃO PRINCIPAL — DOURADO COM TEXTO AZUL */
+/* ✅ BOTÃO PRINCIPAL DOURADO → TEXTO AZUL */
 .btn-primary {
     background: var(--dourado) !important;
     color: var(--azul-escuro) !important;
@@ -677,6 +676,9 @@ body {
     animation: badgePulse 2s ease-in-out infinite;
 }
 
+.tag-novo-card i,
+.tag-novo-card span { color: var(--azul-escuro) !important; }
+
 .thumb-fallback {
     width: 100%;
     height: 100%;
@@ -725,6 +727,9 @@ body {
     align-self: flex-start;
 }
 
+.card-tag i,
+.card-tag span { color: var(--azul-escuro) !important; }
+
 .card-body h3 { font-size: 1.05rem; font-weight: 700; color: var(--azul-escuro) !important; line-height: 1.3; margin: 0; }
 .card-body p { font-size: 0.9rem; color: var(--cinza-texto) !important; line-height: 1.5; flex: 1; margin: 0; }
 
@@ -739,7 +744,7 @@ body {
     align-self: flex-start;
 }
 
-/* ✅ BOTÃO DE DOWNLOAD — AZUL COM TEXTO DOURADO */
+/* ✅ BOTÃO DE DOWNLOAD AZUL → TEXTO DOURADO */
 .card .btn-download {
     margin: 0 22px 22px;
     background: var(--azul-escuro) !important;
@@ -880,7 +885,7 @@ footer {
     height: 42px;
     border-radius: 50%;
     background: rgba(212, 175, 55, 0.1);
-    color: var(--dourado);
+    color: var(--dourado) !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -889,7 +894,7 @@ footer {
     font-size: 1.1rem;
 }
 
-.footer-social a:hover { background: var(--dourado); color: var(--azul-escuro); transform: translateY(-3px); }
+.footer-social a:hover { background: var(--dourado); color: var(--azul-escuro) !important; transform: translateY(-3px); }
 
 /* ============================================================
    ESTADOS
@@ -963,7 +968,7 @@ footer {
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: var(--dourado);
+    background: var(--dourado) !important;
     border: none;
     font-size: 1.1rem;
     color: var(--azul-escuro) !important;
@@ -976,7 +981,8 @@ footer {
     box-shadow: 0 4px 15px rgba(212, 175, 55, 0.5);
 }
 
-.preview-close:hover { transform: rotate(90deg) scale(1.1); background: var(--dourado-claro); }
+.preview-close i { color: var(--azul-escuro) !important; }
+.preview-close:hover { transform: rotate(90deg) scale(1.1); background: var(--dourado-claro) !important; }
 
 .preview-modal-header {
     padding: 20px 30px;
@@ -1073,7 +1079,7 @@ footer {
     flex-shrink: 0;
 }
 
-/* ✅ BOTÃO SECUNDÁRIO DO MODAL — TRANSPARENTE COM BORDA BRANCA */
+/* ✅ BOTÃO VOLTAR — TRANSPARENTE COM TEXTO BRANCO */
 .btn-secondary-preview {
     background: transparent !important;
     color: var(--branco) !important;
@@ -1098,9 +1104,10 @@ footer {
     color: var(--dourado) !important;
 }
 
-.btn-secondary-preview i { color: inherit !important; }
+.btn-secondary-preview i,
+.btn-secondary-preview span { color: inherit !important; }
 
-/* ✅ BOTÃO DE DOWNLOAD DO MODAL — DOURADO COM TEXTO AZUL */
+/* ✅ BOTÃO BAIXAR DO MODAL — DOURADO COM TEXTO AZUL */
 .btn-download-preview {
     background: var(--dourado) !important;
     color: var(--azul-escuro) !important;
@@ -1127,7 +1134,7 @@ footer {
 }
 
 .btn-download-preview i,
-.btn-download-preview span { color: inherit !important; }
+.btn-download-preview span { color: var(--azul-escuro) !important; }
 
 /* ============================================================
    RESPONSIVO

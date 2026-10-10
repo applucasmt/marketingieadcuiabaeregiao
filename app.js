@@ -1,6 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v22
- * Com sistema de categorias corrigido
+ * SITE PÚBLICO - Marketing IEAD v30
+ * Com IEAD CREATIVE (editor PSD)
  * ============================================================ */
 
 let estadoSite = {
@@ -9,11 +9,15 @@ let estadoSite = {
     carrossel: [],
     menus: [],
     categorias: [],
+    criativos: [],  // ← arquivos PSD para o editor
     slideAtual: 0,
     carrosselInterval: null,
     rotaAtual: 'inicio',
     categoriaAtiva: 'todas',
-    buscaAtiva: ''
+    buscaAtiva: '',
+    creativeAbaAtiva: 'templates',
+    creativeBusca: '',
+    creativeArquivoAtual: null
 };
 
 // ============================================================
@@ -60,9 +64,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderizarCategorias();
     renderizarArquivos();
     renderizarContato();
+    renderizarCreative();
     atualizarProgresso(90);
 
     inicializarBusca();
+    inicializarBuscaCreative();
     inicializarCarrossel();
     inicializarPreview();
     inicializarRotas();
@@ -82,7 +88,7 @@ function inicializarRotas() {
 
 function aplicarRota() {
     const hash = window.location.hash.replace('#', '') || 'inicio';
-    const rotasValidas = ['inicio', 'downloads', 'sobre', 'contato'];
+    const rotasValidas = ['inicio', 'downloads', 'creative', 'sobre', 'contato'];
     const rota = rotasValidas.includes(hash) ? hash : 'inicio';
     estadoSite.rotaAtual = rota;
 
@@ -110,6 +116,7 @@ async function carregarDadosSite() {
         estadoSite.carrossel = dados.carrossel || [];
         estadoSite.menus = dados.menus || [];
         estadoSite.categorias = dados.categorias || [];
+        estadoSite.criativos = dados.criativos || [];
     } else {
         estadoSite.config = {
             Titulo_Site: CONFIG.TEXTOS_PADRAO.titulo,
@@ -167,15 +174,6 @@ function aplicarConfiguracoes() {
             socialHTML += `<a href="mailto:${c.Email_Contato}"><i class="fas fa-envelope"></i></a>`;
         }
         socialDiv.innerHTML = socialHTML;
-    }
-
-    if (c.Mostrar_Carrossel === 'FALSE') {
-        const cs = document.getElementById('carouselSection');
-        if (cs) cs.style.display = 'none';
-    }
-    if (c.Mostrar_Busca === 'FALSE') {
-        const sw = document.getElementById('searchWrapper');
-        if (sw) sw.style.display = 'none';
     }
 }
 
@@ -240,7 +238,7 @@ function selecionarCategoria(nomeCategoria) {
 }
 
 // ============================================================
-// ARQUIVOS - FILTRO CORRIGIDO
+// ARQUIVOS
 // ============================================================
 function renderizarArquivos() {
     const grid = document.getElementById('downloadsGrid');
@@ -249,7 +247,6 @@ function renderizarArquivos() {
 
     let arquivosFiltrados = estadoSite.arquivos.slice();
 
-    // ✅ CORRIGIDO: só filtra por categoria se NÃO for "todas"
     const catAtiva = (estadoSite.categoriaAtiva || 'todas').trim();
     if (catAtiva && catAtiva.toLowerCase() !== 'todas') {
         arquivosFiltrados = arquivosFiltrados.filter(a => {
@@ -258,7 +255,6 @@ function renderizarArquivos() {
         });
     }
 
-    // Filtro de busca
     if (estadoSite.buscaAtiva) {
         const t = estadoSite.buscaAtiva.toLowerCase();
         arquivosFiltrados = arquivosFiltrados.filter(a =>
@@ -268,19 +264,17 @@ function renderizarArquivos() {
         );
     }
 
-    // Info
     if (info) {
         if (arquivosFiltrados.length === 0) {
             info.innerHTML = '';
         } else {
-            const catNome = catAtiva.toLowerCase() === 'todas' 
-                ? 'todas as categorias' 
+            const catNome = catAtiva.toLowerCase() === 'todas'
+                ? 'todas as categorias'
                 : `"${catAtiva}"`;
             info.innerHTML = `Mostrando <strong>${arquivosFiltrados.length}</strong> arquivo${arquivosFiltrados.length > 1 ? 's' : ''} em ${catNome}`;
         }
     }
 
-    // Vazio
     if (!arquivosFiltrados.length) {
         const msg = catAtiva.toLowerCase() === 'todas'
             ? 'Nenhum arquivo disponível.'
@@ -295,7 +289,6 @@ function renderizarArquivos() {
         return;
     }
 
-    // Renderiza
     grid.innerHTML = arquivosFiltrados.map((a) => {
         const indexOriginal = estadoSite.arquivos.indexOf(a);
         const icone = obterIcone(a.tipo);
@@ -516,7 +509,235 @@ function renderizarContato() {
 }
 
 // ============================================================
-// MODAL PREVIEW
+// ⭐ IEAD CREATIVE - EDITOR DE PSD
+// ============================================================
+function renderizarCreative() {
+    const grid = document.getElementById('creativeGrid');
+    if (!grid) return;
+
+    const filtrados = estadoSite.criativos.filter(c => {
+        if (!estadoSite.creativeBusca) return true;
+        const t = estadoSite.creativeBusca.toLowerCase();
+        return (c.nome || '').toLowerCase().includes(t) ||
+               (c.descricao || '').toLowerCase().includes(t);
+    });
+
+    if (!filtrados.length) {
+        grid.innerHTML = `
+            <div class="empty-categoria" style="grid-column:1/-1;">
+                <i class="fas fa-magic"></i>
+                <h3>Nenhum template PSD disponível</h3>
+                <p>Os templates aparecerão aqui quando forem enviados pelo painel administrativo.</p>
+            </div>`;
+        return;
+    }
+
+    grid.innerHTML = filtrados.map((c, idx) => {
+        const indexOriginal = estadoSite.criativos.indexOf(c);
+        const thumbURL = c.preview || '';
+        return `
+            <div class="creative-card" onclick="creativeAbrirEditor(${indexOriginal})">
+                <div class="creative-card-thumb">
+                    ${thumbURL 
+                        ? `<img src="${thumbURL}" alt="${escapeHTML(c.nome)}" loading="lazy">`
+                        : `<i class="fas fa-file-alt psd-icon"></i>`
+                    }
+                    <span class="creative-card-badge">PSD</span>
+                </div>
+                <div class="creative-card-body">
+                    <h3>${escapeHTML(c.nome)}</h3>
+                    <p>${escapeHTML(c.descricao || 'Template editável disponível')}</p>
+                    <button class="creative-card-btn">
+                        <i class="fas fa-magic"></i> Abrir no Editor
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function creativeTrocarAba(aba) {
+    estadoSite.creativeAbaAtiva = aba;
+
+    document.querySelectorAll('.creative-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.creative-panel').forEach(p => p.classList.remove('active'));
+
+    if (aba === 'templates') {
+        document.querySelector('.creative-tab:nth-child(1)').classList.add('active');
+        document.getElementById('creativePanelTemplates').classList.add('active');
+    } else {
+        document.querySelector('.creative-tab:nth-child(2)').classList.add('active');
+        document.getElementById('creativePanelMeus').classList.add('active');
+    }
+}
+
+function inicializarBuscaCreative() {
+    const input = document.getElementById('creativeBusca');
+    if (!input) return;
+
+    input.addEventListener('input', function () {
+        estadoSite.creativeBusca = this.value.trim();
+        renderizarCreative();
+    });
+}
+
+// ============================================================
+// PHOTOPEA - EDITOR INTEGRADO
+// ============================================================
+// ⚠️ O Photopea funciona via iframe + PostMessage API
+// Documentação: https://www.photopea.com/api/
+// ============================================================
+
+function creativeAbrirEditor(index) {
+    const arquivo = estadoSite.criativos[index];
+    if (!arquivo) return;
+
+    estadoSite.creativeArquivoAtual = arquivo;
+
+    const modal = document.getElementById('editorModal');
+    const iframe = document.getElementById('editorIframe');
+    const titulo = document.getElementById('editorTitulo');
+
+    titulo.textContent = `Editando: ${arquivo.nome}`;
+
+    // Constrói URL do Photopea
+    // O Photopea aceita config via #hash (JSON)
+    // Vamos usar a URL do arquivo direto do Drive
+    
+    const fileURL = arquivo.link_download || arquivo.link;
+    
+    // Config do Photopea
+    const config = {
+        files: [fileURL],
+        environment: {
+            showtools: true,
+            showcrop: true,
+            showlayers: true
+        },
+        script: `
+            app.activeDocument = app.documents[0];
+        `
+    };
+
+    // Constrói URL: https://www.photopea.com/#<json-encoded>
+    const configStr = encodeURIComponent(JSON.stringify(config));
+    const photopeaURL = `https://www.photopea.com/#${configStr}`;
+
+    iframe.src = photopeaURL;
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    // Escuta mensagens do iframe (Photopea envia eventos)
+    window.addEventListener('message', creativeReceberMensagem);
+}
+
+function creativeReceberMensagem(e) {
+    // Mensagens do Photopea vêm com e.data sendo string ou objeto
+    try {
+        if (typeof e.data === 'string') {
+            const msg = JSON.parse(e.data);
+            console.log('📨 Photopea:', msg);
+        }
+    } catch (err) {
+        // Ignora mensagens não-JSON
+    }
+}
+
+function editorFechar() {
+    const modal = document.getElementById('editorModal');
+    const iframe = document.getElementById('editorIframe');
+
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+    
+    // Limpa o iframe
+    setTimeout(() => {
+        iframe.src = 'about:blank';
+    }, 300);
+
+    window.removeEventListener('message', creativeReceberMensagem);
+    estadoSite.creativeArquivoAtual = null;
+}
+
+// ============================================================
+// EXPORTAR DO PHOTOPEA
+// ============================================================
+function editorExportar(formato) {
+    const iframe = document.getElementById('editorIframe');
+    if (!iframe || !iframe.contentWindow) {
+        alert('Editor não está pronto.');
+        return;
+    }
+
+    const ext = formato === 'jpg' ? 'jpg' : formato === 'pdf' ? 'pdf' : 'png';
+    
+    // Envia comando pro Photopea via PostMessage
+    // Documentação: https://www.photopea.com/api/
+    // O Photopea aceita: "app.activeDocument.saveToOE('png')" via script
+
+    let script = '';
+    if (formato === 'png') {
+        script = `app.activeDocument.saveToOE("png");`;
+    } else if (formato === 'jpg') {
+        script = `app.activeDocument.saveToOE("jpg");`;
+    } else if (formato === 'pdf') {
+        script = `
+            var doc = app.activeDocument;
+            var exportOptions = new ExportOptionsSaveForWeb();
+            exportOptions.format = SaveDocumentType.PDF;
+            doc.exportDocument(new File("/tmp/output.pdf"), ExportType.SAVEFORWEB, exportOptions);
+        `;
+    }
+
+    // Envia para o Photopea
+    iframe.contentWindow.postMessage(script, '*');
+
+    // Alternativa: abrir o Photopea em tela cheia e o usuário baixa manualmente
+    const aviso = document.createElement('div');
+    aviso.style.cssText = `
+        position: fixed; bottom: 20px; right: 20px; z-index: 999999;
+        background: #D4AF37; color: #0A1C3A; padding: 15px 20px;
+        border-radius: 12px; font-weight: 700; box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        font-family: Inter, sans-serif; font-size: 0.9rem;
+    `;
+    aviso.textContent = `📥 Exportando ${formato.toUpperCase()}... Use o menu "File → Export as" do editor se não baixar automaticamente.`;
+    document.body.appendChild(aviso);
+    setTimeout(() => aviso.remove(), 5000);
+}
+
+// ============================================================
+// SALVAR NO DRIVE
+// ============================================================
+function editorSalvarNoDrive() {
+    const iframe = document.getElementById('editorIframe');
+    if (!iframe || !iframe.contentWindow) {
+        alert('Editor não está pronto.');
+        return;
+    }
+
+    // Pede ao Photopea para exportar como PSD
+    // O Photopea suporta "saveToOE" para exportar
+    // Para salvar como PSD, precisamos de um processo diferente
+    
+    const aviso = document.createElement('div');
+    aviso.style.cssText = `
+        position: fixed; bottom: 20px; right: 20px; z-index: 999999;
+        background: #D4AF37; color: #0A1C3A; padding: 15px 20px;
+        border-radius: 12px; font-weight: 700; box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        font-family: Inter, sans-serif; font-size: 0.9rem; max-width: 320px;
+    `;
+    aviso.innerHTML = `
+        <strong>💾 Salvar no Drive</strong><br>
+        Para salvar seu PSD editado, use o menu <strong>"File → Save as PSD"</strong> no editor.
+        Depois envie o arquivo pelo painel administrativo.
+    `;
+    document.body.appendChild(aviso);
+    setTimeout(() => aviso.remove(), 8000);
+}
+
+// ============================================================
+// MODAL PREVIEW (Downloads)
 // ============================================================
 function inicializarPreview() {
     if (!document.getElementById('previewModal')) {
@@ -552,7 +773,10 @@ function inicializarPreview() {
         document.body.appendChild(modal);
     }
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') fecharPreview();
+        if (e.key === 'Escape') {
+            fecharPreview();
+            editorFechar();
+        }
     });
 }
 

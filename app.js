@@ -1,6 +1,6 @@
 /* ============================================================
  * SITE PÚBLICO - Marketing IEAD v20
- * Com filtro por categorias
+ * Com sistema de categorias
  * ============================================================ */
 
 let estadoSite = {
@@ -180,32 +180,28 @@ function aplicarConfiguracoes() {
 }
 
 // ============================================================
-// ⭐ CATEGORIAS - NOVO SISTEMA
+// CATEGORIAS
 // ============================================================
 function renderizarCategorias() {
     const container = document.getElementById('categoriasTabs');
     if (!container) return;
 
-    // Conta arquivos por categoria
     const contagem = {};
     estadoSite.arquivos.forEach(a => {
         const cat = (a.categoria || 'Geral').trim();
         contagem[cat] = (contagem[cat] || 0) + 1;
     });
 
-    // Categorias que têm arquivos + categorias da planilha
     const categoriasMap = new Map();
-    
-    // Adiciona "Todas" primeiro
+
     categoriasMap.set('todas', {
         nome: 'Todas',
         icone: 'fa-th-large',
         total: estadoSite.arquivos.length
     });
 
-    // Adiciona categorias da planilha (mantém a ordem)
     estadoSite.categorias.forEach(c => {
-        const nome = c.nome.trim();
+        const nome = (c.nome || '').trim();
         if (nome && !categoriasMap.has(nome)) {
             categoriasMap.set(nome, {
                 nome: nome,
@@ -215,7 +211,6 @@ function renderizarCategorias() {
         }
     });
 
-    // Adiciona categorias que têm arquivos mas não estão na planilha
     Object.keys(contagem).forEach(nome => {
         if (!categoriasMap.has(nome)) {
             categoriasMap.set(nome, {
@@ -226,7 +221,6 @@ function renderizarCategorias() {
         }
     });
 
-    // Renderiza
     container.innerHTML = Array.from(categoriasMap.values()).map(cat => `
         <button 
             class="categoria-tab ${estadoSite.categoriaAtiva === cat.nome ? 'active' : ''}"
@@ -246,17 +240,15 @@ function selecionarCategoria(nomeCategoria) {
 }
 
 // ============================================================
-// ARQUIVOS - COM FILTRO POR CATEGORIA
+// ARQUIVOS
 // ============================================================
 function renderizarArquivos() {
     const grid = document.getElementById('downloadsGrid');
     const info = document.getElementById('resultadoInfo');
     if (!grid) return;
 
-    // Filtra
     let arquivosFiltrados = estadoSite.arquivos;
 
-    // Filtro de categoria
     if (estadoSite.categoriaAtiva && estadoSite.categoriaAtiva !== 'todas') {
         arquivosFiltrados = arquivosFiltrados.filter(a => {
             const cat = (a.categoria || 'Geral').trim();
@@ -264,7 +256,6 @@ function renderizarArquivos() {
         });
     }
 
-    // Filtro de busca
     if (estadoSite.buscaAtiva) {
         const t = estadoSite.buscaAtiva.toLowerCase();
         arquivosFiltrados = arquivosFiltrados.filter(a =>
@@ -274,7 +265,6 @@ function renderizarArquivos() {
         );
     }
 
-    // Info
     if (info) {
         if (arquivosFiltrados.length === 0) {
             info.innerHTML = '';
@@ -284,7 +274,6 @@ function renderizarArquivos() {
         }
     }
 
-    // Vazio
     if (!arquivosFiltrados.length) {
         const msg = estadoSite.categoriaAtiva === 'todas'
             ? 'Nenhum arquivo disponível.'
@@ -299,8 +288,7 @@ function renderizarArquivos() {
         return;
     }
 
-    // Renderiza cards
-    grid.innerHTML = arquivosFiltrados.map((a, i) => {
+    grid.innerHTML = arquivosFiltrados.map((a) => {
         const indexOriginal = estadoSite.arquivos.indexOf(a);
         const icone = obterIcone(a.tipo);
         const isNovo = indexOriginal < 3;

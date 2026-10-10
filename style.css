@@ -2801,3 +2801,55 @@ footer {
         font-size: 16px !important;
     }
 }
+
+/* ============================================================
+   AJUSTES DO EDITOR PHOTOPEA — MOBILE
+   ============================================================ */
+.editor-modal-header {
+    padding: 8px 12px !important;
+}
+
+.editor-modal-title {
+    font-size: 0.8rem !important;
+}
+
+.editor-modal-actions {
+    gap: 6px !important;
+}
+
+.editor-btn {
+    padding: 7px 10px !important;
+    font-size: 0.7rem !important;
+}
+
+.editor-btn-label {
+    display: none;
+}
+
+.editor-modal-body iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+}
+
+@media (max-width: 640px) {
+    .editor-modal-footer {
+        padding: 8px 12px !important;
+        font-size: 0.68rem !important;
+    }
+
+    .editor-modal-footer span {
+        line-height: 1.3;
+    }
+
+    .editor-btn-menu {
+        background: #D4AF37 !important;
+        color: #0A1C3A !important;
+        border-color: #D4AF37 !important;
+    }
+
+    .editor-btn-menu i {
+        color: #0A1C3A !important;
+    }
+}

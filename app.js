@@ -1,8 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v41
- * - Removidos botões customizados de exportação
- * - Exportação feita pelo próprio menu do Photopea
- * - Photopea em modo embedded
+ * SITE PÚBLICO - Marketing IEAD v42
+ * Versão responsiva completa
  * ============================================================ */
 
 let estadoSite = {
@@ -37,6 +35,10 @@ function paraString(valor) {
 
 function somenteDigitos(valor) {
     return paraString(valor).replace(/\D/g, '');
+}
+
+function isMobile() {
+    return window.innerWidth < 768;
 }
 
 // ============================================================
@@ -105,6 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         inicializarCarrossel();
         inicializarPreview();
         inicializarRotas();
+        inicializarResponsividade();
 
         carregarUsuarioLogado();
         atualizarInterfaceAuth();
@@ -119,6 +122,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         esconderSplash();
     }
 });
+
+// ============================================================
+// RESPONSIVIDADE
+// ============================================================
+function inicializarResponsividade() {
+    // Detecta mudança de orientação e redimensiona
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            // Reajusta o carrossel
+            irParaSlide(estadoSite.slideAtual);
+        }, 250);
+    });
+
+    // Ajusta altura do viewport para mobile (evita problemas com barra de endereço)
+    const setVH = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    setVH();
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', () => {
+        setTimeout(setVH, 100);
+    });
+}
 
 // ============================================================
 // ROTAS
@@ -334,7 +363,7 @@ function renderizarArquivos() {
                     <span class="card-tag"><i class="fas ${icone}"></i> <span>${escapeHTML(paraString(a.tipo))}</span></span>
                     <h3>${escapeHTML(paraString(a.nome))}</h3>
                     <p>${escapeHTML(paraString(a.descricao) || 'Clique para visualizar')}</p>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
                         ${a.categoria ? `<span class="badge-size" style="background:rgba(212,175,55,0.15); color:#0A1C3A;">${escapeHTML(paraString(a.categoria))}</span>` : ''}
                         ${a.tamanho ? `<span class="badge-size">${escapeHTML(paraString(a.tamanho))}</span>` : ''}
                     </div>
@@ -446,6 +475,35 @@ function inicializarCarrossel() {
     const next = document.getElementById('nextBtn');
     if (prev) prev.addEventListener('click', () => { irParaSlide(estadoSite.slideAtual - 1); reiniciarAutoPlay(); });
     if (next) next.addEventListener('click', () => { irParaSlide(estadoSite.slideAtual + 1); reiniciarAutoPlay(); });
+
+    // Suporte a swipe em mobile
+    const container = document.querySelector('.carousel-container');
+    if (container) {
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        container.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        container.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) {
+                    irParaSlide(estadoSite.slideAtual + 1);
+                } else {
+                    irParaSlide(estadoSite.slideAtual - 1);
+                }
+                reiniciarAutoPlay();
+            }
+        }
+    }
+
     iniciarAutoPlay();
 }
 
@@ -557,14 +615,14 @@ function renderizarCreativeMeus() {
     if (!grid) return;
 
     if (!estadoSite.usuario) {
-        grid.innerHTML = '<p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:40px;">Faça login para ver seus arquivos.</p>';
+        grid.innerHTML = '<p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:30px;">Faça login para ver seus arquivos.</p>';
         return;
     }
 
     const meus = estadoSite.criativos.filter(c => paraString(c.usuarioId) === paraString(estadoSite.usuario.id));
 
     if (!meus.length) {
-        grid.innerHTML = `<p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:40px;">Você ainda não enviou nenhum PSD.</p>`;
+        grid.innerHTML = `<p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:30px;">Você ainda não enviou nenhum PSD.</p>`;
         return;
     }
 
@@ -686,7 +744,7 @@ function selecionarPSDModal(file) {
 
     const statusEl = document.getElementById('modalPSDStatus');
     statusEl.innerHTML = `
-        <div style="display:flex; align-items:center; gap:8px; color:#28A745; font-weight:700; font-size:0.85rem; margin-top:8px;">
+        <div style="display:flex; align-items:center; gap:8px; color:#28A745; font-weight:700; font-size:0.8rem; margin-top:8px;">
             <i class="fas fa-check-circle"></i>
             ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)
         </div>
@@ -836,11 +894,11 @@ async function abrirEditorComArquivo(arquivo) {
 
     const loadingDiv = document.createElement('div');
     loadingDiv.id = 'editorLoading';
-    loadingDiv.style.cssText = `position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(10,28,58,0.95); color:#D4AF37; padding:30px 50px; border-radius:16px; font-family:Inter,sans-serif; font-weight:700; z-index:10; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.6); min-width:280px;`;
+    loadingDiv.style.cssText = `position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(10,28,58,0.95); color:#D4AF37; padding:25px 35px; border-radius:16px; font-family:Inter,sans-serif; font-weight:700; z-index:10; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.6); max-width: 90%; min-width: 220px;`;
     loadingDiv.innerHTML = `
-        <div style="width:50px;height:50px;border:4px solid rgba(212,175,55,0.2);border-top-color:#D4AF37;border-radius:50%;margin:0 auto 18px;animation:spin 1s linear infinite;"></div>
-        <p style="margin-bottom:8px; font-size:1.05rem;">Carregando PSD...</p>
-        <p id="editorLoadingStatus" style="font-size:0.85rem;color:rgba(255,255,255,0.7);font-weight:400;">Preparando arquivo</p>
+        <div style="width:45px;height:45px;border:4px solid rgba(212,175,55,0.2);border-top-color:#D4AF37;border-radius:50%;margin:0 auto 15px;animation:spin 1s linear infinite;"></div>
+        <p style="margin-bottom:6px; font-size:0.95rem;">Carregando PSD...</p>
+        <p id="editorLoadingStatus" style="font-size:0.8rem;color:rgba(255,255,255,0.7);font-weight:400;">Preparando arquivo</p>
     `;
 
     const bodyParent = iframe.parentElement;
@@ -861,17 +919,17 @@ async function abrirEditorComArquivo(arquivo) {
         return;
     }
 
-    statusEl().textContent = 'Baixando arquivo do Google Drive...';
+    statusEl().textContent = 'Baixando arquivo...';
 
     const resp = await window.apiGet('baixar_psd', { fileId: fileId });
 
     if (!resp || resp.status !== 'ok') {
-        loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${resp?.mensagem || 'Erro ao baixar arquivo'}</p>
-            <button onclick="editorFechar()" style="margin-top:15px;padding:10px 20px;background:#D4AF37;color:#0A1C3A;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Fechar</button>`;
+        loadingDiv.innerHTML = `<p style="color:#FF6B6B; font-size:0.85rem;">❌ ${resp?.mensagem || 'Erro ao baixar arquivo'}</p>
+            <button onclick="editorFechar()" style="margin-top:12px;padding:10px 18px;background:#D4AF37;color:#0A1C3A;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;">Fechar</button>`;
         return;
     }
 
-    statusEl().textContent = `Arquivo baixado (${resp.tamanhoMB} MB). Preparando...`;
+    statusEl().textContent = `Preparando (${resp.tamanhoMB} MB)...`;
 
     const binaryString = atob(resp.base64);
     const bytes = new Uint8Array(binaryString.length);
@@ -880,9 +938,8 @@ async function abrirEditorComArquivo(arquivo) {
     }
     const arrayBuffer = bytes.buffer;
 
-    statusEl().textContent = 'Abrindo editor Photopea...';
+    statusEl().textContent = 'Abrindo editor...';
 
-    // URL do Photopea em modo embedded
     iframe.src = 'https://www.photopea.com/?embedded';
 
     let arquivoEnviado = false;
@@ -900,7 +957,7 @@ async function abrirEditorComArquivo(arquivo) {
             if (arquivoEnviado) return;
             arquivoEnviado = true;
 
-            statusEl().textContent = 'Enviando PSD para o editor...';
+            statusEl().textContent = 'Enviando PSD...';
 
             try {
                 iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
@@ -937,11 +994,8 @@ function editorFechar() {
     }
 }
 
-// ⚠️ Função editorExportar() REMOVIDA
-// O usuário exporta agora pelo menu do próprio Photopea: Arquivo → Exportar como
-
 // ============================================================
-// PREVIEW MODAL (Downloads)
+// PREVIEW MODAL
 // ============================================================
 function inicializarPreview() {
     if (!document.getElementById('previewModal')) {
@@ -1143,7 +1197,7 @@ async function fazerCadastro() {
         estadoSite.cadFotoTipoMime = null;
         const previewFoto = document.getElementById('cadFotoPreview');
         if (previewFoto) {
-            previewFoto.innerHTML = '<i class="fas fa-camera"></i><span>Adicionar foto</span>';
+            previewFoto.innerHTML = '<i class="fas fa-camera"></i><span>Foto</span>';
             previewFoto.style.border = '3px dashed #D4AF37';
         }
         renderizarCreativeMeus();

@@ -1,5 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v10
+ * SITE PÚBLICO - Marketing IEAD v20
+ * Com filtro por categorias
  * ============================================================ */
 
 let estadoSite = {
@@ -7,9 +8,12 @@ let estadoSite = {
     arquivos: [],
     carrossel: [],
     menus: [],
+    categorias: [],
     slideAtual: 0,
     carrosselInterval: null,
-    rotaAtual: 'inicio'
+    rotaAtual: 'inicio',
+    categoriaAtiva: 'todas',
+    buscaAtiva: ''
 };
 
 // ============================================================
@@ -53,6 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     atualizarProgresso(70);
 
     renderizarCarrossel();
+    renderizarCategorias();
     renderizarArquivos();
     renderizarContato();
     atualizarProgresso(90);
@@ -104,6 +109,7 @@ async function carregarDadosSite() {
         estadoSite.arquivos = dados.arquivos || [];
         estadoSite.carrossel = dados.carrossel || [];
         estadoSite.menus = dados.menus || [];
+        estadoSite.categorias = dados.categorias || [];
     } else {
         estadoSite.config = {
             Titulo_Site: CONFIG.TEXTOS_PADRAO.titulo,
@@ -171,6 +177,199 @@ function aplicarConfiguracoes() {
         const sw = document.getElementById('searchWrapper');
         if (sw) sw.style.display = 'none';
     }
+}
+
+// ============================================================
+// ⭐ CATEGORIAS - NOVO SISTEMA
+// ============================================================
+function renderizarCategorias() {
+    const container = document.getElementById('categoriasTabs');
+    if (!container) return;
+
+    // Conta arquivos por categoria
+    const contagem = {};
+    estadoSite.arquivos.forEach(a => {
+        const cat = (a.categoria || 'Geral').trim();
+        contagem[cat] = (contagem[cat] || 0) + 1;
+    });
+
+    // Categorias que têm arquivos + categorias da planilha
+    const categoriasMap = new Map();
+    
+    // Adiciona "Todas" primeiro
+    categoriasMap.set('todas', {
+        nome: 'Todas',
+        icone: 'fa-th-large',
+        total: estadoSite.arquivos.length
+    });
+
+    // Adiciona categorias da planilha (mantém a ordem)
+    estadoSite.categorias.forEach(c => {
+        const nome = c.nome.trim();
+        if (nome && !categoriasMap.has(nome)) {
+            categoriasMap.set(nome, {
+                nome: nome,
+                icone: c.icone || 'fa-folder',
+                total: contagem[nome] || 0
+            });
+        }
+    });
+
+    // Adiciona categorias que têm arquivos mas não estão na planilha
+    Object.keys(contagem).forEach(nome => {
+        if (!categoriasMap.has(nome)) {
+            categoriasMap.set(nome, {
+                nome: nome,
+                icone: 'fa-folder',
+                total: contagem[nome]
+            });
+        }
+    });
+
+    // Renderiza
+    container.innerHTML = Array.from(categoriasMap.values()).map(cat => `
+        <button 
+            class="categoria-tab ${estadoSite.categoriaAtiva === cat.nome ? 'active' : ''}"
+            onclick="selecionarCategoria('${cat.nome.replace(/'/g, "&#39;")}')"
+        >
+            <i class="fas ${cat.icone}"></i>
+            <span>${escapeHTML(cat.nome)}</span>
+            <span class="contador">${cat.total}</span>
+        </button>
+    `).join('');
+}
+
+function selecionarCategoria(nomeCategoria) {
+    estadoSite.categoriaAtiva = nomeCategoria;
+    renderizarCategorias();
+    renderizarArquivos();
+}
+
+// ============================================================
+// ARQUIVOS - COM FILTRO POR CATEGORIA
+// ============================================================
+function renderizarArquivos() {
+    const grid = document.getElementById('downloadsGrid');
+    const info = document.getElementById('resultadoInfo');
+    if (!grid) return;
+
+    // Filtra
+    let arquivosFiltrados = estadoSite.arquivos;
+
+    // Filtro de categoria
+    if (estadoSite.categoriaAtiva && estadoSite.categoriaAtiva !== 'todas') {
+        arquivosFiltrados = arquivosFiltrados.filter(a => {
+            const cat = (a.categoria || 'Geral').trim();
+            return cat === estadoSite.categoriaAtiva;
+        });
+    }
+
+    // Filtro de busca
+    if (estadoSite.buscaAtiva) {
+        const t = estadoSite.buscaAtiva.toLowerCase();
+        arquivosFiltrados = arquivosFiltrados.filter(a =>
+            (a.nome || '').toLowerCase().includes(t) ||
+            (a.descricao || '').toLowerCase().includes(t) ||
+            (a.tipo || '').toLowerCase().includes(t)
+        );
+    }
+
+    // Info
+    if (info) {
+        if (arquivosFiltrados.length === 0) {
+            info.innerHTML = '';
+        } else {
+            const catNome = estadoSite.categoriaAtiva === 'todas' ? 'todas as categorias' : `"${estadoSite.categoriaAtiva}"`;
+            info.innerHTML = `Mostrando <strong>${arquivosFiltrados.length}</strong> arquivo${arquivosFiltrados.length > 1 ? 's' : ''} em ${catNome}`;
+        }
+    }
+
+    // Vazio
+    if (!arquivosFiltrados.length) {
+        const msg = estadoSite.categoriaAtiva === 'todas'
+            ? 'Nenhum arquivo disponível.'
+            : `Nenhum arquivo na categoria "${estadoSite.categoriaAtiva}".`;
+
+        grid.innerHTML = `
+            <div class="empty-categoria">
+                <i class="fas fa-folder-open"></i>
+                <h3>${msg}</h3>
+                <p>${estadoSite.categoriaAtiva !== 'todas' ? 'Tente outra categoria.' : 'Os materiais serão adicionados em breve.'}</p>
+            </div>`;
+        return;
+    }
+
+    // Renderiza cards
+    grid.innerHTML = arquivosFiltrados.map((a, i) => {
+        const indexOriginal = estadoSite.arquivos.indexOf(a);
+        const icone = obterIcone(a.tipo);
+        const isNovo = indexOriginal < 3;
+        return `
+            <div class="card" onclick="abrirPreview(${indexOriginal})">
+                <div class="card-thumb">
+                    ${gerarThumb(a)}
+                    ${isNovo ? '<span class="tag-novo-card"><i class="fas fa-star"></i> <span>Novo</span></span>' : ''}
+                </div>
+                <div class="card-body">
+                    <span class="card-tag">
+                        <i class="fas ${icone}"></i> <span>${escapeHTML(a.tipo)}</span>
+                    </span>
+                    <h3>${escapeHTML(a.nome)}</h3>
+                    <p>${escapeHTML(a.descricao || 'Clique para visualizar')}</p>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        ${a.categoria ? `<span class="badge-size" style="background:rgba(212,175,55,0.15); color:#0A1C3A;">${escapeHTML(a.categoria)}</span>` : ''}
+                        ${a.tamanho ? `<span class="badge-size">${a.tamanho}</span>` : ''}
+                    </div>
+                </div>
+                <button class="btn-download" onclick="event.stopPropagation(); abrirPreview(${indexOriginal})">
+                    <i class="fas fa-eye"></i> <span>Visualizar</span>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function gerarThumb(arquivo) {
+    const ext = (arquivo.tipo || '').toUpperCase();
+    const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
+    const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
+    const isPdf = ext === 'PDF';
+
+    if (isImg && arquivo.preview) {
+        return `<img src="${arquivo.preview}" alt="${escapeHTML(arquivo.nome)}" loading="lazy">`;
+    }
+    if (isVid && arquivo.preview) {
+        return `<div class="thumb-video"><img src="${arquivo.preview}" alt=""><div class="play-overlay"><i class="fas fa-play"></i></div></div>`;
+    }
+    if (isPdf) return `<div class="thumb-fallback pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></div>`;
+    return `<div class="thumb-fallback"><i class="fas fa-file"></i></div>`;
+}
+
+function obterIcone(tipo) {
+    const t = (tipo || '').toLowerCase();
+    if (t.includes('pdf')) return 'fa-file-pdf';
+    if (t.includes('png') || t.includes('jpg') || t.includes('jpeg') || t.includes('gif') || t.includes('webp')) return 'fa-file-image';
+    if (t.includes('ppt')) return 'fa-file-powerpoint';
+    if (t.includes('doc')) return 'fa-file-word';
+    if (t.includes('xls') || t.includes('csv')) return 'fa-file-excel';
+    if (t.includes('psd') || t.includes('ai')) return 'fa-file-alt';
+    if (t.includes('zip') || t.includes('rar')) return 'fa-file-archive';
+    if (t.includes('mp4') || t.includes('mov')) return 'fa-file-video';
+    if (t.includes('mp3') || t.includes('wav')) return 'fa-file-audio';
+    return 'fa-file';
+}
+
+// ============================================================
+// BUSCA
+// ============================================================
+function inicializarBusca() {
+    const input = document.getElementById('searchInput');
+    if (!input) return;
+
+    input.addEventListener('input', function () {
+        estadoSite.buscaAtiva = this.value.trim();
+        renderizarArquivos();
+    });
 }
 
 // ============================================================
@@ -296,95 +495,6 @@ function iniciarAutoPlay() {
 function reiniciarAutoPlay() {
     clearInterval(estadoSite.carrosselInterval);
     iniciarAutoPlay();
-}
-
-// ============================================================
-// ARQUIVOS
-// ============================================================
-function renderizarArquivos() {
-    const grid = document.getElementById('downloadsGrid');
-    if (!grid) return;
-
-    const arquivos = estadoSite.arquivos;
-
-    if (!arquivos.length) {
-        grid.innerHTML = `
-            <div class="empty-state" style="grid-column: 1/-1;">
-                <i class="fas fa-folder-open"></i>
-                <h3>Nenhum arquivo disponível</h3>
-                <p>Os materiais serão adicionados em breve.</p>
-            </div>`;
-        return;
-    }
-
-    grid.innerHTML = arquivos.map((a, i) => {
-        const icone = obterIcone(a.tipo);
-        const isNovo = i < 3;
-        return `
-            <div class="card" onclick="abrirPreview(${i})">
-                <div class="card-thumb">
-                    ${gerarThumb(a)}
-                    ${isNovo ? '<span class="tag-novo-card"><i class="fas fa-star"></i> <span>Novo</span></span>' : ''}
-                </div>
-                <div class="card-body">
-                    <span class="card-tag">
-                        <i class="fas ${icone}"></i> <span>${escapeHTML(a.tipo)}</span>
-                    </span>
-                    <h3>${escapeHTML(a.nome)}</h3>
-                    <p>${escapeHTML(a.descricao || 'Clique para visualizar')}</p>
-                    ${a.tamanho ? `<span class="badge-size">${a.tamanho}</span>` : ''}
-                </div>
-                <button class="btn-download" onclick="event.stopPropagation(); abrirPreview(${i})">
-                    <i class="fas fa-eye"></i> <span>Visualizar</span>
-                </button>
-            </div>
-        `;
-    }).join('');
-}
-
-function gerarThumb(arquivo) {
-    const ext = (arquivo.tipo || '').toUpperCase();
-    const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
-    const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
-    const isPdf = ext === 'PDF';
-
-    if (isImg && arquivo.preview) {
-        return `<img src="${arquivo.preview}" alt="${escapeHTML(arquivo.nome)}" loading="lazy">`;
-    }
-    if (isVid && arquivo.preview) {
-        return `<div class="thumb-video"><img src="${arquivo.preview}" alt=""><div class="play-overlay"><i class="fas fa-play"></i></div></div>`;
-    }
-    if (isPdf) return `<div class="thumb-fallback pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></div>`;
-    return `<div class="thumb-fallback"><i class="fas fa-file"></i></div>`;
-}
-
-function obterIcone(tipo) {
-    const t = (tipo || '').toLowerCase();
-    if (t.includes('pdf')) return 'fa-file-pdf';
-    if (t.includes('png') || t.includes('jpg') || t.includes('jpeg') || t.includes('gif') || t.includes('webp')) return 'fa-file-image';
-    if (t.includes('ppt')) return 'fa-file-powerpoint';
-    if (t.includes('doc')) return 'fa-file-word';
-    if (t.includes('xls') || t.includes('csv')) return 'fa-file-excel';
-    if (t.includes('psd') || t.includes('ai')) return 'fa-file-alt';
-    if (t.includes('zip') || t.includes('rar')) return 'fa-file-archive';
-    if (t.includes('mp4') || t.includes('mov')) return 'fa-file-video';
-    if (t.includes('mp3') || t.includes('wav')) return 'fa-file-audio';
-    return 'fa-file';
-}
-
-// ============================================================
-// BUSCA
-// ============================================================
-function inicializarBusca() {
-    const input = document.getElementById('searchInput');
-    if (!input) return;
-
-    input.addEventListener('input', function () {
-        const termo = this.value.toLowerCase().trim();
-        document.querySelectorAll('.card').forEach(card => {
-            card.style.display = card.textContent.toLowerCase().includes(termo) ? 'flex' : 'none';
-        });
-    });
 }
 
 // ============================================================

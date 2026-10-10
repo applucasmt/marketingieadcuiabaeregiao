@@ -1,7 +1,8 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v43
- * - Esconde div de preços do Photopea
- * - Corrige carregamento no mobile
+ * SITE PÚBLICO - Marketing IEAD v44
+ * - Photopea abre DIRETO no editor (sem landing page)
+ * - Painéis visíveis no mobile
+ * - Header responsivo sem cortes
  * ============================================================ */
 
 let estadoSite = {
@@ -858,7 +859,7 @@ async function enviarPSDModal() {
 }
 
 // ============================================================
-// PHOTOPEA - EDITOR (com correção mobile e bloqueio de anúncios)
+// PHOTOPEA - EDITOR (CORRIGIDO)
 // ============================================================
 function creativeAbrirEditor(index) {
     const arquivo = estadoSite.criativos[index];
@@ -932,11 +933,11 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor...';
 
-    // ⭐ URL do Photopea em modo embedded (anúncios reduzidos pelo próprio Photopea)
+    // ⭐ URL do Photopea em modo embedded
+    // Isso força ele a ir direto pro editor SEM mostrar a landing page
     iframe.src = 'https://www.photopea.com/?embedded';
 
     let arquivoEnviado = false;
-    const tempoEspera = isMobile() ? 3000 : 1500; // Mobile precisa de mais tempo
 
     const photopeaHandler = (event) => {
         if (event.source !== iframe.contentWindow) return;
@@ -946,7 +947,9 @@ async function abrirEditorComArquivo(arquivo) {
     window.addEventListener('message', photopeaHandler);
     window._photopeaHandler = photopeaHandler;
 
+    // ⭐ onload dispara quando o iframe carrega o Photopea
     iframe.onload = () => {
+        // Envia o arquivo imediatamente (o Photopea já processa)
         setTimeout(() => {
             if (arquivoEnviado) return;
             arquivoEnviado = true;
@@ -959,10 +962,10 @@ async function abrirEditorComArquivo(arquivo) {
             } catch (err) {
                 loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
             }
-        }, tempoEspera);
+        }, 800);
     };
 
-    // Fallback: se onload não disparar, força após 6s
+    // Fallback: força envio após 5s
     setTimeout(() => {
         if (arquivoEnviado) return;
         arquivoEnviado = true;
@@ -970,7 +973,7 @@ async function abrirEditorComArquivo(arquivo) {
             iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
             setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 1500);
         } catch (err) {}
-    }, 6000);
+    }, 5000);
 
     // Garantia: remove loading em 15s
     setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
@@ -988,6 +991,21 @@ function editorFechar() {
         window.removeEventListener('message', window._photopeaHandler);
         window._photopeaHandler = null;
     }
+}
+
+// ⭐ BOTÃO MENU DO EDITOR (mobile)
+// Abre o menu do Photopea automaticamente enviando um clique simulado
+function editorToggleMenu() {
+    const iframe = document.getElementById('editorIframe');
+    if (!iframe || !iframe.contentWindow) return;
+    // Envia comando para o Photopea abrir o menu Arquivo
+    iframe.contentWindow.postMessage('app.showMenu();', '*');
+    // Fallback: abre uma notificação para o usuário
+    const aviso = document.createElement('div');
+    aviso.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:999999; background:#D4AF37; color:#0A1C3A; padding:15px 20px; border-radius:12px; font-weight:700; box-shadow:0 8px 25px rgba(0,0,0,0.3); font-family:Inter, sans-serif; font-size:0.85rem; max-width:280px;`;
+    aviso.innerHTML = `ℹ️ Use o menu <strong>Arquivo</strong> no topo do Photopea para exportar.`;
+    document.body.appendChild(aviso);
+    setTimeout(() => aviso.remove(), 4000);
 }
 
 // ============================================================

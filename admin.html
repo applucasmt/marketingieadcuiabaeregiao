@@ -54,8 +54,6 @@
             vertical-align: middle;
         }
 
-        .cms-icon-lg { width: 24px; height: 24px; }
-        .cms-icon-xl { width: 32px; height: 32px; }
         .cms-icon-2xl { width: 48px; height: 48px; stroke-width: 1.5; }
         .cms-icon-3xl { width: 64px; height: 64px; stroke-width: 1.5; }
 
@@ -825,23 +823,16 @@
             .cms-stats { grid-template-columns: 1fr; }
             .cms-form-grid { grid-template-columns: 1fr; }
             .cms-header { flex-direction: column; gap: 15px; text-align: center; }
-            .cms-arquivo-item {
-                flex-direction: column;
-                text-align: center;
-            }
+            .cms-arquivo-item { flex-direction: column; text-align: center; }
             .cms-arquivo-info { width: 100%; }
             .cms-arquivo-meta { justify-content: center; }
-            .cms-item {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
+            .cms-item { flex-direction: column; gap: 15px; text-align: center; }
         }
     </style>
 </head>
 <body>
 
-    <!-- SVG ICONS LIBRARY -->
+    <!-- ============ BIBLIOTECA DE ÍCONES SVG ============ -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
         <defs>
             <symbol id="i-admin" viewBox="0 0 24 24">
@@ -969,10 +960,20 @@
                 <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
                 <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
             </symbol>
+            <symbol id="i-magic" viewBox="0 0 24 24">
+                <path d="M15 4V2"/>
+                <path d="M15 16v-2"/>
+                <path d="M8 9h2"/>
+                <path d="M20 9h2"/>
+                <path d="M17.8 11.8L19 13"/>
+                <path d="M17.8 6.2L19 5"/>
+                <path d="M3 21l9-9"/>
+                <path d="M12.2 6.2L11 5"/>
+            </symbol>
         </defs>
     </svg>
 
-    <!-- LOGIN -->
+    <!-- ============ LOGIN ============ -->
     <div class="cms-login" id="cmsLoginScreen">
         <div class="cms-login-box">
             <div class="cms-login-icon">
@@ -998,7 +999,7 @@
         </div>
     </div>
 
-    <!-- PAINEL -->
+    <!-- ============ PAINEL ============ -->
     <div class="cms-wrapper" id="cmsWrapper" style="display: none;">
         
         <aside class="cms-sidebar">
@@ -1018,6 +1019,9 @@
                 </a>
                 <a href="#" data-tab="categorias">
                     <svg class="cms-icon"><use href="#i-folder"></use></svg> <span>Categorias</span>
+                </a>
+                <a href="#" data-tab="creative">
+                    <svg class="cms-icon"><use href="#i-magic"></use></svg> <span>IEAD Creative</span>
                 </a>
                 <a href="#" data-tab="carrossel">
                     <svg class="cms-icon"><use href="#i-images"></use></svg> <span>Carrossel</span>
@@ -1054,6 +1058,7 @@
                 </div>
             </header>
 
+            <!-- DASHBOARD -->
             <section class="cms-section active" id="cmsTabDashboard">
                 <div class="cms-stats" id="cmsStats"></div>
                 <div class="cms-panel">
@@ -1068,28 +1073,30 @@
                 </div>
             </section>
 
+            <!-- ARQUIVOS -->
             <section class="cms-section" id="cmsTabArquivos">
                 <input type="text" id="cmsFiltroArquivos" class="cms-filter" placeholder="🔍 Filtrar arquivos...">
                 <div class="cms-arquivos-list" id="cmsArquivosList"></div>
             </section>
 
+            <!-- UPLOAD -->
             <section class="cms-section" id="cmsTabUpload">
                 <div class="cms-upload-area" id="cmsUploadArea">
                     <svg class="cms-icon"><use href="#i-upload"></use></svg>
                     <h3>Arraste arquivos aqui</h3>
-<p>ou clique para selecionar (múltiplos permitidos)</p>
-<small>PDF, PNG, JPG, MP4, PPTX, DOCX (máx: 25 MB por arquivo)</small>
+                    <p>ou clique para selecionar (múltiplos permitidos)</p>
+                    <small>PDF, PNG, JPG, MP4, PPTX, DOCX (máx: 25 MB por arquivo)</small>
                 </div>
                 <input type="file" id="cmsFileInput" style="display: none;" multiple>
                 
                 <div class="cms-upload-preview" id="cmsUploadPreview" style="display: none;">
-                    <h3>Arquivo Selecionado</h3>
+                    <h3>Arquivos Selecionados</h3>
                     <div id="cmsPreviewContent"></div>
                 </div>
 
                 <div class="cms-form-grid">
                     <div class="cms-form-group">
-                        <label>Nome exibido no site</label>
+                        <label>Nome exibido no site (só para 1 arquivo)</label>
                         <input type="text" id="cmsNomeAmigavel" placeholder="Ex: Manual de Identidade Visual">
                     </div>
                     <div class="cms-form-group">
@@ -1097,7 +1104,7 @@
                         <select id="cmsCategoriaUpload"></select>
                     </div>
                     <div class="cms-form-group cms-full">
-                        <label>Descrição</label>
+                        <label>Descrição (aplicada a todos)</label>
                         <textarea id="cmsDescricaoUpload" placeholder="Breve descrição do arquivo..."></textarea>
                     </div>
                 </div>
@@ -1109,6 +1116,7 @@
                 <div id="cmsUploadStatus"></div>
             </section>
 
+            <!-- CATEGORIAS -->
             <section class="cms-section" id="cmsTabCategorias">
                 <button onclick="cmsAbrirModalCategoria()" class="cms-btn-primary">
                     <svg class="cms-icon"><use href="#i-plus"></use></svg>
@@ -1117,6 +1125,62 @@
                 <div id="cmsCategoriasList"></div>
             </section>
 
+            <!-- IEAD CREATIVE -->
+            <section class="cms-section" id="cmsTabCreative">
+                <div class="cms-panel">
+                    <h3>
+                        <svg class="cms-icon"><use href="#i-magic"></use></svg>
+                        Enviar Template PSD
+                    </h3>
+                    <p style="color:#86868B; font-size:0.9rem; margin-bottom:20px;">
+                        Faça upload de arquivos <strong>.psd</strong> para que apareçam no editor IEAD Creative do site.
+                    </p>
+
+                    <div class="cms-upload-area" id="cmsCreativeUploadArea">
+                        <svg class="cms-icon"><use href="#i-upload"></use></svg>
+                        <h3>Arraste um arquivo PSD aqui</h3>
+                        <p>ou clique para selecionar</p>
+                        <small>Arquivos .psd (máx: 25 MB)</small>
+                    </div>
+                    <input type="file" id="cmsCreativeFileInput" accept=".psd,image/vnd.adobe.photoshop" style="display: none;">
+
+                    <div class="cms-upload-preview" id="cmsCreativeUploadPreview" style="display: none;">
+                        <h3>Arquivo PSD Selecionado</h3>
+                        <div id="cmsCreativePreviewContent"></div>
+                    </div>
+
+                    <div class="cms-form-grid">
+                        <div class="cms-form-group">
+                            <label>Nome do Template</label>
+                            <input type="text" id="cmsCreativeNome" placeholder="Ex: Cartaz Culto Jovem">
+                        </div>
+                        <div class="cms-form-group">
+                            <label>Miniatura (opcional)</label>
+                            <input type="file" id="cmsCreativeThumb" accept="image/*">
+                        </div>
+                        <div class="cms-form-group cms-full">
+                            <label>Descrição</label>
+                            <textarea id="cmsCreativeDescricao" placeholder="Breve descrição do template..."></textarea>
+                        </div>
+                    </div>
+
+                    <button id="cmsCreativeUploadBtn" class="cms-btn-primary cms-full">
+                        <svg class="cms-icon"><use href="#i-upload"></use></svg>
+                        <span>Enviar PSD para o Drive</span>
+                    </button>
+                    <div id="cmsCreativeUploadStatus"></div>
+                </div>
+
+                <div class="cms-panel" style="margin-top: 20px;">
+                    <h3>
+                        <svg class="cms-icon"><use href="#i-images"></use></svg>
+                        Templates Cadastrados
+                    </h3>
+                    <div id="cmsCreativeList"></div>
+                </div>
+            </section>
+
+            <!-- CARROSSEL -->
             <section class="cms-section" id="cmsTabCarrossel">
                 <button onclick="cmsAbrirModalSlide()" class="cms-btn-primary">
                     <svg class="cms-icon"><use href="#i-plus"></use></svg>
@@ -1125,6 +1189,7 @@
                 <div id="cmsCarrosselList"></div>
             </section>
 
+            <!-- MENUS -->
             <section class="cms-section" id="cmsTabMenus">
                 <button onclick="cmsAbrirModalMenu()" class="cms-btn-primary">
                     <svg class="cms-icon"><use href="#i-plus"></use></svg>
@@ -1133,6 +1198,7 @@
                 <div id="cmsMenusList"></div>
             </section>
 
+            <!-- APARÊNCIA -->
             <section class="cms-section" id="cmsTabAparencia">
                 <div class="cms-panel">
                     <h3>
@@ -1175,6 +1241,7 @@
                 </div>
             </section>
 
+            <!-- TEXTOS -->
             <section class="cms-section" id="cmsTabTextos">
                 <div class="cms-form-grid">
                     <div class="cms-form-group cms-full">
@@ -1212,6 +1279,7 @@
                 </button>
             </section>
 
+            <!-- CONFIG -->
             <section class="cms-section" id="cmsTabConfig">
                 <div class="cms-panel">
                     <h3>
@@ -1239,7 +1307,7 @@
         <div class="cms-modal-box" id="cmsModalBox"></div>
     </div>
 
-    <script src="config.js?v=21"></script>
-<script src="admin.js?v=21"></script>
+    <script src="config.js?v=31"></script>
+    <script src="admin.js?v=31"></script>
 </body>
 </html>

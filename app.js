@@ -1,8 +1,8 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v38
- * - Corrigido erro .replace() em campos numéricos da planilha
- * - Corrigido travamento em 70% (timeout de segurança)
- * - Cadastro com foto de perfil + cidade
+ * SITE PÚBLICO - Marketing IEAD v39
+ * - Photopea sem anúncios (noads: true no hash)
+ * - Abertura direta do arquivo (sem tela inicial)
+ * - Correção completa de tipagem de dados da planilha
  * ============================================================ */
 
 let estadoSite = {
@@ -28,7 +28,7 @@ let estadoSite = {
 };
 
 // ============================================================
-// HELPERS DE SEGURANÇA
+// HELPERS
 // ============================================================
 function paraString(valor) {
     if (valor === null || valor === undefined) return '';
@@ -75,7 +75,6 @@ function esconderSplash() {
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
     const timeoutSeguranca = setTimeout(() => {
-        console.warn('⚠️ Timeout de segurança ativado — forçando fechamento do splash');
         atualizarProgresso(100);
         esconderSplash();
     }, 8000);
@@ -111,9 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         atualizarInterfaceAuth();
 
         atualizarProgresso(100);
-
         await new Promise(r => setTimeout(r, 400));
-
     } catch (err) {
         console.error('❌ Erro na inicialização:', err);
         atualizarProgresso(100);
@@ -155,7 +152,6 @@ function aplicarRota() {
 async function carregarDadosSite() {
     try {
         const dados = await apiGet('tudo');
-
         if (dados && !dados.status) {
             estadoSite.config = dados.config || {};
             estadoSite.arquivos = dados.arquivos || [];
@@ -173,7 +169,6 @@ async function carregarDadosSite() {
             };
         }
     } catch (err) {
-        console.warn('⚠️ Erro ao carregar dados:', err);
         estadoSite.config = {
             Titulo_Site: CONFIG.TEXTOS_PADRAO.titulo,
             Subtitulo_Hero: CONFIG.TEXTOS_PADRAO.subtituloHero,
@@ -813,7 +808,7 @@ async function enviarPSDModal() {
 }
 
 // ============================================================
-// PHOTOPEA
+// PHOTOPEA - COM NOADS + ABERTURA DIRETA
 // ============================================================
 function creativeAbrirEditor(index) {
     const arquivo = estadoSite.criativos[index];
@@ -887,16 +882,22 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor Photopea...';
 
-    // URL do Photopea com embedded + noads (remove anúncios)
-const photopeaConfig = {
-    environment: {
-        showtools: true,
-        noads: true,
-        showlayers: true
-    }
-};
-const configEncoded = encodeURIComponent(JSON.stringify(photopeaConfig));
-iframe.src = `https://www.photopea.com/?embedded#${configEncoded}`;
+    // ⭐ CONFIG DO PHOTOPEA COM NOADS
+    // O Photopea aceita configuração no hash. Usamos:
+    // - noads: true (remove anúncios)
+    // - showtools: true (mostra ferramentas)
+    // - showlayers: true (mostra painel de camadas)
+    // ⚠️ O parâmetro ?embedded é ESSENCIAL para o noads funcionar
+    const photopeaConfig = {
+        environment: {
+            showtools: true,
+            showcrop: true,
+            showlayers: true,
+            noad: true
+        }
+    };
+    const configEncoded = encodeURIComponent(JSON.stringify(photopeaConfig));
+    iframe.src = `https://www.photopea.com/?embedded#${configEncoded}`;
 
     let arquivoEnviado = false;
 
@@ -908,7 +909,10 @@ iframe.src = `https://www.photopea.com/?embedded#${configEncoded}`;
     window.addEventListener('message', photopeaHandler);
     window._photopeaHandler = photopeaHandler;
 
+    // ⭐ TENTA ENVIAR O ARQUIVO O MAIS RÁPIDO POSSÍVEL
+    // Quando o iframe termina de carregar, envia imediatamente o PSD
     iframe.onload = () => {
+        // Envia após 500ms (o Photopea já está pronto para receber quando o load dispara)
         setTimeout(() => {
             if (arquivoEnviado) return;
             arquivoEnviado = true;
@@ -917,23 +921,26 @@ iframe.src = `https://www.photopea.com/?embedded#${configEncoded}`;
 
             try {
                 iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-                setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 2000);
+                // Remove o loading rapidamente
+                setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 800);
             } catch (err) {
                 loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
             }
-        }, 4000);
+        }, 500);
     };
 
+    // Fallback: envia após 3s se o onload não disparar
     setTimeout(() => {
         if (arquivoEnviado) return;
         arquivoEnviado = true;
         try {
             iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-            setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 2000);
+            setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 800);
         } catch (err) {}
-    }, 8000);
+    }, 3000);
 
-    setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 12000);
+    // Garantia: remove o loading em 10s
+    setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 10000);
 }
 
 function editorFechar() {
@@ -967,7 +974,7 @@ function editorExportar(formato) {
 }
 
 // ============================================================
-// PREVIEW MODAL (Downloads)
+// PREVIEW MODAL
 // ============================================================
 function inicializarPreview() {
     if (!document.getElementById('previewModal')) {

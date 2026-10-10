@@ -1,9 +1,9 @@
-        /* ============================================================
+/* ============================================================
  * CONFIGURAÇÃO CENTRAL DO SISTEMA
  * Marketing IEAD Cuiabá e Região
  * ============================================================ */
 
-const CONFIG = {
+window.CONFIG = {
     API_URL: "https://script.google.com/macros/s/AKfycbziXZvHTiX2qQI2VQrHf19fUc3ihOnirfOlCMa1_D-O0z4e8BMKArYpaXFX0YIv0ka8XA/exec",
     SENHA_ADMIN: "IEAD2026",
 

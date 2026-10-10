@@ -1,0 +1,24 @@
+{
+    "name": "Marketing IEAD Cuiabá e Região",
+    "short_name": "Marketing IEAD",
+    "description": "Portal oficial de materiais institucionais do Ministério de Marketing da IEAD Cuiabá e Região",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0A1C3A",
+    "theme_color": "#0A1C3A",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "favicon.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "favicon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

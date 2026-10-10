@@ -2,9 +2,13 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0A1C3A">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
     <title>Marketing IEAD | Cuiabá e Região</title>
-    <link rel="stylesheet" href="style.css?v=41">
+    <link rel="stylesheet" href="style.css?v=42">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +16,7 @@
 </head>
 <body>
 
-    <!-- ============ SPLASH SCREEN ============ -->
+    <!-- SPLASH -->
     <div class="splash-screen" id="splashScreen">
         <div class="splash-content">
             <div class="splash-logo-wrapper">
@@ -28,7 +32,7 @@
         </div>
     </div>
 
-    <!-- ============ SITE ============ -->
+    <!-- SITE -->
     <div class="site-wrapper" id="siteWrapper">
 
         <!-- HEADER -->
@@ -61,7 +65,7 @@
             </div>
         </header>
 
-        <!-- ============ PÁGINA: INÍCIO ============ -->
+        <!-- PÁGINA: INÍCIO -->
         <div class="page active" id="page-inicio">
             <section class="carousel-section" id="carouselSection">
                 <div class="carousel-header">
@@ -89,7 +93,7 @@
             </section>
         </div>
 
-        <!-- ============ PÁGINA: DOWNLOADS ============ -->
+        <!-- PÁGINA: DOWNLOADS -->
         <div class="page" id="page-downloads">
             <main class="main-content">
                 <div class="page-header">
@@ -115,7 +119,7 @@
             </main>
         </div>
 
-        <!-- ============ PÁGINA: IEAD CREATIVE ============ -->
+        <!-- PÁGINA: IEAD CREATIVE -->
         <div class="page" id="page-creative">
             <main class="creative-content">
                 
@@ -132,14 +136,14 @@
 
                 <div class="creative-tabs">
                     <button class="creative-tab active" onclick="creativeTrocarAba('templates')">
-                        <i class="fas fa-th"></i> Templates Disponíveis
+                        <i class="fas fa-th"></i> Templates
                     </button>
                     <button class="creative-tab" onclick="creativeTrocarAba('meus')">
-                        <i class="fas fa-cloud-upload-alt"></i> Enviar / Meus Arquivos
+                        <i class="fas fa-cloud-upload-alt"></i> Enviar
                     </button>
                 </div>
 
-                <!-- ABA: TEMPLATES DISPONÍVEIS -->
+                <!-- ABA: TEMPLATES -->
                 <div class="creative-panel active" id="creativePanelTemplates">
                     <div class="creative-info-box">
                         <i class="fas fa-info-circle"></i>
@@ -163,7 +167,7 @@
                     </div>
                 </div>
 
-                <!-- ABA: MEUS ARQUIVOS (UPLOAD PÚBLICO) -->
+                <!-- ABA: MEUS ARQUIVOS -->
                 <div class="creative-panel" id="creativePanelMeus">
                     <div id="creativeBloqueado" class="creative-bloqueado">
                         <div class="creative-bloqueado-icon">
@@ -194,7 +198,7 @@
                             <div>
                                 <strong>Envie seu PSD</strong>
                                 <p>Clique no botão abaixo para abrir o formulário de envio. 
-                                Você pode escolher a capa (obrigatória) e dar um título ao seu template.</p>
+                                A capa é obrigatória e o título é editável.</p>
                             </div>
                         </div>
 
@@ -203,11 +207,11 @@
                             <span>Enviar Novo PSD</span>
                         </button>
 
-                        <h3 style="color:#D4AF37; margin: 30px 0 20px; font-size:1.3rem;">
+                        <h3 style="color:#D4AF37; margin: 30px 0 20px; font-size:1.2rem;">
                             <i class="fas fa-list"></i> Meus PSDs Enviados
                         </h3>
                         <div class="creative-grid" id="creativeMeusGrid">
-                            <p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:40px;">
+                            <p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:30px;">
                                 Você ainda não enviou nenhum PSD.
                             </p>
                         </div>
@@ -216,7 +220,7 @@
             </main>
         </div>
 
-        <!-- ============ PÁGINA: SOBRE ============ -->
+        <!-- PÁGINA: SOBRE -->
         <div class="page" id="page-sobre">
             <section class="about-section">
                 <div class="about-content">
@@ -250,7 +254,7 @@
             </section>
         </div>
 
-        <!-- ============ PÁGINA: CONTATO ============ -->
+        <!-- PÁGINA: CONTATO -->
         <div class="page" id="page-contato">
             <section class="contact-section">
                 <div class="contact-content">
@@ -289,7 +293,7 @@
 
     </div>
 
-    <!-- ============ MODAL DE ENVIO PSD ============ -->
+    <!-- MODAL DE ENVIO -->
     <div class="modal-envio" id="modalEnvio">
         <div class="modal-envio-content">
             <button class="modal-envio-close" onclick="fecharModalEnvio()">
@@ -301,11 +305,10 @@
                     <i class="fas fa-cloud-upload-alt"></i>
                 </div>
                 <h2>Enviar Novo PSD</h2>
-                <p>Preencha os dados e escolha a capa do seu template</p>
+                <p>Preencha os dados e escolha a capa</p>
             </div>
 
             <div class="modal-envio-body">
-                <!-- PSD -->
                 <div class="modal-envio-field">
                     <label><i class="fas fa-file-alt"></i> Arquivo PSD *</label>
                     <div class="modal-envio-upload" id="modalUploadPSD">
@@ -319,7 +322,6 @@
                     <input type="file" id="modalInputPSD" accept=".psd,image/vnd.adobe.photoshop" style="display:none;">
                 </div>
 
-                <!-- CAPA -->
                 <div class="modal-envio-field">
                     <label><i class="fas fa-image"></i> Capa do PSD * <span style="color:#FF3B30;">(obrigatória)</span></label>
                     <div class="modal-envio-upload" id="modalUploadCapa" style="border-color:#FF3B30;">
@@ -338,20 +340,17 @@
                     </div>
                 </div>
 
-                <!-- TÍTULO -->
                 <div class="modal-envio-field">
                     <label><i class="fas fa-heading"></i> Título do template *</label>
                     <input type="text" id="modalTitulo" placeholder="Ex: Cartaz Culto Jovem" maxlength="100">
                     <small>Este será o nome que aparecerá na listagem</small>
                 </div>
 
-                <!-- DESCRIÇÃO -->
                 <div class="modal-envio-field">
                     <label><i class="fas fa-align-left"></i> Descrição (opcional)</label>
                     <textarea id="modalDescricao" placeholder="Breve descrição do template..." maxlength="300"></textarea>
                 </div>
 
-                <!-- PROGRESSO -->
                 <div class="modal-envio-progress" id="modalEnvioProgress" style="display:none;">
                     <p id="modalEnvioStatus">Enviando...</p>
                     <div class="modal-envio-progress-bar">
@@ -372,7 +371,7 @@
         </div>
     </div>
 
-    <!-- ============ MODAL DE AUTH ============ -->
+    <!-- MODAL DE AUTH -->
     <div class="modal-auth" id="modalAuth">
         <div class="modal-auth-content">
             <button class="modal-auth-close" onclick="fecharModalAuth()">
@@ -384,12 +383,11 @@
                 <button class="modal-auth-tab" onclick="trocarAbaAuth('cadastro')">Criar Conta</button>
             </div>
 
-            <!-- LOGIN -->
             <div class="modal-auth-panel active" id="panelLogin">
                 <div class="modal-auth-icon">
                     <i class="fas fa-user-circle"></i>
                 </div>
-                <h2>Bem-vindo de volta!</h2>
+                <h2>Bem-vindo!</h2>
                 <p>Entre para acessar o IEAD Creative</p>
 
                 <div class="modal-auth-form">
@@ -408,20 +406,18 @@
                 </div>
             </div>
 
-            <!-- CADASTRO -->
             <div class="modal-auth-panel" id="panelCadastro">
                 <div class="modal-auth-icon">
                     <i class="fas fa-user-plus"></i>
                 </div>
                 <h2>Criar Conta</h2>
-                <p>Preencha seus dados para começar</p>
+                <p>Preencha seus dados</p>
 
                 <div class="modal-auth-form">
-                    <!-- Foto de perfil -->
                     <div class="modal-auth-foto-area">
                         <div class="modal-auth-foto-preview" id="cadFotoPreview" onclick="document.getElementById('cadFotoInput').click()">
                             <i class="fas fa-camera"></i>
-                            <span>Adicionar foto</span>
+                            <span>Foto</span>
                         </div>
                         <input type="file" id="cadFotoInput" accept="image/*" style="display:none;">
                         <p class="modal-auth-foto-hint">Foto de perfil (opcional)</p>
@@ -446,7 +442,7 @@
                     <div class="modal-auth-group">
                         <label>Cidade *</label>
                         <select id="cadCidade">
-                            <option value="">Selecione sua cidade</option>
+                            <option value="">Selecione</option>
                             <option value="Cuiabá">Cuiabá</option>
                             <option value="Várzea Grande">Várzea Grande</option>
                             <option value="Rondonópolis">Rondonópolis</option>
@@ -471,7 +467,7 @@
                         <input type="number" id="cadIdade" placeholder="Ex: 25" min="10" max="120">
                     </div>
                     <div class="modal-auth-group">
-                        <label>Senha * (mínimo 6 caracteres)</label>
+                        <label>Senha * (mín. 6 caracteres)</label>
                         <input type="password" id="cadSenha" placeholder="Crie uma senha">
                     </div>
                     <button onclick="fazerCadastro()" class="modal-auth-btn">
@@ -483,7 +479,7 @@
         </div>
     </div>
 
-    <!-- ============ MODAL DO EDITOR PHOTOPEA ============ -->
+    <!-- EDITOR PHOTOPEA -->
     <div class="editor-modal" id="editorModal">
         <div class="editor-modal-header">
             <div class="editor-modal-title">
@@ -508,7 +504,7 @@
         </div>
     </div>
 
-    <script src="config.js?v=41"></script>
-    <script src="app.js?v=41"></script>
+    <script src="config.js?v=42"></script>
+    <script src="app.js?v=42"></script>
 </body>
 </html>

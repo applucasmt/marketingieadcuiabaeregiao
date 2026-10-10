@@ -1,6 +1,6 @@
 /* ============================================================
- * MARKETING IEAD — CSS RESPONSIVO COMPLETO v45
- * Modal de envio reorganizado
+ * MARKETING IEAD — CSS RESPONSIVO COMPLETO v46
+ * Carrossel com imagens 100% visíveis (object-fit: contain)
  * ============================================================ */
 
 /* ============================================================
@@ -515,28 +515,34 @@ button { font-family: inherit; }
 
 .btn-slide-ghost:hover i, .btn-slide-ghost:hover span { color: #D4AF37; }
 
+/* ⭐ THUMB DO CARROSSEL — AGORA COM OBJECT-FIT: CONTAIN */
 .slide-thumb {
-    width: 150px;
-    height: 150px;
+    width: 180px;
+    height: 180px;
     border-radius: 15px;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.3);
-    border: 2px solid rgba(212, 175, 55, 0.3);
+    background: rgba(10, 28, 58, 0.6);
+    border: 2px solid rgba(212, 175, 55, 0.4);
     margin: 0 auto;
     flex-shrink: 0;
+    padding: 8px;
 }
 
 .slide-thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
+    border-radius: 8px;
+    background: rgba(10, 28, 58, 0.3);
 }
 
 .slide-thumb-icon {
     background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(26, 58, 107, 0.5));
+    padding: 0;
 }
 
 .slide-thumb-icon i {
@@ -1420,7 +1426,7 @@ button { font-family: inherit; }
 .creative-enviar-btn i { font-size: 1.1rem; }
 
 /* ============================================================
-   MODAL DE ENVIO — REORGANIZADO
+   MODAL DE ENVIO
    ============================================================ */
 .modal-envio {
     display: none;
@@ -1482,7 +1488,6 @@ button { font-family: inherit; }
     transform: rotate(90deg);
 }
 
-/* Header */
 .modal-envio-header {
     padding: 30px 25px 20px;
     text-align: center;
@@ -1517,7 +1522,6 @@ button { font-family: inherit; }
     line-height: 1.4;
 }
 
-/* Body */
 .modal-envio-body {
     padding: 25px;
     display: flex;
@@ -1525,7 +1529,6 @@ button { font-family: inherit; }
     gap: 22px;
 }
 
-/* Cada campo */
 .modal-envio-field {
     display: flex;
     flex-direction: column;
@@ -1558,7 +1561,6 @@ button { font-family: inherit; }
     letter-spacing: 0;
 }
 
-/* Inputs */
 .modal-envio-field input[type="text"],
 .modal-envio-field textarea {
     width: 100%;
@@ -1601,7 +1603,6 @@ button { font-family: inherit; }
     margin-top: -2px;
 }
 
-/* Upload Area */
 .modal-envio-upload {
     display: flex;
     align-items: center;
@@ -1672,7 +1673,6 @@ button { font-family: inherit; }
     line-height: 1.4;
 }
 
-/* Capa preview */
 .modal-envio-capa-preview {
     margin-top: 12px;
     padding: 16px;
@@ -1713,7 +1713,6 @@ button { font-family: inherit; }
     transform: scale(1.03);
 }
 
-/* Progress */
 .modal-envio-progress {
     padding: 18px;
     background: #F5F5F7;
@@ -1751,7 +1750,6 @@ button { font-family: inherit; }
     font-size: 1.1rem;
 }
 
-/* Footer */
 .modal-envio-footer {
     display: flex;
     flex-direction: column-reverse;
@@ -2613,7 +2611,7 @@ footer {
     .carousel-header h2 { font-size: 1.5rem; justify-content: flex-start; }
 
     .carousel-slide {
-        grid-template-columns: 1fr 200px;
+        grid-template-columns: 1fr 220px;
         padding: 40px 35px;
         text-align: left;
         gap: 30px;
@@ -2622,7 +2620,7 @@ footer {
 
     .slide-content { text-align: left; }
     .slide-actions { justify-content: flex-start; }
-    .slide-thumb { width: 200px; height: 200px; margin: 0; }
+    .slide-thumb { width: 220px; height: 220px; margin: 0; padding: 10px; }
     .carousel-slide h3 { font-size: 1.7rem; }
     .carousel-slide p { font-size: 1rem; }
 
@@ -2666,7 +2664,6 @@ footer {
     .creative-card-thumb { height: 240px; }
     .creative-enviar-btn { padding: 18px 30px; font-size: 0.95rem; }
 
-    /* MODAL DE ENVIO - Tablet */
     .modal-envio {
         align-items: center;
         padding: 20px;
@@ -2701,7 +2698,6 @@ footer {
     .modal-envio-btn { width: auto; flex: 1; }
     .modal-envio-btn-submit { flex: 2; }
 
-    /* MODAL DE AUTH - Tablet */
     .modal-auth {
         align-items: center;
         padding: 20px;
@@ -2768,12 +2764,12 @@ footer {
 
     .carousel-slide {
         padding: 50px;
-        grid-template-columns: 1fr 240px;
+        grid-template-columns: 1fr 260px;
         gap: 40px;
-        min-height: 340px;
+        min-height: 360px;
     }
 
-    .slide-thumb { width: 240px; height: 240px; }
+    .slide-thumb { width: 260px; height: 260px; padding: 12px; }
     .carousel-slide h3 { font-size: 2rem; }
 
     .hero { padding: 100px 30px 120px; }
@@ -2809,7 +2805,6 @@ footer {
     .creative-card-body { padding: 22px; }
     .creative-card-body h3 { font-size: 1.1rem; }
 
-    /* MODAL DE ENVIO - Desktop */
     .modal-envio-content { border-radius: 24px; max-width: 660px; }
     .modal-envio-header { padding: 40px 40px 25px; }
     .modal-envio-icon { width: 80px; height: 80px; font-size: 2rem; }
@@ -2839,7 +2834,7 @@ footer {
 
     .carousel-slide { padding: 20px 15px; }
     .carousel-slide h3 { font-size: 1.2rem; }
-    .slide-thumb { width: 130px; height: 130px; }
+    .slide-thumb { width: 140px; height: 140px; padding: 6px; }
     .btn-slide { padding: 10px 16px; font-size: 0.7rem; }
 
     .hero h1 { font-size: 1.5rem; }

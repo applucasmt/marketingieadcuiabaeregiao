@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketing IEAD | Cuiabá e Região</title>
-    <link rel="stylesheet" href="style.css?v=30">
+    <link rel="stylesheet" href="style.css?v=32">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +12,7 @@
 </head>
 <body>
 
-    <!-- SPLASH -->
+    <!-- ============ SPLASH SCREEN ============ -->
     <div class="splash-screen" id="splashScreen">
         <div class="splash-content">
             <div class="splash-logo-wrapper">
@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <!-- SITE -->
+    <!-- ============ SITE ============ -->
     <div class="site-wrapper" id="siteWrapper">
 
         <!-- HEADER -->
@@ -54,7 +54,7 @@
             </div>
         </header>
 
-        <!-- ========== PÁGINA: INÍCIO ========== -->
+        <!-- ============ PÁGINA: INÍCIO ============ -->
         <div class="page active" id="page-inicio">
             <section class="carousel-section" id="carouselSection">
                 <div class="carousel-header">
@@ -82,7 +82,7 @@
             </section>
         </div>
 
-        <!-- ========== PÁGINA: DOWNLOADS ========== -->
+        <!-- ============ PÁGINA: DOWNLOADS ============ -->
         <div class="page" id="page-downloads">
             <main class="main-content">
                 <div class="page-header">
@@ -108,11 +108,10 @@
             </main>
         </div>
 
-        <!-- ========== PÁGINA: IEAD CREATIVE ========== -->
+        <!-- ============ PÁGINA: IEAD CREATIVE ============ -->
         <div class="page" id="page-creative">
             <main class="creative-content">
                 
-                <!-- HERO DA PÁGINA -->
                 <div class="creative-hero">
                     <div class="creative-hero-icon">
                         <i class="fas fa-magic"></i>
@@ -124,13 +123,12 @@
                     </p>
                 </div>
 
-                <!-- TABELA DE CONTEÚDO (abas internas) -->
                 <div class="creative-tabs">
                     <button class="creative-tab active" onclick="creativeTrocarAba('templates')">
                         <i class="fas fa-th"></i> Templates Disponíveis
                     </button>
                     <button class="creative-tab" onclick="creativeTrocarAba('meus')">
-                        <i class="fas fa-cloud-upload-alt"></i> Meus Arquivos
+                        <i class="fas fa-cloud-upload-alt"></i> Enviar / Meus Arquivos
                     </button>
                 </div>
 
@@ -158,38 +156,58 @@
                     </div>
                 </div>
 
-                <!-- ABA: MEUS ARQUIVOS (UPLOAD) -->
+                <!-- ABA: MEUS ARQUIVOS (UPLOAD PÚBLICO) -->
                 <div class="creative-panel" id="creativePanelMeus">
                     <div class="creative-info-box">
-                        <i class="fas fa-lock"></i>
+                        <i class="fas fa-cloud-upload-alt"></i>
                         <div>
-                            <strong>Acesso restrito</strong>
-                            <p>Envie seus PSDs através do painel administrativo. 
-                            Os arquivos ficarão disponíveis aqui para edição.</p>
+                            <strong>Envie seu PSD</strong>
+                            <p>Faça upload de arquivos <strong>.psd</strong> para editar no navegador. 
+                            Depois de enviar, seu PSD aparecerá na lista abaixo.</p>
                         </div>
                     </div>
 
-                    <div class="creative-info-box" style="border-left-color:#D4AF37;">
+                    <div class="cms-upload-area" id="creativeUploadArea" style="background:white; border: 2px dashed #D4AF37; border-radius:16px; padding: 50px 20px; text-align: center; cursor: pointer; transition: all 0.3s;">
+                        <i class="fas fa-cloud-upload-alt" style="font-size:3rem; color:#D4AF37; margin-bottom:15px; display:block;"></i>
+                        <h3 style="color:#0A1C3A; margin-bottom:8px;">Arraste seu PSD aqui</h3>
+                        <p style="color:#86868B; font-size:0.9rem;">ou clique para selecionar</p>
+                        <small style="color:#86868B; font-size:0.8rem; display:block; margin-top:12px;">Arquivos .psd • até 50 MB</small>
+                    </div>
+                    <input type="file" id="creativeUploadInput" accept=".psd,image/vnd.adobe.photoshop" style="display:none;">
+
+                    <div id="creativeUploadProgress" style="display:none; margin-top:20px;">
+                        <div style="background:#F5F5F7; border-radius:12px; padding:20px; text-align:center;">
+                            <p id="creativeUploadStatus" style="color:#0A1C3A; font-weight:600; margin-bottom:12px;">Enviando...</p>
+                            <div style="height:12px; background:#E5E5EA; border-radius:10px; overflow:hidden;">
+                                <div id="creativeUploadBar" style="height:100%; width:0%; background:linear-gradient(90deg,#D4AF37,#F1D570); transition:width 0.3s; border-radius:10px;"></div>
+                            </div>
+                            <p id="creativeUploadPercent" style="color:#D4AF37; font-weight:700; margin-top:10px; font-size:1.2rem;">0%</p>
+                        </div>
+                    </div>
+
+                    <div class="creative-info-box" style="border-left-color:#D4AF37; margin-top:20px;">
                         <i class="fas fa-lightbulb" style="color:#D4AF37;"></i>
                         <div>
                             <strong>Dica:</strong>
-                            <p>Para enviar novos PSDs, acesse o Painel Administrativo 
-                            e faça upload na seção <strong>"IEAD CREATIVE"</strong>.</p>
+                            <p>Após o upload, seu PSD aparecerá na lista abaixo. Clique nele para abrir no editor.
+                            Você pode editar textos, imagens, camadas e exportar como PNG, JPG ou PDF.</p>
                         </div>
                     </div>
 
-                    <div style="text-align:center; padding: 40px 20px;">
-                        <a href="admin.html" class="btn-primary">
-                            <i class="fas fa-lock"></i>
-                            <span>Acessar Painel Administrativo</span>
-                        </a>
+                    <h3 style="color:#D4AF37; margin: 30px 0 20px; font-size:1.3rem;">
+                        <i class="fas fa-list"></i> Meus PSDs Enviados
+                    </h3>
+                    <div class="creative-grid" id="creativeMeusGrid">
+                        <p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:40px;">
+                            Nenhum PSD enviado ainda.
+                        </p>
                     </div>
                 </div>
 
             </main>
         </div>
 
-        <!-- ========== PÁGINA: SOBRE ========== -->
+        <!-- ============ PÁGINA: SOBRE ============ -->
         <div class="page" id="page-sobre">
             <section class="about-section">
                 <div class="about-content">
@@ -223,7 +241,7 @@
             </section>
         </div>
 
-        <!-- ========== PÁGINA: CONTATO ========== -->
+        <!-- ============ PÁGINA: CONTATO ============ -->
         <div class="page" id="page-contato">
             <section class="contact-section">
                 <div class="contact-content">
@@ -296,7 +314,7 @@
         </div>
     </div>
 
-    <script src="config.js?v=30"></script>
-    <script src="app.js?v=30"></script>
+    <script src="config.js?v=32"></script>
+    <script src="app.js?v=32"></script>
 </body>
 </html>

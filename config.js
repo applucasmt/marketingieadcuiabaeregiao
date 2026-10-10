@@ -1,4 +1,4 @@
-/* ============================================================
+        /* ============================================================
  * CONFIGURAÇÃO CENTRAL DO SISTEMA
  * Marketing IEAD Cuiabá e Região
  * ============================================================ */
@@ -22,12 +22,12 @@ const CONFIG = {
     },
 
     LIMITE_UPLOAD_MB: 25,
-    VERSAO: "5.0"
+    VERSAO: "20.0"
 };
 
 /* ============================================================
-   UTILITÁRIOS COMPARTILHADOS
-   ============================================================ */
+ * UTILITÁRIOS COMPARTILHADOS
+ * ============================================================ */
 
 async function apiGet(acao, params = {}) {
     if (!CONFIG.API_URL || CONFIG.API_URL.includes("COLE_AQUI")) {
@@ -94,14 +94,10 @@ function escapeHTML(texto) {
     return div.innerHTML;
 }
 
-/**
- * ⚠️ IMPORTANTE: Aplica cores APENAS no site público.
- * Detecta se está no admin.html e NÃO aplica.
- */
 function aplicarCores(config = {}) {
-    // Detecta se está no painel admin
     if (document.body.classList.contains('cms-body')) return;
-    
+    if (document.querySelector('.cms-sidebar')) return;
+
     const cores = {
         primaria: config.Cor_Primaria || CONFIG.CORES_PADRAO.primaria,
         secundaria: config.Cor_Secundaria || CONFIG.CORES_PADRAO.secundaria,

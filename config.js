@@ -22,7 +22,7 @@ const CONFIG = {
     },
 
     LIMITE_UPLOAD_MB: 25,
-    VERSAO: "20.0"
+    VERSAO: "21.0"
 };
 
 // ============================================================
@@ -30,7 +30,7 @@ const CONFIG = {
 // ============================================================
 
 window.apiGet = async function(acao, params = {}) {
-    if (!window.CONFIG.API_URL || window.CONFIG.API_URL.includes("COLE_AQUI")) {
+    if (!window.CONFIG || !window.CONFIG.API_URL || window.CONFIG.API_URL.includes("COLE_AQUI")) {
         console.warn("⚠️ API_URL não configurada em config.js");
         return null;
     }
@@ -57,7 +57,7 @@ window.apiGet = async function(acao, params = {}) {
 };
 
 window.apiPost = async function(dados) {
-    if (!window.CONFIG.API_URL || window.CONFIG.API_URL.includes("COLE_AQUI")) {
+    if (!window.CONFIG || !window.CONFIG.API_URL || window.CONFIG.API_URL.includes("COLE_AQUI")) {
         console.warn("⚠️ API_URL não configurada em config.js");
         return { status: "erro", mensagem: "API não configurada" };
     }
@@ -95,7 +95,6 @@ window.escapeHTML = function(texto) {
 };
 
 window.aplicarCores = function(config = {}) {
-    // Não aplica cores no painel admin
     if (document.body.classList.contains('cms-body')) return;
     if (document.querySelector('.cms-sidebar')) return;
 
@@ -111,3 +110,4 @@ window.aplicarCores = function(config = {}) {
 };
 
 console.log("✅ config.js carregado com sucesso");
+console.log("CONFIG.API_URL:", window.CONFIG.API_URL);

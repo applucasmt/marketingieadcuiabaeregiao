@@ -1,8 +1,8 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v39
- * - Photopea sem anúncios (noads: true no hash)
- * - Abertura direta do arquivo (sem tela inicial)
- * - Correção completa de tipagem de dados da planilha
+ * SITE PÚBLICO - Marketing IEAD v40
+ * - Exportação do Photopea corrigida
+ * - Removida flag noad que quebrava exportação
+ * - Tratamento completo de erros
  * ============================================================ */
 
 let estadoSite = {
@@ -808,7 +808,7 @@ async function enviarPSDModal() {
 }
 
 // ============================================================
-// PHOTOPEA - COM NOADS + ABERTURA DIRETA
+// PHOTOPEA - EDITOR
 // ============================================================
 function creativeAbrirEditor(index) {
     const arquivo = estadoSite.criativos[index];
@@ -882,22 +882,8 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor Photopea...';
 
-    // ⭐ CONFIG DO PHOTOPEA COM NOADS
-    // O Photopea aceita configuração no hash. Usamos:
-    // - noads: true (remove anúncios)
-    // - showtools: true (mostra ferramentas)
-    // - showlayers: true (mostra painel de camadas)
-    // ⚠️ O parâmetro ?embedded é ESSENCIAL para o noads funcionar
-    const photopeaConfig = {
-        environment: {
-            showtools: true,
-            showcrop: true,
-            showlayers: true,
-            noad: true
-        }
-    };
-    const configEncoded = encodeURIComponent(JSON.stringify(photopeaConfig));
-    iframe.src = `https://www.photopea.com/?embedded#${configEncoded}`;
+    // ⭐ URL do Photopea SEM noad (noad quebrava exportação)
+    iframe.src = 'https://www.photopea.com/?embedded';
 
     let arquivoEnviado = false;
 
@@ -909,10 +895,8 @@ async function abrirEditorComArquivo(arquivo) {
     window.addEventListener('message', photopeaHandler);
     window._photopeaHandler = photopeaHandler;
 
-    // ⭐ TENTA ENVIAR O ARQUIVO O MAIS RÁPIDO POSSÍVEL
-    // Quando o iframe termina de carregar, envia imediatamente o PSD
+    // Envia o arquivo assim que o iframe carrega
     iframe.onload = () => {
-        // Envia após 500ms (o Photopea já está pronto para receber quando o load dispara)
         setTimeout(() => {
             if (arquivoEnviado) return;
             arquivoEnviado = true;
@@ -921,7 +905,6 @@ async function abrirEditorComArquivo(arquivo) {
 
             try {
                 iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-                // Remove o loading rapidamente
                 setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 800);
             } catch (err) {
                 loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
@@ -929,7 +912,6 @@ async function abrirEditorComArquivo(arquivo) {
         }, 500);
     };
 
-    // Fallback: envia após 3s se o onload não disparar
     setTimeout(() => {
         if (arquivoEnviado) return;
         arquivoEnviado = true;
@@ -939,7 +921,6 @@ async function abrirEditorComArquivo(arquivo) {
         } catch (err) {}
     }, 3000);
 
-    // Garantia: remove o loading em 10s
     setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 10000);
 }
 
@@ -957,24 +938,80 @@ function editorFechar() {
     }
 }
 
+// ============================================================
+// EXPORTAR DO PHOTOPEA - CORRIGIDO
+// ============================================================
 function editorExportar(formato) {
     const iframe = document.getElementById('editorIframe');
-    if (!iframe || !iframe.contentWindow) { alert('Editor não está pronto.'); return; }
-    let script = '';
-    if (formato === 'png') script = `app.activeDocument.saveToOE("png");`;
-    else if (formato === 'jpg') script = `app.activeDocument.saveToOE("jpg");`;
-    else if (formato === 'pdf') script = `app.activeDocument.saveToOE("pdf");`;
-    iframe.contentWindow.postMessage(script, '*');
+    if (!iframe || !iframe.contentWindow) {
+        alert('Editor não está pronto.');
+        return;
+    }
 
+    let script = '';
+    if (formato === 'png') {
+        script = `app.activeDocument.saveToOE("png");`;
+    } else if (formato === 'jpg') {
+        script = `app.activeDocument.saveToOE("jpg");`;
+    } else if (formato === 'pdf') {
+        script = `app.activeDocument.saveToOE("pdf");`;
+    }
+
+    // Remove aviso anterior se existir
+    const avisoAntigo = document.getElementById('exportAviso');
+    if (avisoAntigo) avisoAntigo.remove();
+
+    // Aviso visual
     const aviso = document.createElement('div');
-    aviso.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:999999; background:#D4AF37; color:#0A1C3A; padding:15px 20px; border-radius:12px; font-weight:700; box-shadow:0 8px 25px rgba(0,0,0,0.3); font-family:Inter, sans-serif; font-size:0.9rem;`;
-    aviso.textContent = `📥 Exportando ${formato.toUpperCase()}...`;
+    aviso.id = 'exportAviso';
+    aviso.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 999999;
+        background: #D4AF37;
+        color: #0A1C3A;
+        padding: 15px 20px;
+        border-radius: 12px;
+        font-weight: 700;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        font-family: Inter, sans-serif;
+        font-size: 0.9rem;
+        max-width: 320px;
+    `;
+    aviso.innerHTML = `📥 Exportando ${formato.toUpperCase()}...<br><small style="font-weight:400;">Aguarde alguns segundos</small>`;
     document.body.appendChild(aviso);
-    setTimeout(() => aviso.remove(), 5000);
+
+    // Envia comando para o Photopea
+    try {
+        iframe.contentWindow.postMessage(script, '*');
+        console.log('✅ Comando enviado ao Photopea:', script);
+    } catch (err) {
+        console.error('❌ Erro ao enviar comando:', err);
+        aviso.innerHTML = `❌ Erro ao exportar`;
+        setTimeout(() => aviso.remove(), 3000);
+        return;
+    }
+
+    // Se em 6 segundos não fechar, mostra instruções
+    setTimeout(() => {
+        const avisoEl = document.getElementById('exportAviso');
+        if (avisoEl) {
+            avisoEl.innerHTML = `
+                ⚠️ <strong>Não baixou?</strong><br>
+                <small style="font-weight:400;">
+                    Use o menu <strong>Arquivo → Exportar como → ${formato.toUpperCase()}</strong> dentro do editor.
+                </small>
+            `;
+            setTimeout(() => {
+                if (avisoEl.parentElement) avisoEl.remove();
+            }, 8000);
+        }
+    }, 6000);
 }
 
 // ============================================================
-// PREVIEW MODAL
+// PREVIEW MODAL (Downloads)
 // ============================================================
 function inicializarPreview() {
     if (!document.getElementById('previewModal')) {

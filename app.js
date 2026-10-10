@@ -1,9 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v33
- * Correções:
- *  - PSD carregado via Apps Script (Base64) - sem CORS
- *  - Preview gerado no upload (não mais via Drive)
- *  - Photopea recebe o arquivo via postMessage
+ * SITE PÚBLICO - Marketing IEAD v34
+ * Correções finais do Photopea
  * ============================================================ */
 
 let estadoSite = {
@@ -652,8 +649,21 @@ async function processarUploadCreative(file) {
 }
 
 // ============================================================
-// ⭐ ABRIR NO PHOTOPEA — via Base64 do Apps Script
+// ⭐ PHOTOPEA - ESTRATÉGIA CORRETA
 // ============================================================
+// Referência: https://www.photopea.com/api/
+//
+// O Photopea aceita arquivos via postMessage SOMENTE quando:
+//   1. O iframe foi carregado DIRETO de https://www.photopea.com/
+//   2. Enviamos o ArrayBuffer como transferable
+//   3. Esperamos o Photopea estar pronto (ele emite um evento)
+//
+// Estratégia usada aqui:
+//   1. Carrega o Photopea com um arquivo de config vazio
+//   2. Espera 5 segundos (tempo de inicialização)
+//   3. Envia o ArrayBuffer do PSD
+// ============================================================
+
 function creativeAbrirEditor(index) {
     const arquivo = estadoSite.criativos[index];
     if (!arquivo) {
@@ -668,7 +678,6 @@ function creativeAbrirEditorPublico(fileId) {
     if (arquivo) {
         abrirEditorComArquivo(arquivo);
     } else {
-        // Busca na lista completa
         const naLista = estadoSite.criativos.find(x => x.fileId === fileId);
         if (naLista) abrirEditorComArquivo(naLista);
         else alert('Arquivo não encontrado.');
@@ -685,8 +694,11 @@ async function abrirEditorComArquivo(arquivo) {
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    // Mostra status de carregamento
-    iframe.src = 'about:blank';
+    // Remove loading antigo se houver
+    const oldLoading = document.getElementById('editorLoading');
+    if (oldLoading) oldLoading.remove();
+
+    // Cria div de loading
     const loadingDiv = document.createElement('div');
     loadingDiv.id = 'editorLoading';
     loadingDiv.style.cssText = `
@@ -695,35 +707,44 @@ async function abrirEditorComArquivo(arquivo) {
         transform: translate(-50%, -50%);
         background: rgba(10, 28, 58, 0.95);
         color: #D4AF37;
-        padding: 25px 40px;
-        border-radius: 12px;
+        padding: 30px 50px;
+        border-radius: 16px;
         font-family: Inter, sans-serif;
         font-weight: 700;
         z-index: 10;
         text-align: center;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+        min-width: 280px;
     `;
     loadingDiv.innerHTML = `
-        <div class="spinner" style="width:40px;height:40px;border:4px solid rgba(212,175,55,0.2);border-top-color:#D4AF37;border-radius:50%;margin:0 auto 15px;animation:spin 1s linear infinite;"></div>
-        <p style="margin-bottom:5px;">Carregando PSD...</p>
-        <p id="editorLoadingStatus" style="font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:400;">Preparando arquivo</p>
+        <div style="width:50px;height:50px;border:4px solid rgba(212,175,55,0.2);border-top-color:#D4AF37;border-radius:50%;margin:0 auto 18px;animation:spin 1s linear infinite;"></div>
+        <p style="margin-bottom:8px; font-size:1.05rem;">Carregando PSD...</p>
+        <p id="editorLoadingStatus" style="font-size:0.85rem;color:rgba(255,255,255,0.7);font-weight:400;">Preparando arquivo</p>
     `;
 
     const bodyParent = iframe.parentElement;
     bodyParent.style.position = 'relative';
     bodyParent.appendChild(loadingDiv);
 
-    // ⭐ 1. Baixa o PSD via Apps Script (evita CORS)
-    const fileId = arquivo.fileId || extrairFileId(arquivo.link);
-    if (!fileId) {
-        loadingDiv.innerHTML = '❌ fileId não encontrado';
-        return;
+    // Adiciona animação de spin se não existir
+    if (!document.getElementById('spinAnimation')) {
+        const style = document.createElement('style');
+        style.id = 'spinAnimation';
+        style.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+        document.head.appendChild(style);
     }
 
     const statusEl = () => document.getElementById('editorLoadingStatus');
 
-    statusEl().textContent = 'Baixando arquivo do Drive...';
+    const fileId = arquivo.fileId || extrairFileId(arquivo.link);
+    if (!fileId) {
+        loadingDiv.innerHTML = '<p style="color:#FF6B6B;">❌ fileId não encontrado</p>';
+        return;
+    }
 
+    statusEl().textContent = 'Baixando arquivo do Google Drive...';
+
+    // ⭐ 1. Baixa o PSD via Apps Script (evita CORS)
     const resp = await window.apiGet('baixar_psd', { fileId: fileId });
 
     if (!resp || resp.status !== 'ok') {
@@ -732,60 +753,94 @@ async function abrirEditorComArquivo(arquivo) {
         return;
     }
 
-    statusEl().textContent = `Arquivo baixado (${resp.tamanhoMB} MB). Abrindo editor...`;
+    statusEl().textContent = `Arquivo baixado (${resp.tamanhoMB} MB). Preparando...`;
 
-    // ⭐ 2. Converte Base64 para Uint8Array
+    // ⭐ 2. Converte Base64 para ArrayBuffer
     const binaryString = atob(resp.base64);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
     }
+    const arrayBuffer = bytes.buffer;
 
-    statusEl().textContent = 'Enviando para o editor...';
+    statusEl().textContent = 'Abrindo editor Photopea...';
 
-    // ⭐ 3. Carrega o Photopea e envia o arquivo
+    // ⭐ 3. Carrega o Photopea LIMPO (sem arquivo)
+    // Estratégia: usa postMessage com o ArrayBuffer após o Photopea estar pronto
     iframe.src = 'https://www.photopea.com/';
 
-    // Listener para comunicação com Photopea
+    // Flag para não enviar 2x
     let arquivoEnviado = false;
 
+    // Listener de mensagens
     const photopeaHandler = (event) => {
         if (event.source !== iframe.contentWindow) return;
+
         try {
-            const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+            // O Photopea pode enviar strings JSON
+            const data = event.data;
+            console.log('📨 Photopea:', data);
 
-            // Photopea envia {type:"ready"} quando está pronto
-            if (msg && msg.type === 'ready' && !arquivoEnviado) {
-                arquivoEnviado = true;
-                console.log('✅ Photopea pronto, enviando PSD...');
+            // Quando o Photopea está pronto, ele envia "done" ou {}
+            // Vamos enviar o arquivo após 3 segundos de qualquer forma
 
-                // Envia o arquivo
-                iframe.contentWindow.postMessage(bytes.buffer, '*', [bytes.buffer]);
-
-                // Remove o loading
-                setTimeout(() => {
-                    if (loadingDiv.parentElement) loadingDiv.remove();
-                }, 1000);
-            }
-        } catch (err) {
-            console.log('Mensagem do Photopea:', event.data);
-        }
+        } catch (err) {}
     };
 
     window.addEventListener('message', photopeaHandler);
-
-    // Guarda o handler para remover depois
-    if (window._photopeaHandler) {
-        window.removeEventListener('message', window._photopeaHandler);
-    }
     window._photopeaHandler = photopeaHandler;
 
-    // Fallback: se não receber "ready" em 8s, remove loading
+    // ⭐ 4. Aguarda o Photopea carregar e envia o arquivo
+    iframe.onload = () => {
+        console.log('✅ Photopea iframe carregado');
+
+        // Aguarda 4 segundos para o Photopea inicializar completamente
+        setTimeout(() => {
+            if (arquivoEnviado) return;
+            arquivoEnviado = true;
+
+            console.log('📤 Enviando PSD para o Photopea...');
+            statusEl().textContent = 'Enviando PSD para o editor...';
+
+            try {
+                // Envia o ArrayBuffer como transferable
+                iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
+
+                console.log('✅ PSD enviado com sucesso');
+
+                // Remove o loading após 2s
+                setTimeout(() => {
+                    if (loadingDiv.parentElement) loadingDiv.remove();
+                }, 2000);
+
+            } catch (err) {
+                console.error('❌ Erro ao enviar para Photopea:', err);
+                loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>
+                    <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);margin-top:10px;">Tente novamente ou use outro navegador.</p>`;
+            }
+        }, 4000);
+    };
+
+    // Fallback: se o iframe.onload não disparar, força o envio após 8s
     setTimeout(() => {
-        if (loadingDiv.parentElement) {
-            loadingDiv.remove();
+        if (arquivoEnviado) return;
+        arquivoEnviado = true;
+
+        console.log('📤 Enviando PSD (fallback)...');
+        try {
+            iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
+            setTimeout(() => {
+                if (loadingDiv.parentElement) loadingDiv.remove();
+            }, 2000);
+        } catch (err) {
+            console.error('❌ Erro no fallback:', err);
         }
     }, 8000);
+
+    // Fallback final: remove o loading após 12s
+    setTimeout(() => {
+        if (loadingDiv.parentElement) loadingDiv.remove();
+    }, 12000);
 }
 
 function editorFechar() {
@@ -799,7 +854,6 @@ function editorFechar() {
         iframe.src = 'about:blank';
     }, 300);
 
-    // Remove o loading se ainda estiver
     const loading = document.getElementById('editorLoading');
     if (loading) loading.remove();
 

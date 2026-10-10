@@ -1,6 +1,6 @@
 /* ============================================================
- * PAINEL ADMINISTRATIVO - Marketing IEAD v22
- * Com upload múltiplo + categorias
+ * PAINEL ADMINISTRATIVO - Marketing IEAD v31
+ * Com IEAD Creative + Sistema de Categorias + Upload Múltiplo
  * ============================================================ */
 
 console.log("🚀 admin.js carregando...");
@@ -36,8 +36,12 @@ let cmsEstado = {
     categorias: [],
     carrossel: [],
     menus: [],
-    arquivosAtuais: []  // ← array para múltiplos
+    criativos: [],
+    arquivosAtuais: []
 };
+
+let cmsCreativeArquivo = null;
+let cmsCreativeThumb = null;
 
 // ============================================================
 // LOGIN
@@ -106,6 +110,7 @@ window.cmsMostrarPainel = function() {
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOMContentLoaded - admin.js ativo');
+    console.log('window.CONFIG:', typeof window.CONFIG !== 'undefined' ? 'OK' : 'NÃO DEFINIDO');
 
     if (sessionStorage.getItem('adminLogged') === 'true') {
         console.log('🔓 Sessão ativa — auto-login');
@@ -144,9 +149,11 @@ document.querySelectorAll('.cms-nav a').forEach(link => {
 // ============================================================
 window.cmsCarregarTudo = async function() {
     try {
+        console.log('📥 Carregando dados...');
         const dados = await window.apiGet('tudo');
 
         if (!dados) {
+            console.warn('⚠️ Sem dados (API offline)');
             const statusText = document.getElementById('cmsStatusText');
             if (statusText) statusText.textContent = '⚠️ Modo offline';
             window.cmsRenderizarDashboard();
@@ -155,6 +162,7 @@ window.cmsCarregarTudo = async function() {
             window.cmsRenderizarCategoriasAdmin();
             window.cmsRenderizarCarrossel();
             window.cmsRenderizarMenus();
+            window.cmsRenderizarCreativeList();
             window.cmsPreencherFormularios();
             return;
         }
@@ -164,6 +172,9 @@ window.cmsCarregarTudo = async function() {
         cmsEstado.categorias = dados.categorias || [];
         cmsEstado.carrossel = dados.carrossel || [];
         cmsEstado.menus = dados.menus || [];
+        cmsEstado.criativos = dados.criativos || [];
+
+        console.log('✅ Dados carregados:', cmsEstado);
 
         cmsEstado.categorias.forEach(c => {
             c.total_arquivos = cmsEstado.arquivos.filter(a => (a.categoria || '').trim() === c.nome).length;
@@ -175,6 +186,7 @@ window.cmsCarregarTudo = async function() {
         window.cmsRenderizarCategoriasAdmin();
         window.cmsRenderizarCarrossel();
         window.cmsRenderizarMenus();
+        window.cmsRenderizarCreativeList();
         window.cmsPreencherFormularios();
     } catch (err) {
         console.error('❌ Erro:', err);
@@ -396,7 +408,6 @@ cmsUploadArea?.addEventListener('drop', e => {
     e.preventDefault();
     cmsUploadArea.classList.remove('cms-dragover');
     if (e.dataTransfer.files.length) {
-        // ✅ Múltiplos arquivos via drag & drop
         cmsFileInput.files = e.dataTransfer.files;
         window.cmsSelecionarArquivos(Array.from(e.dataTransfer.files));
     }
@@ -407,7 +418,6 @@ cmsFileInput?.addEventListener('change', () => {
     }
 });
 
-// ✅ NOVO: recebe ARRAY de arquivos
 window.cmsSelecionarArquivos = function(files) {
     cmsEstado.arquivosAtuais = files;
 
@@ -421,7 +431,6 @@ window.cmsSelecionarArquivos = function(files) {
 
     previewDiv.style.display = 'block';
 
-    // Mostra cada arquivo com miniatura
     const itensHTML = files.map((file, idx) => {
         const sizeMB = (file.size / 1024 / 1024).toFixed(2);
         const isImg = file.type.startsWith('image/');
@@ -457,7 +466,6 @@ window.cmsSelecionarArquivos = function(files) {
         </button>
     `;
 
-    // Preenche o nome amigável apenas se for 1 arquivo
     if (files.length === 1) {
         const f = files[0];
         const nomeBase = f.name.replace(/\.[^/.]+$/, '');
@@ -474,7 +482,6 @@ window.cmsLimparSelecao = function() {
     document.getElementById('cmsNomeAmigavel').value = '';
 };
 
-// ✅ UPLOAD EM LOTE
 document.getElementById('cmsUploadBtn')?.addEventListener('click', async () => {
     const files = cmsEstado.arquivosAtuais || [];
 
@@ -490,7 +497,6 @@ document.getElementById('cmsUploadBtn')?.addEventListener('click', async () => {
     const descricao = document.getElementById('cmsDescricaoUpload').value;
     const nomeAmigavel = document.getElementById('cmsNomeAmigavel').value;
 
-    // Valida tamanho de todos
     const arquivosGrandes = files.filter(f => f.size > limiteMB * 1024 * 1024);
     if (arquivosGrandes.length) {
         status.innerHTML = `<div class="cms-status-msg cms-error">
@@ -544,7 +550,6 @@ document.getElementById('cmsUploadBtn')?.addEventListener('click', async () => {
         }
     }
 
-    // Finalização
     if (falhas === 0) {
         status.innerHTML = `<div class="cms-status-msg cms-success">
             ✅ ${sucessos} arquivo${sucessos > 1 ? 's' : ''} enviado${sucessos > 1 ? 's' : ''} com sucesso!
@@ -561,7 +566,6 @@ document.getElementById('cmsUploadBtn')?.addEventListener('click', async () => {
         </div>`;
     }
 
-    // Limpa
     cmsEstado.arquivosAtuais = [];
     cmsFileInput.value = '';
     document.getElementById('cmsUploadPreview').style.display = 'none';
@@ -571,9 +575,160 @@ document.getElementById('cmsUploadBtn')?.addEventListener('click', async () => {
     btn.disabled = false;
     btn.innerHTML = '<svg class="cms-icon"><use href="#i-upload"></use></svg><span>Enviar para o Google Drive</span>';
 
-    // Recarrega
     window.cmsCarregarTudo();
 });
+
+// ============================================================
+// IEAD CREATIVE
+// ============================================================
+const cmsCreativeUploadArea = document.getElementById('cmsCreativeUploadArea');
+const cmsCreativeFileInput = document.getElementById('cmsCreativeFileInput');
+
+cmsCreativeUploadArea?.addEventListener('click', () => cmsCreativeFileInput.click());
+cmsCreativeUploadArea?.addEventListener('dragover', e => { e.preventDefault(); cmsCreativeUploadArea.classList.add('cms-dragover'); });
+cmsCreativeUploadArea?.addEventListener('dragleave', () => cmsCreativeUploadArea.classList.remove('cms-dragover'));
+cmsCreativeUploadArea?.addEventListener('drop', e => {
+    e.preventDefault();
+    cmsCreativeUploadArea.classList.remove('cms-dragover');
+    if (e.dataTransfer.files.length) {
+        cmsCreativeFileInput.files = e.dataTransfer.files;
+        window.cmsSelecionarCreative(e.dataTransfer.files[0]);
+    }
+});
+cmsCreativeFileInput?.addEventListener('change', () => {
+    if (cmsCreativeFileInput.files.length) window.cmsSelecionarCreative(cmsCreativeFileInput.files[0]);
+});
+
+document.getElementById('cmsCreativeThumb')?.addEventListener('change', function() {
+    if (this.files.length) {
+        cmsCreativeThumb = this.files[0];
+        alert('✅ Miniatura selecionada: ' + this.files[0].name);
+    }
+});
+
+window.cmsSelecionarCreative = function(file) {
+    cmsCreativeArquivo = file;
+    document.getElementById('cmsCreativeUploadPreview').style.display = 'block';
+    const previewContent = document.getElementById('cmsCreativePreviewContent');
+    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+
+    previewContent.innerHTML = `
+        <svg class="cms-icon cms-icon-3xl" style="color:#D4AF37;"><use href="#i-magic"></use></svg>
+        <p style="color:#0A1C3A;font-weight:600;">${file.name}</p>
+        <p style="color:#86868B;font-size:0.85rem;">${sizeMB} MB • Arquivo PSD</p>
+    `;
+
+    document.getElementById('cmsCreativeNome').value = file.name.replace(/\.[^/.]+$/, '');
+};
+
+document.getElementById('cmsCreativeUploadBtn')?.addEventListener('click', async () => {
+    if (!cmsCreativeArquivo) {
+        alert('Selecione um arquivo PSD primeiro!');
+        return;
+    }
+
+    const status = document.getElementById('cmsCreativeUploadStatus');
+    const btn = document.getElementById('cmsCreativeUploadBtn');
+    const nome = document.getElementById('cmsCreativeNome').value.trim() || cmsCreativeArquivo.name;
+    const descricao = document.getElementById('cmsCreativeDescricao').value.trim();
+
+    if (cmsCreativeArquivo.size > 25 * 1024 * 1024) {
+        status.innerHTML = `<div class="cms-status-msg cms-error">❌ Arquivo muito grande (máx: 25 MB)</div>`;
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="cms-icon cms-spin"><use href="#i-spinner"></use></svg><span>Enviando PSD...</span>';
+    status.innerHTML = '<div class="cms-status-msg">⏳ Lendo arquivo PSD...</div>';
+
+    try {
+        const base64 = await base64FromFile(cmsCreativeArquivo);
+
+        let thumbBase64 = null;
+        if (cmsCreativeThumb) {
+            status.innerHTML = '<div class="cms-status-msg">⏳ Processando miniatura...</div>';
+            const thumbData = await base64FromFile(cmsCreativeThumb);
+            thumbBase64 = thumbData.split(',')[1];
+        }
+
+        status.innerHTML = '<div class="cms-status-msg">⏳ Enviando para o Google Drive...</div>';
+
+        const result = await window.apiPost({
+            acao: 'creative_upload',
+            nomeArquivo: cmsCreativeArquivo.name,
+            tipoMime: cmsCreativeArquivo.type || 'image/vnd.adobe.photoshop',
+            dadosBase64: base64.split(',')[1],
+            nome: nome,
+            descricao: descricao,
+            thumbBase64: thumbBase64,
+            thumbTipoMime: cmsCreativeThumb ? cmsCreativeThumb.type : null
+        });
+
+        if (result && result.status === 'ok') {
+            status.innerHTML = `<div class="cms-status-msg cms-success">✅ PSD enviado com sucesso!</div>`;
+            cmsCreativeArquivo = null;
+            cmsCreativeThumb = null;
+            cmsCreativeFileInput.value = '';
+            document.getElementById('cmsCreativeUploadPreview').style.display = 'none';
+            document.getElementById('cmsCreativeNome').value = '';
+            document.getElementById('cmsCreativeDescricao').value = '';
+            document.getElementById('cmsCreativeThumb').value = '';
+            window.cmsCarregarTudo();
+        } else {
+            status.innerHTML = `<div class="cms-status-msg cms-error">❌ ${result?.mensagem || 'Erro desconhecido'}</div>`;
+        }
+    } catch (err) {
+        status.innerHTML = `<div class="cms-status-msg cms-error">❌ ${err.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="cms-icon"><use href="#i-upload"></use></svg><span>Enviar PSD para o Drive</span>';
+    }
+});
+
+window.cmsRenderizarCreativeList = function() {
+    const container = document.getElementById('cmsCreativeList');
+    if (!container) return;
+
+    const criativos = cmsEstado.criativos || [];
+
+    if (!criativos.length) {
+        container.innerHTML = '<p class="cms-empty">Nenhum template PSD ainda. Faça upload acima.</p>';
+        return;
+    }
+
+    container.innerHTML = criativos.map(c => `
+        <div class="cms-arquivo-item">
+            <div class="cms-arquivo-preview" style="background: linear-gradient(135deg, #1A3A6B, #0A1C3A);">
+                ${c.preview 
+                    ? `<img src="${c.preview}" class="cms-preview-thumb" alt="">`
+                    : `<svg class="cms-icon" style="width:36px;height:36px;color:#D4AF37;"><use href="#i-magic"></use></svg>`
+                }
+            </div>
+            <div class="cms-arquivo-info">
+                <h4>${escHTML(c.nome)}</h4>
+                <p>${escHTML(c.descricao || '')}</p>
+                <div class="cms-arquivo-meta">
+                    <span class="cms-tag">PSD</span>
+                    ${c.tamanho ? `<span class="cms-tag">${escHTML(c.tamanho)}</span>` : ''}
+                </div>
+            </div>
+            <div class="cms-arquivo-actions">
+                <a href="${c.link}" target="_blank" rel="noopener" class="cms-btn-icon" title="Abrir">
+                    <svg class="cms-icon"><use href="#i-external"></use></svg>
+                </a>
+                <button onclick="cmsRemoverCreative(${c.id})" class="cms-btn-icon cms-danger" title="Excluir">
+                    <svg class="cms-icon"><use href="#i-trash"></use></svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+};
+
+window.cmsRemoverCreative = async function(id) {
+    if (!confirm('Remover este template PSD?')) return;
+    const r = await window.apiPost({ acao: 'creative_remover', id });
+    if (r && r.status === 'ok') window.cmsCarregarTudo();
+};
 
 // ============================================================
 // CARROSSEL
@@ -873,164 +1028,3 @@ document.addEventListener('keydown', e => {
 });
 
 console.log("✅ admin.js carregado com sucesso - CONFIG:", window.CONFIG ? 'OK' : 'NÃO DEFINIDO');
-
-
-// ============================================================
-// IEAD CREATIVE - UPLOAD DE PSD
-// ============================================================
-let cmsCreativeArquivo = null;
-let cmsCreativeThumb = null;
-
-const cmsCreativeUploadArea = document.getElementById('cmsCreativeUploadArea');
-const cmsCreativeFileInput = document.getElementById('cmsCreativeFileInput');
-
-cmsCreativeUploadArea?.addEventListener('click', () => cmsCreativeFileInput.click());
-cmsCreativeUploadArea?.addEventListener('dragover', e => { e.preventDefault(); cmsCreativeUploadArea.classList.add('cms-dragover'); });
-cmsCreativeUploadArea?.addEventListener('dragleave', () => cmsCreativeUploadArea.classList.remove('cms-dragover'));
-cmsCreativeUploadArea?.addEventListener('drop', e => {
-    e.preventDefault();
-    cmsCreativeUploadArea.classList.remove('cms-dragover');
-    if (e.dataTransfer.files.length) {
-        cmsCreativeFileInput.files = e.dataTransfer.files;
-        window.cmsSelecionarCreative(e.dataTransfer.files[0]);
-    }
-});
-cmsCreativeFileInput?.addEventListener('change', () => {
-    if (cmsCreativeFileInput.files.length) window.cmsSelecionarCreative(cmsCreativeFileInput.files[0]);
-});
-
-document.getElementById('cmsCreativeThumb')?.addEventListener('change', function() {
-    if (this.files.length) {
-        cmsCreativeThumb = this.files[0];
-        alert('✅ Miniatura selecionada: ' + this.files[0].name);
-    }
-});
-
-window.cmsSelecionarCreative = function(file) {
-    cmsCreativeArquivo = file;
-    document.getElementById('cmsCreativeUploadPreview').style.display = 'block';
-    const previewContent = document.getElementById('cmsCreativePreviewContent');
-    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-
-    previewContent.innerHTML = `
-        <svg class="cms-icon cms-icon-3xl" style="color:#D4AF37;"><use href="#i-magic"></use></svg>
-        <p style="color:#0A1C3A;font-weight:600;">${file.name}</p>
-        <p style="color:#86868B;font-size:0.85rem;">${sizeMB} MB • Arquivo PSD</p>
-    `;
-
-    document.getElementById('cmsCreativeNome').value = file.name.replace(/\.[^/.]+$/, '');
-};
-
-document.getElementById('cmsCreativeUploadBtn')?.addEventListener('click', async () => {
-    if (!cmsCreativeArquivo) {
-        alert('Selecione um arquivo PSD primeiro!');
-        return;
-    }
-
-    const status = document.getElementById('cmsCreativeUploadStatus');
-    const btn = document.getElementById('cmsCreativeUploadBtn');
-    const nome = document.getElementById('cmsCreativeNome').value.trim() || cmsCreativeArquivo.name;
-    const descricao = document.getElementById('cmsCreativeDescricao').value.trim();
-
-    if (cmsCreativeArquivo.size > 25 * 1024 * 1024) {
-        status.innerHTML = `<div class="cms-status-msg cms-error">❌ Arquivo muito grande (máx: 25 MB)</div>`;
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = '<svg class="cms-icon cms-spin"><use href="#i-spinner"></use></svg><span>Enviando PSD...</span>';
-    status.innerHTML = '<div class="cms-status-msg">⏳ Lendo arquivo PSD...</div>';
-
-    try {
-        const base64 = await base64FromFile(cmsCreativeArquivo);
-
-        let thumbBase64 = null;
-        if (cmsCreativeThumb) {
-            status.innerHTML = '<div class="cms-status-msg">⏳ Processando miniatura...</div>';
-            const thumbData = await base64FromFile(cmsCreativeThumb);
-            thumbBase64 = thumbData.split(',')[1];
-        }
-
-        status.innerHTML = '<div class="cms-status-msg">⏳ Enviando para o Google Drive...</div>';
-
-        const result = await window.apiPost({
-            acao: 'creative_upload',
-            nomeArquivo: cmsCreativeArquivo.name,
-            tipoMime: cmsCreativeArquivo.type || 'image/vnd.adobe.photoshop',
-            dadosBase64: base64.split(',')[1],
-            nome: nome,
-            descricao: descricao,
-            thumbBase64: thumbBase64,
-            thumbTipoMime: cmsCreativeThumb ? cmsCreativeThumb.type : null
-        });
-
-        if (result && result.status === 'ok') {
-            status.innerHTML = `<div class="cms-status-msg cms-success">✅ PSD enviado com sucesso!</div>`;
-            cmsCreativeArquivo = null;
-            cmsCreativeThumb = null;
-            cmsCreativeFileInput.value = '';
-            document.getElementById('cmsCreativeUploadPreview').style.display = 'none';
-            document.getElementById('cmsCreativeNome').value = '';
-            document.getElementById('cmsCreativeDescricao').value = '';
-            window.cmsCarregarTudo();
-        } else {
-            status.innerHTML = `<div class="cms-status-msg cms-error">❌ ${result?.mensagem || 'Erro desconhecido'}</div>`;
-        }
-    } catch (err) {
-        status.innerHTML = `<div class="cms-status-msg cms-error">❌ ${err.message}</div>`;
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<svg class="cms-icon"><use href="#i-upload"></use></svg><span>Enviar PSD para o Drive</span>';
-    }
-});
-
-// Listagem de PSDs
-window.cmsRenderizarCreativeList = function() {
-    const container = document.getElementById('cmsCreativeList');
-    if (!container) return;
-
-    const criativos = cmsEstado.criativos || [];
-
-    if (!criativos.length) {
-        container.innerHTML = '<p class="cms-empty">Nenhum template PSD ainda. Faça upload acima.</p>';
-        return;
-    }
-
-    container.innerHTML = criativos.map(c => `
-        <div class="cms-arquivo-item">
-            <div class="cms-arquivo-preview" style="background: linear-gradient(135deg, #1A3A6B, #0A1C3A);">
-                ${c.preview 
-                    ? `<img src="${c.preview}" class="cms-preview-thumb" alt="">`
-                    : `<svg class="cms-icon" style="width:36px;height:36px;color:#D4AF37;"><use href="#i-magic"></use></svg>`
-                }
-            </div>
-            <div class="cms-arquivo-info">
-                <h4>${escHTML(c.nome)}</h4>
-                <p>${escHTML(c.descricao || '')}</p>
-                <div class="cms-arquivo-meta">
-                    <span class="cms-tag">PSD</span>
-                    ${c.tamanho ? `<span class="cms-tag">${escHTML(c.tamanho)}</span>` : ''}
-                </div>
-            </div>
-            <div class="cms-arquivo-actions">
-                <a href="${c.link}" target="_blank" rel="noopener" class="cms-btn-icon" title="Abrir">
-                    <svg class="cms-icon"><use href="#i-external"></use></svg>
-                </a>
-                <button onclick="cmsRemoverCreative(${c.id})" class="cms-btn-icon cms-danger" title="Excluir">
-                    <svg class="cms-icon"><use href="#i-trash"></use></svg>
-                </button>
-            </div>
-        </div>
-    `).join('');
-};
-
-window.cmsRemoverCreative = async function(id) {
-    if (!confirm('Remover este template PSD?')) return;
-    const r = await window.apiPost({ acao: 'creative_remover', id });
-    if (r && r.status === 'ok') window.cmsCarregarTudo();
-};
-
-// ⚠️ IMPORTANTE: dentro de cmsCarregarTudo(), adicione:
-// cmsEstado.criativos = dados.criativos || [];
-// E depois chame:
-// window.cmsRenderizarCreativeList();

@@ -21,12 +21,13 @@ window.CONFIG = {
         rodape: "© 2026 IEAD Cuiabá e Região. Todos os direitos reservados."
     },
 
-    LIMITE_UPLOAD_MB: 25,
-    VERSAO: "21.0"
+    LIMITE_UPLOAD_MB: 50,      // Limite do Apps Script
+    LIMITE_CREATIVE_MB: 2048,  // 2 GB (via upload direto)
+    VERSAO: "32.0"
 };
 
 // ============================================================
-// UTILITÁRIOS COMPARTILHADOS
+// UTILITÁRIOS
 // ============================================================
 
 window.apiGet = async function(acao, params = {}) {
@@ -45,7 +46,8 @@ window.apiGet = async function(acao, params = {}) {
         const response = await fetch(url.toString(), {
             method: 'GET',
             mode: 'cors',
-            cache: 'no-cache'
+            cache: 'no-cache',
+            redirect: 'follow'
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -56,6 +58,12 @@ window.apiGet = async function(acao, params = {}) {
     }
 };
 
+/**
+ * POST para o Apps Script - CORRIGIDO para evitar erro 404
+ * 
+ * ⚠️ IMPORTANTE: O Apps Script redireciona POST para uma URL googleusercontent.com
+ * que só aceita Content-Type: text/plain. Se enviar application/json, dá erro.
+ */
 window.apiPost = async function(dados) {
     if (!window.CONFIG || !window.CONFIG.API_URL || window.CONFIG.API_URL.includes("COLE_AQUI")) {
         console.warn("⚠️ API_URL não configurada em config.js");
@@ -66,8 +74,11 @@ window.apiPost = async function(dados) {
         const response = await fetch(window.CONFIG.API_URL, {
             method: 'POST',
             mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(dados)
+            headers: { 
+                'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify(dados),
+            redirect: 'follow'
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);

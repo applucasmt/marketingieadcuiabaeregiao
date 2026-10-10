@@ -1,7 +1,9 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v34
- * - Photopea em modo EMBED (menos anúncios)
- * - Preview de PSD gerado automaticamente no upload
+ * SITE PÚBLICO - Marketing IEAD v35
+ * - Sistema de Login/Cadastro
+ * - Upload de PSD com capa obrigatória
+ * - Créditos do autor (nome, idade, congregação, WhatsApp)
+ * - Photopea em modo embed
  * ============================================================ */
 
 let estadoSite = {
@@ -78,6 +80,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     inicializarCarrossel();
     inicializarPreview();
     inicializarRotas();
+
+    // Carrega usuário logado e atualiza interface
+    carregarUsuarioLogado();
+    atualizarInterfaceAuth();
+
     atualizarProgresso(100);
 
     await new Promise(r => setTimeout(r, 500));
@@ -467,6 +474,9 @@ function renderizarCreative() {
 
     grid.innerHTML = filtrados.map(c => {
         const indexOriginal = estadoSite.criativos.indexOf(c);
+        const fotoAutor = gerarFotoPerfil('', c.usuarioNome || 'Usuário');
+        const whatsappLink = c.usuarioWhatsApp ? `https://wa.me/55${c.usuarioWhatsApp.replace(/\D/g, '')}` : '';
+
         return `
             <div class="creative-card" onclick="creativeAbrirEditor(${indexOriginal})">
                 <div class="creative-card-thumb">
@@ -476,6 +486,22 @@ function renderizarCreative() {
                 <div class="creative-card-body">
                     <h3>${escapeHTML(c.nome)}</h3>
                     <p>${escapeHTML(c.descricao || 'Template editável disponível')}</p>
+
+                    ${c.usuarioNome ? `
+                        <div class="creative-autor">
+                            <img src="${fotoAutor}" class="creative-autor-foto" alt="Autor">
+                            <div class="creative-autor-info">
+                                <strong>${escapeHTML(c.usuarioNome)}</strong>
+                                <span>${c.usuarioIdade ? c.usuarioIdade + ' anos • ' : ''}${escapeHTML(c.usuarioCongregacao || '')}</span>
+                            </div>
+                            ${whatsappLink ? `
+                                <a href="${whatsappLink}" target="_blank" class="creative-whatsapp" onclick="event.stopPropagation();">
+                                    <i class="fab fa-whatsapp"></i>
+                                </a>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+
                     <button class="creative-card-btn"><i class="fas fa-magic"></i> Abrir no Editor</button>
                 </div>
             </div>
@@ -487,10 +513,15 @@ function renderizarCreativeMeus() {
     const grid = document.getElementById('creativeMeusGrid');
     if (!grid) return;
 
-    const meus = estadoSite.criativosPublicos || [];
+    if (!estadoSite.usuario) {
+        grid.innerHTML = '<p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:40px;">Faça login para ver seus arquivos.</p>';
+        return;
+    }
+
+    const meus = estadoSite.criativos.filter(c => c.usuarioId == estadoSite.usuario.id);
 
     if (!meus.length) {
-        grid.innerHTML = `<p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:40px;">Nenhum PSD enviado ainda.</p>`;
+        grid.innerHTML = `<p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:40px;">Você ainda não enviou nenhum PSD.</p>`;
         return;
     }
 
@@ -503,7 +534,7 @@ function renderizarCreativeMeus() {
                 </div>
                 <div class="creative-card-body">
                     <h3>${escapeHTML(c.nome)}</h3>
-                    <p>${escapeHTML(c.descricao || 'Seu arquivo enviado')}</p>
+                    <p>${escapeHTML(c.descricao || 'Seu arquivo')}</p>
                     <button class="creative-card-btn" onclick="creativeAbrirEditorPublico('${c.fileId}')"><i class="fas fa-magic"></i> Abrir no Editor</button>
                 </div>
             </div>
@@ -538,107 +569,170 @@ function inicializarBuscaCreative() {
 // UPLOAD PÚBLICO NA IEAD CREATIVE
 // ============================================================
 function inicializarUploadCreative() {
+    carregarUsuarioLogado();
+    atualizarInterfaceAuth();
+
     const uploadArea = document.getElementById('creativeUploadArea');
     const inputFile = document.getElementById('creativeUploadInput');
-    if (!uploadArea || !inputFile) return;
+    const capaArea = document.getElementById('creativeCapaArea');
+    const capaInput = document.getElementById('creativeCapaInput');
 
-    uploadArea.addEventListener('click', () => inputFile.click());
+    if (uploadArea && inputFile) {
+        uploadArea.addEventListener('click', () => {
+            if (!estadoSite.usuario) { abrirModalAuth(); return; }
+            inputFile.click();
+        });
+        uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.style.background = '#FFF9E6'; });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.style.background = 'white'; });
+        uploadArea.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadArea.style.background = 'white';
+            if (!estadoSite.usuario) { abrirModalAuth(); return; }
+            if (e.dataTransfer.files.length) {
+                inputFile.files = e.dataTransfer.files;
+                selecionarPSD(e.dataTransfer.files[0]);
+            }
+        });
+        inputFile.addEventListener('change', () => {
+            if (inputFile.files.length) selecionarPSD(inputFile.files[0]);
+        });
+    }
 
-    uploadArea.addEventListener('dragover', e => {
-        e.preventDefault();
-        uploadArea.style.background = '#FFF9E6';
-        uploadArea.style.borderColor = '#0A1C3A';
-    });
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.style.background = 'white';
-        uploadArea.style.borderColor = '#D4AF37';
-    });
-    uploadArea.addEventListener('drop', e => {
-        e.preventDefault();
-        uploadArea.style.background = 'white';
-        uploadArea.style.borderColor = '#D4AF37';
-        if (e.dataTransfer.files.length) {
-            inputFile.files = e.dataTransfer.files;
-            processarUploadCreative(e.dataTransfer.files[0]);
-        }
-    });
+    if (capaArea && capaInput) {
+        capaArea.addEventListener('click', () => {
+            if (!estadoSite.usuario) { abrirModalAuth(); return; }
+            capaInput.click();
+        });
+        capaArea.addEventListener('dragover', e => { e.preventDefault(); capaArea.style.background = '#FFF9E6'; });
+        capaArea.addEventListener('dragleave', () => { capaArea.style.background = 'white'; });
+        capaArea.addEventListener('drop', e => {
+            e.preventDefault();
+            capaArea.style.background = 'white';
+            if (!estadoSite.usuario) { abrirModalAuth(); return; }
+            if (e.dataTransfer.files.length) {
+                capaInput.files = e.dataTransfer.files;
+                selecionarCapa(e.dataTransfer.files[0]);
+            }
+        });
+        capaInput.addEventListener('change', () => {
+            if (capaInput.files.length) selecionarCapa(capaInput.files[0]);
+        });
+    }
 
-    inputFile.addEventListener('change', () => {
-        if (inputFile.files.length) {
-            processarUploadCreative(inputFile.files[0]);
-        }
-    });
+    const btnUpload = document.getElementById('creativeUploadBtn');
+    if (btnUpload) btnUpload.addEventListener('click', enviarPSD);
 }
 
-async function processarUploadCreative(file) {
-    const progressDiv = document.getElementById('creativeUploadProgress');
+function selecionarPSD(file) {
+    if (!file.name.toLowerCase().endsWith('.psd')) {
+        alert('Por favor, envie apenas arquivos .psd');
+        return;
+    }
+    estadoSite.criativoPSD = file;
+    const status = document.getElementById('creativeUploadStatus');
+    if (status) status.textContent = `✅ PSD selecionado: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
+
+    const nomeInput = document.getElementById('creativeNomeTemplate');
+    if (nomeInput && !nomeInput.value) {
+        nomeInput.value = file.name.replace(/\.[^/.]+$/, '');
+    }
+}
+
+function selecionarCapa(file) {
+    if (!file.type.startsWith('image/')) {
+        alert('Envie uma imagem PNG ou JPG');
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Capa muito grande (máx 5 MB)');
+        return;
+    }
+    estadoSite.criativoCapa = file;
+
+    const preview = document.getElementById('creativeCapaPreview');
+    const img = document.getElementById('creativeCapaImg');
+    const reader = new FileReader();
+    reader.onload = e => {
+        img.src = e.target.result;
+        preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+async function enviarPSD() {
+    if (!estadoSite.usuario) { abrirModalAuth(); return; }
+    if (!estadoSite.criativoPSD) { alert('Selecione o arquivo PSD primeiro!'); return; }
+    if (!estadoSite.criativoCapa) { alert('⚠️ A capa do PSD é OBRIGATÓRIA!'); return; }
+
     const statusEl = document.getElementById('creativeUploadStatus');
+    const progressDiv = document.getElementById('creativeUploadProgress');
     const barEl = document.getElementById('creativeUploadBar');
     const pctEl = document.getElementById('creativeUploadPercent');
+    const btn = document.getElementById('creativeUploadBtn');
 
     progressDiv.style.display = 'block';
-    statusEl.textContent = '⏳ Lendo arquivo...';
-    barEl.style.width = '0%';
-    pctEl.textContent = '0%';
+    barEl.style.width = '10%';
+    pctEl.textContent = '10%';
+    statusEl.textContent = '⏳ Preparando envio...';
 
-    if (!file.name.toLowerCase().endsWith('.psd')) {
-        statusEl.textContent = '❌ Por favor, envie apenas arquivos .psd';
-        statusEl.style.color = '#FF3B30';
-        return;
-    }
-
-    const LIMITE_MB = 50;
-    const tamanhoMB = file.size / (1024 * 1024);
-
-    if (tamanhoMB > LIMITE_MB) {
-        statusEl.innerHTML = `❌ Arquivo muito grande (${tamanhoMB.toFixed(1)} MB).<br>Limite: <strong>${LIMITE_MB} MB</strong>.`;
-        statusEl.style.color = '#FF3B30';
-        return;
-    }
-
-    statusEl.textContent = `⏳ Preparando ${file.name} (${tamanhoMB.toFixed(1)} MB)...`;
-    statusEl.style.color = '#0A1C3A';
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
     try {
-        barEl.style.width = '20%';
-        pctEl.textContent = '20%';
-        statusEl.textContent = '⏳ Convertendo arquivo...';
+        statusEl.textContent = '⏳ Convertendo PSD...';
+        barEl.style.width = '30%';
+        pctEl.textContent = '30%';
+        const psdBase64 = await window.fileToBase64(estadoSite.criativoPSD);
 
-        const base64 = await window.fileToBase64(file);
-
+        statusEl.textContent = '⏳ Convertendo capa...';
         barEl.style.width = '50%';
         pctEl.textContent = '50%';
-        statusEl.textContent = '⏳ Enviando PSD para o Google Drive...';
+        const capaBase64 = await window.fileToBase64(estadoSite.criativoCapa);
+
+        const nomeTemplate = document.getElementById('creativeNomeTemplate').value.trim() || estadoSite.criativoPSD.name.replace(/\.[^/.]+$/, '');
+        const descricaoTemplate = document.getElementById('creativeDescricaoTemplate').value.trim();
+
+        statusEl.textContent = '⏳ Enviando para o Drive...';
+        barEl.style.width = '75%';
+        pctEl.textContent = '75%';
 
         const result = await window.apiPost({
             acao: 'creative_upload',
-            nomeArquivo: file.name,
-            tipoMime: file.type || 'image/vnd.adobe.photoshop',
-            dadosBase64: base64.split(',')[1],
-            nome: file.name.replace(/\.[^/.]+$/, ''),
-            descricao: 'Enviado pelo site'
+            nomeArquivo: estadoSite.criativoPSD.name,
+            tipoMime: estadoSite.criativoPSD.type || 'image/vnd.adobe.photoshop',
+            dadosBase64: psdBase64.split(',')[1],
+            capaBase64: capaBase64.split(',')[1],
+            capaTipoMime: estadoSite.criativoCapa.type,
+            nome: nomeTemplate,
+            descricao: descricaoTemplate,
+            usuarioId: estadoSite.usuario.id,
+            usuarioNome: estadoSite.usuario.nome,
+            usuarioWhatsApp: estadoSite.usuario.whatsapp,
+            usuarioCongregacao: estadoSite.usuario.congregacao,
+            usuarioIdade: estadoSite.usuario.idade
         });
 
         barEl.style.width = '100%';
         pctEl.textContent = '100%';
 
         if (result && result.status === 'ok') {
-            statusEl.textContent = '✅ PSD enviado com sucesso!';
+            statusEl.innerHTML = '✅ PSD enviado com sucesso!';
             statusEl.style.color = '#28A745';
 
-            estadoSite.criativosPublicos.push({
-                nome: file.name.replace(/\.[^/.]+$/, ''),
-                descricao: 'Enviado pelo site',
-                fileId: result.fileId,
-                preview: result.preview || '',
-                link: result.link || '',
-                link_download: result.link || ''
-            });
+            estadoSite.criativoPSD = null;
+            estadoSite.criativoCapa = null;
+            document.getElementById('creativeUploadInput').value = '';
+            document.getElementById('creativeCapaInput').value = '';
+            document.getElementById('creativeCapaPreview').style.display = 'none';
+            document.getElementById('creativeNomeTemplate').value = '';
+            document.getElementById('creativeDescricaoTemplate').value = '';
 
             setTimeout(() => {
                 progressDiv.style.display = 'none';
-                renderizarCreativeMeus();
-                carregarDadosSite().then(() => renderizarCreative());
+                carregarDadosSite().then(() => {
+                    renderizarCreative();
+                    renderizarCreativeMeus();
+                });
             }, 1500);
         } else {
             statusEl.textContent = `❌ ${result?.mensagem || 'Erro ao enviar'}`;
@@ -648,6 +742,9 @@ async function processarUploadCreative(file) {
         console.error(err);
         statusEl.textContent = `❌ Erro: ${err.message}`;
         statusEl.style.color = '#FF3B30';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-upload"></i> Enviar PSD para o Drive';
     }
 }
 
@@ -664,13 +761,11 @@ function creativeAbrirEditor(index) {
 }
 
 function creativeAbrirEditorPublico(fileId) {
-    const arquivo = estadoSite.criativosPublicos.find(x => x.fileId === fileId);
+    const arquivo = estadoSite.criativos.find(x => x.fileId === fileId);
     if (arquivo) {
         abrirEditorComArquivo(arquivo);
     } else {
-        const naLista = estadoSite.criativos.find(x => x.fileId === fileId);
-        if (naLista) abrirEditorComArquivo(naLista);
-        else alert('Arquivo não encontrado.');
+        alert('Arquivo não encontrado.');
     }
 }
 
@@ -684,11 +779,9 @@ async function abrirEditorComArquivo(arquivo) {
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    // Remove loading antigo
     const oldLoading = document.getElementById('editorLoading');
     if (oldLoading) oldLoading.remove();
 
-    // Loading div
     const loadingDiv = document.createElement('div');
     loadingDiv.id = 'editorLoading';
     loadingDiv.style.cssText = `
@@ -752,7 +845,6 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor Photopea...';
 
-    // ⭐ EMBED MODE - reduz anúncios laterais
     iframe.src = 'https://www.photopea.com/?embedded';
 
     let arquivoEnviado = false;
@@ -768,17 +860,14 @@ async function abrirEditorComArquivo(arquivo) {
     window._photopeaHandler = photopeaHandler;
 
     iframe.onload = () => {
-        console.log('✅ Photopea iframe carregado');
         setTimeout(() => {
             if (arquivoEnviado) return;
             arquivoEnviado = true;
 
-            console.log('📤 Enviando PSD para o Photopea...');
             statusEl().textContent = 'Enviando PSD para o editor...';
 
             try {
                 iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-                console.log('✅ PSD enviado com sucesso');
 
                 setTimeout(() => {
                     if (loadingDiv.parentElement) loadingDiv.remove();
@@ -793,7 +882,6 @@ async function abrirEditorComArquivo(arquivo) {
     setTimeout(() => {
         if (arquivoEnviado) return;
         arquivoEnviado = true;
-        console.log('📤 Enviando PSD (fallback)...');
         try {
             iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
             setTimeout(() => {
@@ -849,8 +937,6 @@ function editorExportar(formato) {
     document.body.appendChild(aviso);
     setTimeout(() => aviso.remove(), 5000);
 }
-
-// ⚠️ Função removida: editorSalvarNoDrive() - não é mais usada
 
 // ============================================================
 // PREVIEW MODAL (Downloads)
@@ -936,4 +1022,175 @@ function extrairFileId(url) {
     const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
     if (m2) return m2[1];
     return null;
+}
+
+// ============================================================
+// SISTEMA DE AUTENTICAÇÃO
+// ============================================================
+function abrirModalAuth() {
+    document.getElementById('modalAuth').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModalAuth() {
+    document.getElementById('modalAuth').classList.remove('active');
+    document.body.style.overflow = '';
+    const loginErro = document.getElementById('loginErro');
+    const cadErro = document.getElementById('cadErro');
+    if (loginErro) loginErro.textContent = '';
+    if (cadErro) cadErro.textContent = '';
+}
+
+function trocarAbaAuth(aba) {
+    document.querySelectorAll('.modal-auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.modal-auth-panel').forEach(p => p.classList.remove('active'));
+
+    if (aba === 'login') {
+        document.querySelector('.modal-auth-tab:nth-child(1)').classList.add('active');
+        document.getElementById('panelLogin').classList.add('active');
+    } else {
+        document.querySelector('.modal-auth-tab:nth-child(2)').classList.add('active');
+        document.getElementById('panelCadastro').classList.add('active');
+    }
+}
+
+async function fazerLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const senha = document.getElementById('loginSenha').value;
+    const erro = document.getElementById('loginErro');
+
+    if (!email || !senha) {
+        erro.textContent = 'Preencha e-mail e senha';
+        return;
+    }
+
+    erro.textContent = '⏳ Entrando...';
+
+    const result = await window.apiPost({ acao: 'login', email, senha });
+
+    if (result && result.status === 'ok') {
+        estadoSite.usuario = result.usuario;
+        salvarUsuarioLocal(result.usuario, result.token);
+        atualizarInterfaceAuth();
+        fecharModalAuth();
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginSenha').value = '';
+        renderizarCreativeMeus();
+    } else {
+        erro.textContent = result?.mensagem || 'Erro ao entrar';
+    }
+}
+
+async function fazerCadastro() {
+    const nome = document.getElementById('cadNome').value.trim();
+    const email = document.getElementById('cadEmail').value.trim();
+    const whatsapp = document.getElementById('cadWhatsapp').value.trim();
+    const congregacao = document.getElementById('cadCongregacao').value.trim();
+    const idade = document.getElementById('cadIdade').value;
+    const senha = document.getElementById('cadSenha').value;
+    const erro = document.getElementById('cadErro');
+
+    if (!nome || !email || !whatsapp || !congregacao || !idade || !senha) {
+        erro.textContent = 'Preencha todos os campos';
+        return;
+    }
+    if (senha.length < 6) {
+        erro.textContent = 'Senha deve ter no mínimo 6 caracteres';
+        return;
+    }
+
+    erro.textContent = '⏳ Criando conta...';
+
+    const result = await window.apiPost({
+        acao: 'cadastro', nome, email, whatsapp, congregacao, idade, senha
+    });
+
+    if (result && result.status === 'ok') {
+        estadoSite.usuario = result.usuario;
+        salvarUsuarioLocal(result.usuario, result.token);
+        atualizarInterfaceAuth();
+        fecharModalAuth();
+        ['cadNome', 'cadEmail', 'cadWhatsapp', 'cadCongregacao', 'cadIdade', 'cadSenha'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        renderizarCreativeMeus();
+    } else {
+        erro.textContent = result?.mensagem || 'Erro ao cadastrar';
+    }
+}
+
+function salvarUsuarioLocal(usuario, token) {
+    try {
+        localStorage.setItem('iead_usuario', JSON.stringify({ usuario, token, ts: Date.now() }));
+    } catch (e) {}
+}
+
+function carregarUsuarioLogado() {
+    try {
+        const dados = localStorage.getItem('iead_usuario');
+        if (dados) {
+            const parsed = JSON.parse(dados);
+            if (parsed.ts && (Date.now() - parsed.ts) < 30 * 24 * 60 * 60 * 1000) {
+                estadoSite.usuario = parsed.usuario;
+            } else {
+                localStorage.removeItem('iead_usuario');
+            }
+        }
+    } catch (e) {}
+}
+
+function fazerLogout() {
+    if (!confirm('Deseja sair da sua conta?')) return;
+    estadoSite.usuario = null;
+    localStorage.removeItem('iead_usuario');
+    atualizarInterfaceAuth();
+    renderizarCreativeMeus();
+}
+
+function atualizarInterfaceAuth() {
+    const userBtnText = document.getElementById('userBtnText');
+    const creativeBloqueado = document.getElementById('creativeBloqueado');
+    const creativeAreaLogado = document.getElementById('creativeAreaLogado');
+
+    if (estadoSite.usuario) {
+        if (userBtnText) userBtnText.textContent = estadoSite.usuario.nome.split(' ')[0];
+
+        if (creativeBloqueado) creativeBloqueado.style.display = 'none';
+        if (creativeAreaLogado) creativeAreaLogado.style.display = 'block';
+
+        const foto = document.getElementById('creativeUserFoto');
+        const nome = document.getElementById('creativeUserName');
+        const info = document.getElementById('creativeUserInfo');
+
+        if (foto) foto.src = gerarFotoPerfil(estadoSite.usuario.email, estadoSite.usuario.nome);
+        if (nome) nome.textContent = estadoSite.usuario.nome;
+        if (info) info.textContent = `${estadoSite.usuario.idade} anos • ${estadoSite.usuario.congregacao}`;
+    } else {
+        if (userBtnText) userBtnText.textContent = 'Entrar';
+        if (creativeBloqueado) creativeBloqueado.style.display = 'block';
+        if (creativeAreaLogado) creativeAreaLogado.style.display = 'none';
+    }
+}
+
+function gerarFotoPerfil(email, nome) {
+    if (!email) return gerarAvatarInicial(nome);
+    const hash = md5Simples(email.trim().toLowerCase());
+    return `https://www.gravatar.com/avatar/${hash}?d=mp&s=200`;
+}
+
+function md5Simples(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    const hex = Math.abs(hash).toString(16).padStart(8, '0');
+    return (hex + hex + hex + hex).substring(0, 32);
+}
+
+function gerarAvatarInicial(nome) {
+    const inicial = (nome || 'U').charAt(0).toUpperCase();
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(inicial)}&background=D4AF37&color=0A1C3A&size=200&bold=true`;
 }

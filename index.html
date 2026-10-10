@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketing IEAD | Cuiabá e Região</title>
-    <link rel="stylesheet" href="style.css?v=20">
+    <link rel="stylesheet" href="style.css?v=30">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,6 +42,9 @@
                 <nav class="header-nav" id="siteMenus">
                     <a href="#inicio" data-route="inicio" class="active">Início</a>
                     <a href="#downloads" data-route="downloads">Downloads</a>
+                    <a href="#creative" data-route="creative">
+                        <i class="fas fa-magic" style="color:#D4AF37; margin-right:4px;"></i> IEAD CREATIVE
+                    </a>
                     <a href="#sobre" data-route="sobre">Sobre</a>
                     <a href="#contato" data-route="contato">Contato</a>
                 </nav>
@@ -92,19 +95,97 @@
                     <input type="text" id="searchInput" placeholder="Buscar por nome ou tipo de arquivo...">
                 </div>
 
-                <!-- ABAS DE CATEGORIAS -->
                 <div class="categorias-tabs" id="categoriasTabs"></div>
 
-                <!-- Contador de resultados -->
                 <div class="resultado-info" id="resultadoInfo"></div>
 
-                <!-- Grid de arquivos -->
                 <div class="downloads-grid" id="downloadsGrid">
                     <div class="loading-state">
                         <div class="spinner"></div>
                         <p>Carregando acervo...</p>
                     </div>
                 </div>
+            </main>
+        </div>
+
+        <!-- ========== PÁGINA: IEAD CREATIVE ========== -->
+        <div class="page" id="page-creative">
+            <main class="creative-content">
+                
+                <!-- HERO DA PÁGINA -->
+                <div class="creative-hero">
+                    <div class="creative-hero-icon">
+                        <i class="fas fa-magic"></i>
+                    </div>
+                    <h1>IEAD CREATIVE</h1>
+                    <p class="creative-subtitle">
+                        Editor de arquivos <strong>PSD</strong> online. Edite textos, imagens e camadas 
+                        direto no navegador e exporte em PNG, JPG ou PDF.
+                    </p>
+                </div>
+
+                <!-- TABELA DE CONTEÚDO (abas internas) -->
+                <div class="creative-tabs">
+                    <button class="creative-tab active" onclick="creativeTrocarAba('templates')">
+                        <i class="fas fa-th"></i> Templates Disponíveis
+                    </button>
+                    <button class="creative-tab" onclick="creativeTrocarAba('meus')">
+                        <i class="fas fa-cloud-upload-alt"></i> Meus Arquivos
+                    </button>
+                </div>
+
+                <!-- ABA: TEMPLATES DISPONÍVEIS -->
+                <div class="creative-panel active" id="creativePanelTemplates">
+                    <div class="creative-info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Como funciona:</strong>
+                            <p>Escolha um template PSD abaixo. O editor abrirá no navegador. 
+                            Edite à vontade, depois faça download em PNG, JPG ou PDF.</p>
+                        </div>
+                    </div>
+
+                    <div class="search-wrapper-creative">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="creativeBusca" placeholder="Buscar template PSD...">
+                    </div>
+
+                    <div class="creative-grid" id="creativeGrid">
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <p>Carregando templates...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ABA: MEUS ARQUIVOS (UPLOAD) -->
+                <div class="creative-panel" id="creativePanelMeus">
+                    <div class="creative-info-box">
+                        <i class="fas fa-lock"></i>
+                        <div>
+                            <strong>Acesso restrito</strong>
+                            <p>Envie seus PSDs através do painel administrativo. 
+                            Os arquivos ficarão disponíveis aqui para edição.</p>
+                        </div>
+                    </div>
+
+                    <div class="creative-info-box" style="border-left-color:#D4AF37;">
+                        <i class="fas fa-lightbulb" style="color:#D4AF37;"></i>
+                        <div>
+                            <strong>Dica:</strong>
+                            <p>Para enviar novos PSDs, acesse o Painel Administrativo 
+                            e faça upload na seção <strong>"IEAD CREATIVE"</strong>.</p>
+                        </div>
+                    </div>
+
+                    <div style="text-align:center; padding: 40px 20px;">
+                        <a href="admin.html" class="btn-primary">
+                            <i class="fas fa-lock"></i>
+                            <span>Acessar Painel Administrativo</span>
+                        </a>
+                    </div>
+                </div>
+
             </main>
         </div>
 
@@ -181,7 +262,41 @@
 
     </div>
 
-    <script src="config.js?v=20"></script>
-    <script src="app.js?v=20"></script>
+    <!-- ============ MODAL DO EDITOR PHOTOPEA ============ -->
+    <div class="editor-modal" id="editorModal">
+        <div class="editor-modal-header">
+            <div class="editor-modal-title">
+                <i class="fas fa-magic" style="color:#D4AF37;"></i>
+                <span id="editorTitulo">Editor IEAD Creative</span>
+            </div>
+            <div class="editor-modal-actions">
+                <button onclick="editorSalvarNoDrive()" class="editor-btn editor-btn-save" title="Salvar no Google Drive">
+                    <i class="fas fa-cloud-upload-alt"></i> <span>Salvar no Drive</span>
+                </button>
+                <button onclick="editorExportar('png')" class="editor-btn editor-btn-export" title="Exportar PNG">
+                    <i class="fas fa-image"></i> <span>PNG</span>
+                </button>
+                <button onclick="editorExportar('jpg')" class="editor-btn editor-btn-export" title="Exportar JPG">
+                    <i class="fas fa-file-image"></i> <span>JPG</span>
+                </button>
+                <button onclick="editorExportar('pdf')" class="editor-btn editor-btn-export" title="Exportar PDF">
+                    <i class="fas fa-file-pdf"></i> <span>PDF</span>
+                </button>
+                <button onclick="editorFechar()" class="editor-btn editor-btn-close" title="Fechar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="editor-modal-body">
+            <iframe id="editorIframe" allow="clipboard-read; clipboard-write"></iframe>
+        </div>
+        <div class="editor-modal-footer">
+            <i class="fas fa-info-circle" style="color:#D4AF37;"></i>
+            <span>Editor powered by <strong>Photopea</strong>. Suporta PSD, XCF, Sketch, XD, CDR, SVG, PNG, JPG e mais de 40 formatos.</span>
+        </div>
+    </div>
+
+    <script src="config.js?v=30"></script>
+    <script src="app.js?v=30"></script>
 </body>
 </html>

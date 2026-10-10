@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketing IEAD | Cuiabá e Região</title>
-    <link rel="stylesheet" href="style.css?v=36">
+    <link rel="stylesheet" href="style.css?v=41">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -67,9 +67,9 @@
                 <div class="carousel-header">
                     <h2><i class="fas fa-bullhorn"></i> Destaques e Novidades</h2>
                     <div class="carousel-controls">
-                        <button id="prevBtn"><i class="fas fa-chevron-left"></i></button>
+                        <button id="prevBtn" aria-label="Anterior"><i class="fas fa-chevron-left"></i></button>
                         <div class="dots" id="dotsContainer"></div>
-                        <button id="nextBtn"><i class="fas fa-chevron-right"></i></button>
+                        <button id="nextBtn" aria-label="Próximo"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
                 <div class="carousel-container">
@@ -96,12 +96,16 @@
                     <h2><i class="fas fa-download"></i> Central de Downloads</h2>
                     <p>Todos os arquivos são hospedados no Google Drive oficial.</p>
                 </div>
+
                 <div class="search-wrapper" id="searchWrapper">
                     <i class="fas fa-search"></i>
                     <input type="text" id="searchInput" placeholder="Buscar por nome ou tipo de arquivo...">
                 </div>
+
                 <div class="categorias-tabs" id="categoriasTabs"></div>
+
                 <div class="resultado-info" id="resultadoInfo"></div>
+
                 <div class="downloads-grid" id="downloadsGrid">
                     <div class="loading-state">
                         <div class="spinner"></div>
@@ -114,6 +118,7 @@
         <!-- ============ PÁGINA: IEAD CREATIVE ============ -->
         <div class="page" id="page-creative">
             <main class="creative-content">
+                
                 <div class="creative-hero">
                     <div class="creative-hero-icon">
                         <i class="fas fa-magic"></i>
@@ -134,20 +139,22 @@
                     </button>
                 </div>
 
-                <!-- ABA TEMPLATES -->
+                <!-- ABA: TEMPLATES DISPONÍVEIS -->
                 <div class="creative-panel active" id="creativePanelTemplates">
                     <div class="creative-info-box">
                         <i class="fas fa-info-circle"></i>
                         <div>
                             <strong>Como funciona:</strong>
                             <p>Escolha um template PSD abaixo. O editor abrirá no navegador. 
-                            Edite à vontade, depois faça download em PNG, JPG ou PDF.</p>
+                            Edite à vontade, depois use o menu <strong>Arquivo → Exportar como</strong> do editor para baixar em PNG, JPG ou PDF.</p>
                         </div>
                     </div>
+
                     <div class="search-wrapper-creative">
                         <i class="fas fa-search"></i>
                         <input type="text" id="creativeBusca" placeholder="Buscar template PSD...">
                     </div>
+
                     <div class="creative-grid" id="creativeGrid">
                         <div class="loading-state">
                             <div class="spinner"></div>
@@ -156,7 +163,7 @@
                     </div>
                 </div>
 
-                <!-- ABA MEUS ARQUIVOS -->
+                <!-- ABA: MEUS ARQUIVOS (UPLOAD PÚBLICO) -->
                 <div class="creative-panel" id="creativePanelMeus">
                     <div id="creativeBloqueado" class="creative-bloqueado">
                         <div class="creative-bloqueado-icon">
@@ -216,11 +223,28 @@
                     <span class="page-tag">Institucional</span>
                     <h2>Sobre o Ministério de Marketing</h2>
                     <p class="about-lead">O departamento de Marketing da IEAD Cuiabá e Região tem como missão fornecer ferramentas de comunicação de excelência para todas as congregações.</p>
+                    
                     <div class="about-grid">
-                        <div class="about-card"><i class="fas fa-palette"></i><h3>Identidade Visual</h3><p>Padronização de logos, cores e tipografia.</p></div>
-                        <div class="about-card"><i class="fas fa-photo-video"></i><h3>Materiais Gráficos</h3><p>Cartazes, folders, artes e apresentações.</p></div>
-                        <div class="about-card"><i class="fas fa-bullhorn"></i><h3>Campanhas</h3><p>Suporte para campanhas evangelísticas.</p></div>
-                        <div class="about-card"><i class="fas fa-hands-helping"></i><h3>Suporte</h3><p>Materiais prontos para as igrejas.</p></div>
+                        <div class="about-card">
+                            <i class="fas fa-palette"></i>
+                            <h3>Identidade Visual</h3>
+                            <p>Padronização de logos, cores e tipografia.</p>
+                        </div>
+                        <div class="about-card">
+                            <i class="fas fa-photo-video"></i>
+                            <h3>Materiais Gráficos</h3>
+                            <p>Cartazes, folders, artes e apresentações.</p>
+                        </div>
+                        <div class="about-card">
+                            <i class="fas fa-bullhorn"></i>
+                            <h3>Campanhas</h3>
+                            <p>Suporte para campanhas evangelísticas.</p>
+                        </div>
+                        <div class="about-card">
+                            <i class="fas fa-hands-helping"></i>
+                            <h3>Suporte</h3>
+                            <p>Materiais prontos para as igrejas.</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -233,21 +257,36 @@
                     <span class="page-tag">Fale Conosco</span>
                     <h2>Entre em Contato</h2>
                     <p class="contact-lead">Precisa de algum material ou tem dúvidas? Entre em contato.</p>
+
                     <div class="contact-grid">
-                        <a href="#" id="contatoEmail" class="contact-card" target="_blank"><i class="fas fa-envelope"></i><h3>E-mail</h3><p id="contatoEmailTexto">marketing@ieadcuiaba.com.br</p></a>
-                        <a href="#" id="contatoInstagram" class="contact-card" target="_blank"><i class="fab fa-instagram"></i><h3>Instagram</h3><p id="contatoInstagramTexto">@ieadcuiaba</p></a>
-                        <a href="#" id="contatoWhatsapp" class="contact-card" target="_blank"><i class="fab fa-whatsapp"></i><h3>WhatsApp</h3><p>Solicite materiais</p></a>
+                        <a href="#" id="contatoEmail" class="contact-card" target="_blank">
+                            <i class="fas fa-envelope"></i>
+                            <h3>E-mail</h3>
+                            <p id="contatoEmailTexto">marketing@ieadcuiaba.com.br</p>
+                        </a>
+                        <a href="#" id="contatoInstagram" class="contact-card" target="_blank">
+                            <i class="fab fa-instagram"></i>
+                            <h3>Instagram</h3>
+                            <p id="contatoInstagramTexto">@ieadcuiaba</p>
+                        </a>
+                        <a href="#" id="contatoWhatsapp" class="contact-card" target="_blank">
+                            <i class="fab fa-whatsapp"></i>
+                            <h3>WhatsApp</h3>
+                            <p>Solicite materiais</p>
+                        </a>
                     </div>
                 </div>
             </section>
         </div>
 
+        <!-- FOOTER -->
         <footer>
             <div class="footer-content">
                 <p id="siteRodape">© 2026 IEAD Cuiabá e Região.</p>
                 <div class="footer-social" id="siteSocial"></div>
             </div>
         </footer>
+
     </div>
 
     <!-- ============ MODAL DE ENVIO PSD ============ -->
@@ -345,6 +384,7 @@
                 <button class="modal-auth-tab" onclick="trocarAbaAuth('cadastro')">Criar Conta</button>
             </div>
 
+            <!-- LOGIN -->
             <div class="modal-auth-panel active" id="panelLogin">
                 <div class="modal-auth-icon">
                     <i class="fas fa-user-circle"></i>
@@ -368,6 +408,7 @@
                 </div>
             </div>
 
+            <!-- CADASTRO -->
             <div class="modal-auth-panel" id="panelCadastro">
                 <div class="modal-auth-icon">
                     <i class="fas fa-user-plus"></i>
@@ -376,6 +417,16 @@
                 <p>Preencha seus dados para começar</p>
 
                 <div class="modal-auth-form">
+                    <!-- Foto de perfil -->
+                    <div class="modal-auth-foto-area">
+                        <div class="modal-auth-foto-preview" id="cadFotoPreview" onclick="document.getElementById('cadFotoInput').click()">
+                            <i class="fas fa-camera"></i>
+                            <span>Adicionar foto</span>
+                        </div>
+                        <input type="file" id="cadFotoInput" accept="image/*" style="display:none;">
+                        <p class="modal-auth-foto-hint">Foto de perfil (opcional)</p>
+                    </div>
+
                     <div class="modal-auth-group">
                         <label>Nome completo *</label>
                         <input type="text" id="cadNome" placeholder="Seu nome">
@@ -391,6 +442,29 @@
                     <div class="modal-auth-group">
                         <label>Congregação *</label>
                         <input type="text" id="cadCongregacao" placeholder="Ex: Sede, Jardim Novo Aliança...">
+                    </div>
+                    <div class="modal-auth-group">
+                        <label>Cidade *</label>
+                        <select id="cadCidade">
+                            <option value="">Selecione sua cidade</option>
+                            <option value="Cuiabá">Cuiabá</option>
+                            <option value="Várzea Grande">Várzea Grande</option>
+                            <option value="Rondonópolis">Rondonópolis</option>
+                            <option value="Sinop">Sinop</option>
+                            <option value="Tangará da Serra">Tangará da Serra</option>
+                            <option value="Cáceres">Cáceres</option>
+                            <option value="Sorriso">Sorriso</option>
+                            <option value="Lucas do Rio Verde">Lucas do Rio Verde</option>
+                            <option value="Primavera do Leste">Primavera do Leste</option>
+                            <option value="Barra do Garças">Barra do Garças</option>
+                            <option value="Alta Floresta">Alta Floresta</option>
+                            <option value="Colíder">Colíder</option>
+                            <option value="Juína">Juína</option>
+                            <option value="Pontes e Lacerda">Pontes e Lacerda</option>
+                            <option value="Nova Mutum">Nova Mutum</option>
+                            <option value="Campo Verde">Campo Verde</option>
+                            <option value="Outra">Outra</option>
+                        </select>
                     </div>
                     <div class="modal-auth-group">
                         <label>Idade *</label>
@@ -417,10 +491,12 @@
                 <span id="editorTitulo">Editor IEAD Creative</span>
             </div>
             <div class="editor-modal-actions">
-                <button onclick="editorExportar('png')" class="editor-btn editor-btn-export"><i class="fas fa-image"></i> <span>PNG</span></button>
-                <button onclick="editorExportar('jpg')" class="editor-btn editor-btn-export"><i class="fas fa-file-image"></i> <span>JPG</span></button>
-                <button onclick="editorExportar('pdf')" class="editor-btn editor-btn-export"><i class="fas fa-file-pdf"></i> <span>PDF</span></button>
-                <button onclick="editorFechar()" class="editor-btn editor-btn-close"><i class="fas fa-times"></i></button>
+                <span style="color: #D4AF37; font-size: 0.85rem; font-weight: 600; padding: 0 15px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-info-circle"></i> Use o menu <strong>Arquivo → Exportar como</strong> para baixar
+                </span>
+                <button onclick="editorFechar()" class="editor-btn editor-btn-close" title="Fechar">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         </div>
         <div class="editor-modal-body">
@@ -428,11 +504,11 @@
         </div>
         <div class="editor-modal-footer">
             <i class="fas fa-info-circle" style="color:#D4AF37;"></i>
-            <span>Editor powered by <strong>IEAD Nova Aliança</strong>. Suporta PSD, XCF, Sketch, XD, CDR, SVG, PNG, JPG e mais de 40 formatos.</span>
+            <span>Editor powered by <strong>Photopea</strong>. Suporta PSD, XCF, Sketch, XD, CDR, SVG, PNG, JPG e mais de 40 formatos.</span>
         </div>
     </div>
 
-    <script src="config.js?v=36"></script>
-    <script src="app.js?v=36"></script>
+    <script src="config.js?v=41"></script>
+    <script src="app.js?v=41"></script>
 </body>
 </html>

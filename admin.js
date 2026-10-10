@@ -1,7 +1,6 @@
 /* ============================================================
- * PAINEL ADMINISTRATIVO - Marketing IEAD v20
- * Com sistema de categorias
- * Funções expostas globalmente via window
+ * PAINEL ADMINISTRATIVO - Marketing IEAD v21
+ * Todas as referências a CONFIG usam window.CONFIG
  * ============================================================ */
 
 console.log("🚀 admin.js carregando...");
@@ -41,7 +40,7 @@ let cmsEstado = {
 };
 
 // ============================================================
-// LOGIN — EXPORTO GLOBALMENTE
+// LOGIN
 // ============================================================
 window.cmsFazerLogin = function() {
     console.log('🔐 Tentando login...');
@@ -61,9 +60,10 @@ window.cmsFazerLogin = function() {
         return;
     }
 
+    // ✅ USA window.CONFIG
     if (typeof window.CONFIG === 'undefined' || !window.CONFIG.SENHA_ADMIN) {
         if (erroEl) erroEl.textContent = 'Erro: config.js não carregado corretamente.';
-        console.error('❌ CONFIG indefinido ou sem SENHA_ADMIN');
+        console.error('❌ window.CONFIG indefinido ou sem SENHA_ADMIN');
         return;
     }
 
@@ -110,7 +110,7 @@ window.cmsMostrarPainel = function() {
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOMContentLoaded - admin.js ativo');
-    console.log('CONFIG:', typeof window.CONFIG !== 'undefined' ? 'OK' : 'NÃO DEFINIDO');
+    console.log('window.CONFIG:', typeof window.CONFIG !== 'undefined' ? 'OK' : 'NÃO DEFINIDO');
 
     if (sessionStorage.getItem('adminLogged') === 'true') {
         console.log('🔓 Sessão ativa — auto-login');
@@ -460,7 +460,7 @@ document.getElementById('cmsUploadBtn')?.addEventListener('click', async () => {
 
     const status = document.getElementById('cmsUploadStatus');
     const btn = document.getElementById('cmsUploadBtn');
-    const limiteMB = (typeof window.CONFIG !== 'undefined' && window.CONFIG.LIMITE_UPLOAD_MB) || 25;
+    const limiteMB = (window.CONFIG && window.CONFIG.LIMITE_UPLOAD_MB) || 25;
     const categoria = document.getElementById('cmsCategoriaUpload').value;
 
     if (cmsEstado.arquivoAtual.size > limiteMB * 1024 * 1024) {
@@ -803,4 +803,4 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') window.cmsFecharModal();
 });
 
-console.log("✅ admin.js carregado com sucesso - todas as funções expostas globalmente");
+console.log("✅ admin.js carregado com sucesso - CONFIG:", window.CONFIG ? 'OK' : 'NÃO DEFINIDO');

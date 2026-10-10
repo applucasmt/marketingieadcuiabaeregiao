@@ -1,6 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v30
- * Com IEAD CREATIVE (editor PSD)
+ * SITE PÚBLICO - Marketing IEAD v32
+ * Com IEAD Creative + upload público até 2GB
  * ============================================================ */
 
 let estadoSite = {
@@ -9,7 +9,8 @@ let estadoSite = {
     carrossel: [],
     menus: [],
     categorias: [],
-    criativos: [],  // ← arquivos PSD para o editor
+    criativos: [],
+    criativosPublicos: [],
     slideAtual: 0,
     carrosselInterval: null,
     rotaAtual: 'inicio',
@@ -65,10 +66,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderizarArquivos();
     renderizarContato();
     renderizarCreative();
+    renderizarCreativeMeus();
     atualizarProgresso(90);
 
     inicializarBusca();
     inicializarBuscaCreative();
+    inicializarUploadCreative();
     inicializarCarrossel();
     inicializarPreview();
     inicializarRotas();
@@ -175,6 +178,15 @@ function aplicarConfiguracoes() {
         }
         socialDiv.innerHTML = socialHTML;
     }
+
+    if (c.Mostrar_Carrossel === 'FALSE') {
+        const cs = document.getElementById('carouselSection');
+        if (cs) cs.style.display = 'none';
+    }
+    if (c.Mostrar_Busca === 'FALSE') {
+        const sw = document.getElementById('searchWrapper');
+        if (sw) sw.style.display = 'none';
+    }
 }
 
 // ============================================================
@@ -191,39 +203,24 @@ function renderizarCategorias() {
     });
 
     const categoriasMap = new Map();
-
-    categoriasMap.set('todas', {
-        nome: 'Todas',
-        icone: 'fa-th-large',
-        total: estadoSite.arquivos.length
-    });
+    categoriasMap.set('todas', { nome: 'Todas', icone: 'fa-th-large', total: estadoSite.arquivos.length });
 
     estadoSite.categorias.forEach(c => {
         const nome = (c.nome || '').trim();
         if (nome && !categoriasMap.has(nome)) {
-            categoriasMap.set(nome, {
-                nome: nome,
-                icone: c.icone || 'fa-folder',
-                total: contagem[nome] || 0
-            });
+            categoriasMap.set(nome, { nome: nome, icone: c.icone || 'fa-folder', total: contagem[nome] || 0 });
         }
     });
 
     Object.keys(contagem).forEach(nome => {
         if (!categoriasMap.has(nome)) {
-            categoriasMap.set(nome, {
-                nome: nome,
-                icone: 'fa-folder',
-                total: contagem[nome]
-            });
+            categoriasMap.set(nome, { nome: nome, icone: 'fa-folder', total: contagem[nome] });
         }
     });
 
     container.innerHTML = Array.from(categoriasMap.values()).map(cat => `
-        <button 
-            class="categoria-tab ${estadoSite.categoriaAtiva === cat.nome ? 'active' : ''}"
-            onclick="selecionarCategoria('${cat.nome.replace(/'/g, "&#39;")}')"
-        >
+        <button class="categoria-tab ${estadoSite.categoriaAtiva === cat.nome ? 'active' : ''}"
+            onclick="selecionarCategoria('${cat.nome.replace(/'/g, "&#39;")}')">
             <i class="fas ${cat.icone}"></i>
             <span>${escapeHTML(cat.nome)}</span>
             <span class="contador">${cat.total}</span>
@@ -246,13 +243,10 @@ function renderizarArquivos() {
     if (!grid) return;
 
     let arquivosFiltrados = estadoSite.arquivos.slice();
-
     const catAtiva = (estadoSite.categoriaAtiva || 'todas').trim();
+
     if (catAtiva && catAtiva.toLowerCase() !== 'todas') {
-        arquivosFiltrados = arquivosFiltrados.filter(a => {
-            const cat = (a.categoria || 'Geral').trim();
-            return cat === catAtiva;
-        });
+        arquivosFiltrados = arquivosFiltrados.filter(a => (a.categoria || 'Geral').trim() === catAtiva);
     }
 
     if (estadoSite.buscaAtiva) {
@@ -265,31 +259,20 @@ function renderizarArquivos() {
     }
 
     if (info) {
-        if (arquivosFiltrados.length === 0) {
-            info.innerHTML = '';
-        } else {
-            const catNome = catAtiva.toLowerCase() === 'todas'
-                ? 'todas as categorias'
-                : `"${catAtiva}"`;
+        if (arquivosFiltrados.length === 0) info.innerHTML = '';
+        else {
+            const catNome = catAtiva.toLowerCase() === 'todas' ? 'todas as categorias' : `"${catAtiva}"`;
             info.innerHTML = `Mostrando <strong>${arquivosFiltrados.length}</strong> arquivo${arquivosFiltrados.length > 1 ? 's' : ''} em ${catNome}`;
         }
     }
 
     if (!arquivosFiltrados.length) {
-        const msg = catAtiva.toLowerCase() === 'todas'
-            ? 'Nenhum arquivo disponível.'
-            : `Nenhum arquivo na categoria "${catAtiva}".`;
-
-        grid.innerHTML = `
-            <div class="empty-categoria">
-                <i class="fas fa-folder-open"></i>
-                <h3>${msg}</h3>
-                <p>${catAtiva.toLowerCase() !== 'todas' ? 'Tente outra categoria.' : 'Os materiais serão adicionados em breve.'}</p>
-            </div>`;
+        const msg = catAtiva.toLowerCase() === 'todas' ? 'Nenhum arquivo disponível.' : `Nenhum arquivo na categoria "${catAtiva}".`;
+        grid.innerHTML = `<div class="empty-categoria"><i class="fas fa-folder-open"></i><h3>${msg}</h3><p>${catAtiva.toLowerCase() !== 'todas' ? 'Tente outra categoria.' : 'Os materiais serão adicionados em breve.'}</p></div>`;
         return;
     }
 
-    grid.innerHTML = arquivosFiltrados.map((a) => {
+    grid.innerHTML = arquivosFiltrados.map(a => {
         const indexOriginal = estadoSite.arquivos.indexOf(a);
         const icone = obterIcone(a.tipo);
         const isNovo = indexOriginal < 3;
@@ -300,9 +283,7 @@ function renderizarArquivos() {
                     ${isNovo ? '<span class="tag-novo-card"><i class="fas fa-star"></i> <span>Novo</span></span>' : ''}
                 </div>
                 <div class="card-body">
-                    <span class="card-tag">
-                        <i class="fas ${icone}"></i> <span>${escapeHTML(a.tipo)}</span>
-                    </span>
+                    <span class="card-tag"><i class="fas ${icone}"></i> <span>${escapeHTML(a.tipo)}</span></span>
                     <h3>${escapeHTML(a.nome)}</h3>
                     <p>${escapeHTML(a.descricao || 'Clique para visualizar')}</p>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -324,12 +305,8 @@ function gerarThumb(arquivo) {
     const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
     const isPdf = ext === 'PDF';
 
-    if (isImg && arquivo.preview) {
-        return `<img src="${arquivo.preview}" alt="${escapeHTML(arquivo.nome)}" loading="lazy">`;
-    }
-    if (isVid && arquivo.preview) {
-        return `<div class="thumb-video"><img src="${arquivo.preview}" alt=""><div class="play-overlay"><i class="fas fa-play"></i></div></div>`;
-    }
+    if (isImg && arquivo.preview) return `<img src="${arquivo.preview}" alt="${escapeHTML(arquivo.nome)}" loading="lazy">`;
+    if (isVid && arquivo.preview) return `<div class="thumb-video"><img src="${arquivo.preview}" alt=""><div class="play-overlay"><i class="fas fa-play"></i></div></div>`;
     if (isPdf) return `<div class="thumb-fallback pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></div>`;
     return `<div class="thumb-fallback"><i class="fas fa-file"></i></div>`;
 }
@@ -354,7 +331,6 @@ function obterIcone(tipo) {
 function inicializarBusca() {
     const input = document.getElementById('searchInput');
     if (!input) return;
-
     input.addEventListener('input', function () {
         estadoSite.buscaAtiva = this.value.trim();
         renderizarArquivos();
@@ -370,39 +346,16 @@ function renderizarCarrossel() {
     if (!track) return;
 
     const slides = [];
-
     estadoSite.carrossel.forEach(s => {
-        slides.push({
-            tipo: 'aviso',
-            titulo: s.titulo,
-            descricao: s.descricao,
-            badge: s.badge || 'Aviso',
-            link: s.link,
-            textoBotao: s.textoBotao || 'Saber mais',
-            arquivoIndex: null
-        });
+        slides.push({ tipo: 'aviso', titulo: s.titulo, descricao: s.descricao, badge: s.badge || 'Aviso', link: s.link, textoBotao: s.textoBotao || 'Saber mais', arquivoIndex: null });
     });
 
     estadoSite.arquivos.slice(0, 5).forEach((arq, index) => {
-        slides.push({
-            tipo: 'arquivo',
-            titulo: arq.nome,
-            descricao: arq.descricao || `Novo material disponível: ${arq.tipo}`,
-            badge: 'Novo',
-            arquivoIndex: index,
-            arquivo: arq
-        });
+        slides.push({ tipo: 'arquivo', titulo: arq.nome, descricao: arq.descricao || `Novo material disponível: ${arq.tipo}`, badge: 'Novo', arquivoIndex: index, arquivo: arq });
     });
 
     if (slides.length === 0) {
-        slides.push({
-            tipo: 'aviso',
-            titulo: 'Bem-vindo ao Portal',
-            descricao: 'Acesse materiais exclusivos, manuais e apresentações.',
-            badge: 'Novo',
-            link: '#downloads',
-            textoBotao: 'Explorar'
-        });
+        slides.push({ tipo: 'aviso', titulo: 'Bem-vindo ao Portal', descricao: 'Acesse materiais exclusivos, manuais e apresentações.', badge: 'Novo', link: '#downloads', textoBotao: 'Explorar' });
     }
 
     track.innerHTML = slides.map((s, i) => {
@@ -414,41 +367,24 @@ function renderizarCarrossel() {
             <div class="carousel-slide ${i === 0 ? 'active' : ''}">
                 <div class="slide-content">
                     <span class="slide-badge ${isArquivo ? 'badge-novo' : ''}">
-                        <i class="fas ${badgeIcon}"></i>
-                        <span>${escapeHTML(s.badge)}</span>
+                        <i class="fas ${badgeIcon}"></i><span>${escapeHTML(s.badge)}</span>
                     </span>
                     <h3>${escapeHTML(s.titulo)}</h3>
                     <p>${escapeHTML(s.descricao)}</p>
                     <div class="slide-actions">
                         ${isArquivo
-                            ? `<button class="btn-slide btn-slide-primary" onclick="abrirPreview(${s.arquivoIndex})">
-                                   <i class="fas fa-eye"></i> <span>Ver Arquivo</span>
-                               </button>`
-                            : `<a href="${s.link || '#downloads'}" class="btn-slide btn-slide-primary">
-                                   <i class="fas fa-arrow-right"></i> <span>${escapeHTML(s.textoBotao)}</span>
-                               </a>`
+                            ? `<button class="btn-slide btn-slide-primary" onclick="abrirPreview(${s.arquivoIndex})"><i class="fas fa-eye"></i> <span>Ver Arquivo</span></button>`
+                            : `<a href="${s.link || '#downloads'}" class="btn-slide btn-slide-primary"><i class="fas fa-arrow-right"></i> <span>${escapeHTML(s.textoBotao)}</span></a>`
                         }
-                        <a href="#downloads" class="btn-slide btn-slide-ghost">
-                            <i class="fas fa-download"></i> <span>Downloads</span>
-                        </a>
+                        <a href="#downloads" class="btn-slide btn-slide-ghost"><i class="fas fa-download"></i> <span>Downloads</span></a>
                     </div>
                 </div>
-                ${temPreviewImg ? `
-                    <div class="slide-thumb">
-                        <img src="${s.arquivo.preview}" alt="${escapeHTML(s.arquivo.nome)}" loading="lazy">
-                    </div>
-                ` : `
-                    <div class="slide-thumb slide-thumb-icon">
-                        <i class="fas ${obterIcone(s.arquivo?.tipo || 'file')}"></i>
-                    </div>
-                `}
+                ${temPreviewImg ? `<div class="slide-thumb"><img src="${s.arquivo.preview}" alt="${escapeHTML(s.arquivo.nome)}" loading="lazy"></div>` : `<div class="slide-thumb slide-thumb-icon"><i class="fas ${obterIcone(s.arquivo?.tipo || 'file')}"></i></div>`}
             </div>
         `;
     }).join('');
 
-    dotsContainer.innerHTML = slides.map((_, i) =>
-        `<span class="dot ${i === 0 ? 'active' : ''}" onclick="irParaSlide(${i})"></span>`
-    ).join('');
+    dotsContainer.innerHTML = slides.map((_, i) => `<span class="dot ${i === 0 ? 'active' : ''}" onclick="irParaSlide(${i})"></span>`).join('');
 }
 
 function isImagem(tipo) {
@@ -476,9 +412,7 @@ function irParaSlide(n) {
 
 function iniciarAutoPlay() {
     clearInterval(estadoSite.carrosselInterval);
-    estadoSite.carrosselInterval = setInterval(() => {
-        irParaSlide(estadoSite.slideAtual + 1);
-    }, 7000);
+    estadoSite.carrosselInterval = setInterval(() => irParaSlide(estadoSite.slideAtual + 1), 7000);
 }
 
 function reiniciarAutoPlay() {
@@ -509,7 +443,7 @@ function renderizarContato() {
 }
 
 // ============================================================
-// ⭐ IEAD CREATIVE - EDITOR DE PSD
+// IEAD CREATIVE
 // ============================================================
 function renderizarCreative() {
     const grid = document.getElementById('creativeGrid');
@@ -518,38 +452,55 @@ function renderizarCreative() {
     const filtrados = estadoSite.criativos.filter(c => {
         if (!estadoSite.creativeBusca) return true;
         const t = estadoSite.creativeBusca.toLowerCase();
-        return (c.nome || '').toLowerCase().includes(t) ||
-               (c.descricao || '').toLowerCase().includes(t);
+        return (c.nome || '').toLowerCase().includes(t) || (c.descricao || '').toLowerCase().includes(t);
     });
 
     if (!filtrados.length) {
-        grid.innerHTML = `
-            <div class="empty-categoria" style="grid-column:1/-1;">
-                <i class="fas fa-magic"></i>
-                <h3>Nenhum template PSD disponível</h3>
-                <p>Os templates aparecerão aqui quando forem enviados pelo painel administrativo.</p>
-            </div>`;
+        grid.innerHTML = `<div class="empty-categoria" style="grid-column:1/-1;"><i class="fas fa-magic"></i><h3>Nenhum template PSD disponível</h3><p>Os templates aparecerão aqui quando forem enviados.</p></div>`;
         return;
     }
 
-    grid.innerHTML = filtrados.map((c, idx) => {
+    grid.innerHTML = filtrados.map(c => {
         const indexOriginal = estadoSite.criativos.indexOf(c);
-        const thumbURL = c.preview || '';
         return `
             <div class="creative-card" onclick="creativeAbrirEditor(${indexOriginal})">
                 <div class="creative-card-thumb">
-                    ${thumbURL 
-                        ? `<img src="${thumbURL}" alt="${escapeHTML(c.nome)}" loading="lazy">`
-                        : `<i class="fas fa-file-alt psd-icon"></i>`
-                    }
+                    ${c.preview ? `<img src="${c.preview}" alt="${escapeHTML(c.nome)}" loading="lazy">` : `<i class="fas fa-file-alt psd-icon"></i>`}
                     <span class="creative-card-badge">PSD</span>
                 </div>
                 <div class="creative-card-body">
                     <h3>${escapeHTML(c.nome)}</h3>
                     <p>${escapeHTML(c.descricao || 'Template editável disponível')}</p>
-                    <button class="creative-card-btn">
-                        <i class="fas fa-magic"></i> Abrir no Editor
-                    </button>
+                    <button class="creative-card-btn"><i class="fas fa-magic"></i> Abrir no Editor</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderizarCreativeMeus() {
+    const grid = document.getElementById('creativeMeusGrid');
+    if (!grid) return;
+
+    const meus = estadoSite.criativosPublicos || [];
+
+    if (!meus.length) {
+        grid.innerHTML = `<p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:40px;">Nenhum PSD enviado ainda.</p>`;
+        return;
+    }
+
+    grid.innerHTML = meus.map(c => {
+        const indexGlobal = estadoSite.criativos.findIndex(x => x.fileId === c.fileId);
+        return `
+            <div class="creative-card" onclick="creativeAbrirEditor(${indexGlobal >= 0 ? indexGlobal : 0})">
+                <div class="creative-card-thumb">
+                    ${c.preview ? `<img src="${c.preview}" alt="${escapeHTML(c.nome)}" loading="lazy">` : `<i class="fas fa-file-alt psd-icon"></i>`}
+                    <span class="creative-card-badge" style="background:#28A745;">Enviado</span>
+                </div>
+                <div class="creative-card-body">
+                    <h3>${escapeHTML(c.nome)}</h3>
+                    <p>${escapeHTML(c.descricao || 'Seu arquivo enviado')}</p>
+                    <button class="creative-card-btn"><i class="fas fa-magic"></i> Abrir no Editor</button>
                 </div>
             </div>
         `;
@@ -558,7 +509,6 @@ function renderizarCreative() {
 
 function creativeTrocarAba(aba) {
     estadoSite.creativeAbaAtiva = aba;
-
     document.querySelectorAll('.creative-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.creative-panel').forEach(p => p.classList.remove('active'));
 
@@ -574,7 +524,6 @@ function creativeTrocarAba(aba) {
 function inicializarBuscaCreative() {
     const input = document.getElementById('creativeBusca');
     if (!input) return;
-
     input.addEventListener('input', function () {
         estadoSite.creativeBusca = this.value.trim();
         renderizarCreative();
@@ -582,15 +531,126 @@ function inicializarBuscaCreative() {
 }
 
 // ============================================================
-// PHOTOPEA - EDITOR INTEGRADO
+// UPLOAD PÚBLICO NA IEAD CREATIVE
 // ============================================================
-// ⚠️ O Photopea funciona via iframe + PostMessage API
-// Documentação: https://www.photopea.com/api/
-// ============================================================
+function inicializarUploadCreative() {
+    const uploadArea = document.getElementById('creativeUploadArea');
+    const inputFile = document.getElementById('creativeUploadInput');
+    if (!uploadArea || !inputFile) return;
 
+    uploadArea.addEventListener('click', () => inputFile.click());
+
+    uploadArea.addEventListener('dragover', e => {
+        e.preventDefault();
+        uploadArea.style.background = '#FFF9E6';
+        uploadArea.style.borderColor = '#0A1C3A';
+    });
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.background = 'white';
+        uploadArea.style.borderColor = '#D4AF37';
+    });
+    uploadArea.addEventListener('drop', e => {
+        e.preventDefault();
+        uploadArea.style.background = 'white';
+        uploadArea.style.borderColor = '#D4AF37';
+        if (e.dataTransfer.files.length) {
+            inputFile.files = e.dataTransfer.files;
+            processarUploadCreative(e.dataTransfer.files[0]);
+        }
+    });
+
+    inputFile.addEventListener('change', () => {
+        if (inputFile.files.length) {
+            processarUploadCreative(inputFile.files[0]);
+        }
+    });
+}
+
+async function processarUploadCreative(file) {
+    const progressDiv = document.getElementById('creativeUploadProgress');
+    const statusEl = document.getElementById('creativeUploadStatus');
+    const barEl = document.getElementById('creativeUploadBar');
+    const pctEl = document.getElementById('creativeUploadPercent');
+
+    progressDiv.style.display = 'block';
+    statusEl.textContent = '⏳ Lendo arquivo...';
+    barEl.style.width = '0%';
+    pctEl.textContent = '0%';
+
+    // Verifica tipo
+    if (!file.name.toLowerCase().endsWith('.psd')) {
+        statusEl.textContent = '❌ Por favor, envie apenas arquivos .psd';
+        statusEl.style.color = '#FF3B30';
+        return;
+    }
+
+    const limiteMB = CONFIG.LIMITE_CREATIVE_MB || 2048;
+    const tamanhoMB = file.size / (1024 * 1024);
+
+    if (tamanhoMB > limiteMB) {
+        statusEl.textContent = `❌ Arquivo muito grande (máx: ${limiteMB} MB)`;
+        statusEl.style.color = '#FF3B30';
+        return;
+    }
+
+    statusEl.textContent = `⏳ Preparando ${file.name} (${tamanhoMB.toFixed(1)} MB)...`;
+    statusEl.style.color = '#0A1C3A';
+
+    try {
+        // Upload via Apps Script (limite 50MB)
+        const base64 = await window.fileToBase64(file);
+        barEl.style.width = '30%';
+        pctEl.textContent = '30%';
+        statusEl.textContent = '⏳ Enviando para o Google Drive...';
+
+        const result = await window.apiPost({
+            acao: 'creative_upload',
+            nomeArquivo: file.name,
+            tipoMime: file.type || 'image/vnd.adobe.photoshop',
+            dadosBase64: base64.split(',')[1],
+            nome: file.name.replace(/\.[^/.]+$/, ''),
+            descricao: 'Enviado pelo site'
+        });
+
+        if (result && result.status === 'ok') {
+            barEl.style.width = '100%';
+            pctEl.textContent = '100%';
+            statusEl.textContent = '✅ PSD enviado com sucesso!';
+            statusEl.style.color = '#28A745';
+
+            // Adiciona à lista local
+            estadoSite.criativosPublicos.push({
+                nome: file.name.replace(/\.[^/.]+$/, ''),
+                descricao: 'Enviado pelo site',
+                fileId: result.fileId,
+                preview: ''
+            });
+
+            setTimeout(() => {
+                progressDiv.style.display = 'none';
+                renderizarCreativeMeus();
+                window.carregarDadosSite();
+            }, 1500);
+        } else {
+            statusEl.textContent = `❌ ${result?.mensagem || 'Erro ao enviar'}`;
+            statusEl.style.color = '#FF3B30';
+        }
+    } catch (err) {
+        console.error(err);
+        statusEl.textContent = `❌ Erro: ${err.message}`;
+        statusEl.style.color = '#FF3B30';
+    }
+}
+
+// ============================================================
+// PHOTOPEA - EDITOR
+// ============================================================
 function creativeAbrirEditor(index) {
     const arquivo = estadoSite.criativos[index];
-    if (!arquivo) return;
+    if (!arquivo) {
+        alert('Arquivo não encontrado. Recarregue a página.');
+        return;
+    }
 
     estadoSite.creativeArquivoAtual = arquivo;
 
@@ -600,48 +660,29 @@ function creativeAbrirEditor(index) {
 
     titulo.textContent = `Editando: ${arquivo.nome}`;
 
-    // Constrói URL do Photopea
-    // O Photopea aceita config via #hash (JSON)
-    // Vamos usar a URL do arquivo direto do Drive
-    
     const fileURL = arquivo.link_download || arquivo.link;
-    
-    // Config do Photopea
     const config = {
         files: [fileURL],
-        environment: {
-            showtools: true,
-            showcrop: true,
-            showlayers: true
-        },
-        script: `
-            app.activeDocument = app.documents[0];
-        `
+        environment: { showtools: true, showcrop: true, showlayers: true }
     };
 
-    // Constrói URL: https://www.photopea.com/#<json-encoded>
     const configStr = encodeURIComponent(JSON.stringify(config));
     const photopeaURL = `https://www.photopea.com/#${configStr}`;
 
     iframe.src = photopeaURL;
-
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    // Escuta mensagens do iframe (Photopea envia eventos)
     window.addEventListener('message', creativeReceberMensagem);
 }
 
 function creativeReceberMensagem(e) {
-    // Mensagens do Photopea vêm com e.data sendo string ou objeto
     try {
         if (typeof e.data === 'string') {
             const msg = JSON.parse(e.data);
             console.log('📨 Photopea:', msg);
         }
-    } catch (err) {
-        // Ignora mensagens não-JSON
-    }
+    } catch (err) {}
 }
 
 function editorFechar() {
@@ -650,8 +691,7 @@ function editorFechar() {
 
     modal.classList.remove('active');
     document.body.style.overflow = '';
-    
-    // Limpa o iframe
+
     setTimeout(() => {
         iframe.src = 'about:blank';
     }, 300);
@@ -660,9 +700,6 @@ function editorFechar() {
     estadoSite.creativeArquivoAtual = null;
 }
 
-// ============================================================
-// EXPORTAR DO PHOTOPEA
-// ============================================================
 function editorExportar(formato) {
     const iframe = document.getElementById('editorIframe');
     if (!iframe || !iframe.contentWindow) {
@@ -670,74 +707,30 @@ function editorExportar(formato) {
         return;
     }
 
-    const ext = formato === 'jpg' ? 'jpg' : formato === 'pdf' ? 'pdf' : 'png';
-    
-    // Envia comando pro Photopea via PostMessage
-    // Documentação: https://www.photopea.com/api/
-    // O Photopea aceita: "app.activeDocument.saveToOE('png')" via script
-
     let script = '';
-    if (formato === 'png') {
-        script = `app.activeDocument.saveToOE("png");`;
-    } else if (formato === 'jpg') {
-        script = `app.activeDocument.saveToOE("jpg");`;
-    } else if (formato === 'pdf') {
-        script = `
-            var doc = app.activeDocument;
-            var exportOptions = new ExportOptionsSaveForWeb();
-            exportOptions.format = SaveDocumentType.PDF;
-            doc.exportDocument(new File("/tmp/output.pdf"), ExportType.SAVEFORWEB, exportOptions);
-        `;
-    }
+    if (formato === 'png') script = `app.activeDocument.saveToOE("png");`;
+    else if (formato === 'jpg') script = `app.activeDocument.saveToOE("jpg");`;
+    else if (formato === 'pdf') script = `app.activeDocument.saveToOE("pdf");`;
 
-    // Envia para o Photopea
     iframe.contentWindow.postMessage(script, '*');
 
-    // Alternativa: abrir o Photopea em tela cheia e o usuário baixa manualmente
     const aviso = document.createElement('div');
-    aviso.style.cssText = `
-        position: fixed; bottom: 20px; right: 20px; z-index: 999999;
-        background: #D4AF37; color: #0A1C3A; padding: 15px 20px;
-        border-radius: 12px; font-weight: 700; box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        font-family: Inter, sans-serif; font-size: 0.9rem;
-    `;
-    aviso.textContent = `📥 Exportando ${formato.toUpperCase()}... Use o menu "File → Export as" do editor se não baixar automaticamente.`;
+    aviso.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:999999; background:#D4AF37; color:#0A1C3A; padding:15px 20px; border-radius:12px; font-weight:700; box-shadow:0 8px 25px rgba(0,0,0,0.3); font-family:Inter, sans-serif; font-size:0.9rem;`;
+    aviso.textContent = `📥 Exportando ${formato.toUpperCase()}...`;
     document.body.appendChild(aviso);
     setTimeout(() => aviso.remove(), 5000);
 }
 
-// ============================================================
-// SALVAR NO DRIVE
-// ============================================================
 function editorSalvarNoDrive() {
-    const iframe = document.getElementById('editorIframe');
-    if (!iframe || !iframe.contentWindow) {
-        alert('Editor não está pronto.');
-        return;
-    }
-
-    // Pede ao Photopea para exportar como PSD
-    // O Photopea suporta "saveToOE" para exportar
-    // Para salvar como PSD, precisamos de um processo diferente
-    
     const aviso = document.createElement('div');
-    aviso.style.cssText = `
-        position: fixed; bottom: 20px; right: 20px; z-index: 999999;
-        background: #D4AF37; color: #0A1C3A; padding: 15px 20px;
-        border-radius: 12px; font-weight: 700; box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        font-family: Inter, sans-serif; font-size: 0.9rem; max-width: 320px;
-    `;
-    aviso.innerHTML = `
-        <strong>💾 Salvar no Drive</strong><br>
-        Para salvar seu PSD editado, use o menu <strong>"File → Save as PSD"</strong> no editor.
-        Depois envie o arquivo pelo painel administrativo.
-    `;
+    aviso.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:999999; background:#D4AF37; color:#0A1C3A; padding:15px 20px; border-radius:12px; font-weight:700; box-shadow:0 8px 25px rgba(0,0,0,0.3); font-family:Inter, sans-serif; font-size:0.9rem; max-width:320px;`;
+    aviso.innerHTML = `<strong>💾 Salvar no Drive</strong><br>Use o menu <strong>"File → Save as PSD"</strong> no editor e faça upload novamente.`;
     document.body.appendChild(aviso);
     setTimeout(() => aviso.remove(), 8000);
 }
 
 // ============================================================
-// MODAL PREVIEW (Downloads)
+// PREVIEW MODAL (Downloads)
 // ============================================================
 function inicializarPreview() {
     if (!document.getElementById('previewModal')) {
@@ -747,36 +740,24 @@ function inicializarPreview() {
         modal.innerHTML = `
             <div class="preview-modal-overlay" onclick="fecharPreview()"></div>
             <div class="preview-modal-content">
-                <button class="preview-close" onclick="fecharPreview()" aria-label="Fechar">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button class="preview-close" onclick="fecharPreview()"><i class="fas fa-times"></i></button>
                 <div class="preview-modal-header">
                     <div class="preview-title-area">
                         <i class="fas fa-file preview-title-icon" id="previewTitleIcon"></i>
-                        <div>
-                            <h3 id="previewTitulo">Nome do arquivo</h3>
-                            <p id="previewMeta">Tipo • Tamanho</p>
-                        </div>
+                        <div><h3 id="previewTitulo">Nome do arquivo</h3><p id="previewMeta">Tipo • Tamanho</p></div>
                     </div>
                 </div>
                 <div class="preview-modal-body" id="previewBody"></div>
                 <div class="preview-modal-footer">
-                    <button onclick="fecharPreview()" class="btn-secondary-preview">
-                        <i class="fas fa-arrow-left"></i> <span>Voltar</span>
-                    </button>
-                    <a id="previewDownloadBtn" href="#" download target="_blank" rel="noopener noreferrer" class="btn-download-preview">
-                        <i class="fas fa-download"></i> <span>Baixar Arquivo</span>
-                    </a>
+                    <button onclick="fecharPreview()" class="btn-secondary-preview"><i class="fas fa-arrow-left"></i> <span>Voltar</span></button>
+                    <a id="previewDownloadBtn" href="#" download target="_blank" rel="noopener noreferrer" class="btn-download-preview"><i class="fas fa-download"></i> <span>Baixar Arquivo</span></a>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
     }
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            fecharPreview();
-            editorFechar();
-        }
+        if (e.key === 'Escape') { fecharPreview(); editorFechar(); }
     });
 }
 
@@ -807,13 +788,7 @@ function abrirPreview(index) {
         const url = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : arquivo.link;
         body.innerHTML = `<div class="preview-pdf-wrapper"><iframe src="${url}" allowfullscreen frameborder="0"></iframe></div>`;
     } else {
-        body.innerHTML = `
-            <div class="preview-generic">
-                <div class="preview-generic-icon"><i class="fas ${obterIcone(arquivo.tipo)}"></i></div>
-                <h4>${escapeHTML(arquivo.nome)}</h4>
-                <p>${escapeHTML(arquivo.descricao || 'Este tipo de arquivo não possui pré-visualização.')}</p>
-                <p class="preview-hint">Clique em <strong>Baixar Arquivo</strong> para fazer o download.</p>
-            </div>`;
+        body.innerHTML = `<div class="preview-generic"><div class="preview-generic-icon"><i class="fas ${obterIcone(arquivo.tipo)}"></i></div><h4>${escapeHTML(arquivo.nome)}</h4><p>${escapeHTML(arquivo.descricao || 'Este tipo de arquivo não possui pré-visualização.')}</p><p class="preview-hint">Clique em <strong>Baixar Arquivo</strong> para fazer o download.</p></div>`;
     }
 
     modal.classList.add('active');

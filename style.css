@@ -2782,3 +2782,28 @@ footer {
         font-size: 16px !important;
     }
 }
+
+/* ============================================================
+   EDITOR PHOTOPEA - AJUSTES MOBILE
+   ============================================================ */
+.editor-modal-body iframe {
+    min-height: 500px;
+}
+
+@media (max-width: 768px) {
+    .editor-modal-header {
+        padding: 10px 12px;
+    }
+
+    .editor-modal-actions > span {
+        display: none;
+    }
+
+    .editor-modal-body iframe {
+        min-height: calc(100vh - 120px);
+    }
+
+    .editor-modal-footer {
+        display: none;
+    }
+}

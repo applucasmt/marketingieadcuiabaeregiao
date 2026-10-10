@@ -705,3 +705,104 @@ document.getElementById('cmsModal')?.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') cmsFecharModal();
 });
+
+// ============================================================
+// GERENCIAMENTO DE CATEGORIAS (NOVO)
+// ============================================================
+function cmsRenderizarCategoriasAdmin() {
+    const container = document.getElementById('cmsCategoriasList');
+    if (!container) return;
+
+    if (!cmsEstado.categorias.length) {
+        container.innerHTML = '<p class="cms-empty">Nenhuma categoria ainda.</p>';
+        return;
+    }
+
+    container.innerHTML = cmsEstado.categorias.map(c => `
+        <div class="cms-item">
+            <div class="cms-item-info">
+                <h4>${escapeHTML(c.nome)}</h4>
+                <p>${c.total_arquivos || 0} arquivo(s)</p>
+            </div>
+            <div class="cms-item-actions">
+                <button onclick='cmsEditarCategoria(${JSON.stringify(c).replace(/'/g, "&#39;")})' class="cms-btn-icon" title="Editar">
+                    <svg class="cms-icon"><use href="#i-edit"></use></svg>
+                </button>
+                <button onclick="cmsRemoverCategoria(${c.id})" class="cms-btn-icon cms-danger" title="Excluir">
+                    <svg class="cms-icon"><use href="#i-trash"></use></svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function cmsAbrirModalCategoria(cat = null) {
+    const modal = document.getElementById('cmsModal');
+    const box = document.getElementById('cmsModalBox');
+    box.innerHTML = `
+        <h2>${cat ? 'Editar' : 'Nova'} Categoria</h2>
+        <div class="cms-form-grid">
+            <div class="cms-form-group cms-full">
+                <label>Nome da Categoria</label>
+                <input id="cmsCatNome" value="${cat?.nome || ''}" placeholder="Ex: Logo IEAD">
+            </div>
+            <div class="cms-form-group cms-full">
+                <label>Ícone (classe Font Awesome)</label>
+                <input id="cmsCatIcone" value="${cat?.icone || 'fa-folder'}" placeholder="Ex: fa-image, fa-book">
+                <small style="color:#86868B;font-size:0.75rem;margin-top:5px;">Sugestões: fa-image, fa-book, fa-file-pdf, fa-video, fa-music, fa-bullhorn</small>
+            </div>
+            <div class="cms-form-group">
+                <label>Ordem</label>
+                <input type="number" id="cmsCatOrdem" value="${cat?.ordem || cmsEstado.categorias.length + 1}">
+            </div>
+        </div>
+        <div class="cms-modal-actions">
+            <button onclick="cmsFecharModal()" class="cms-btn-secondary">Cancelar</button>
+            <button onclick="cmsSalvarCategoria(${cat?.id || 'null'})" class="cms-btn-primary">
+                <svg class="cms-icon"><use href="#i-save"></use></svg><span>Salvar</span>
+            </button>
+        </div>
+    `;
+    modal.classList.add('cms-active');
+}
+
+async function cmsSalvarCategoria(id) {
+    const dados = {
+        nome: document.getElementById('cmsCatNome').value.trim(),
+        icone: document.getElementById('cmsCatIcone').value.trim() || 'fa-folder',
+        ordem: parseInt(document.getElementById('cmsCatOrdem').value) || 1
+    };
+
+    if (!dados.nome) {
+        alert('Digite um nome para a categoria.');
+        return;
+    }
+
+    const acao = id ? 'categoria_salvar' : 'categoria_salvar';
+    const r = await apiPost({ acao, dados, id });
+    
+    if (r && r.status === 'ok') {
+        cmsFecharModal();
+        cmsCarregarTudo();
+        alert('✅ Categoria salva!');
+    } else {
+        alert('❌ Erro ao salvar categoria');
+    }
+}
+
+async function cmsRemoverCategoria(id) {
+    if (!confirm('Remover esta categoria? Os arquivos dela ficarão sem categoria.')) return;
+    const r = await apiPost({ acao: 'categoria_remover', id });
+    if (r && r.status === 'ok') cmsCarregarTudo();
+}
+
+function cmsEditarCategoria(c) { cmsAbrirModalCategoria(c); }
+
+// ⚠️ OBRIGATÓRIO: adicionar essas linhas ao cmsCarregarTudo() existente
+// Encontre a função cmsCarregarTudo() e ADICIONE dentro dela (junto com os outros renderizar):
+//   cmsRenderizarCategoriasAdmin();
+//
+// E ao carregar cmsEstado.categorias, adicione total_arquivos:
+//   cmsEstado.categorias.forEach(c => {
+//       c.total_arquivos = cmsEstado.arquivos.filter(a => a.categoria === c.nome).length;
+//   });

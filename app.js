@@ -1,8 +1,8 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v44
- * - Photopea abre DIRETO no editor (sem landing page)
- * - Painéis visíveis no mobile
- * - Header responsivo sem cortes
+ * SITE PÚBLICO - Marketing IEAD v48
+ * - Dropdown de categorias (substitui as abas antigas)
+ * - Photopea abre direto no editor
+ * - Mobile-friendly
  * ============================================================ */
 
 let estadoSite = {
@@ -264,48 +264,143 @@ function aplicarConfiguracoes() {
 }
 
 // ============================================================
-// CATEGORIAS
+// CATEGORIAS - DROPDOWN
 // ============================================================
 function renderizarCategorias() {
-    const container = document.getElementById('categoriasTabs');
-    if (!container) return;
+    const botao = document.getElementById('categoriasToggle');
+    const nomeEl = document.getElementById('categoriaSelecionadaNome');
+    const countEl = document.getElementById('categoriaSelecionadaCount');
+    const listaEl = document.getElementById('categoriasLista');
+    if (!botao || !listaEl) return;
 
+    // Conta arquivos por categoria
     const contagem = {};
     estadoSite.arquivos.forEach(a => {
         const cat = paraString(a.categoria || 'Geral').trim();
         contagem[cat] = (contagem[cat] || 0) + 1;
     });
 
+    // Monta o mapa de categorias
     const categoriasMap = new Map();
-    categoriasMap.set('todas', { nome: 'Todas', icone: 'fa-th-large', total: estadoSite.arquivos.length });
+    categoriasMap.set('todas', {
+        nome: 'Todas as categorias',
+        icone: 'fa-th-large',
+        total: estadoSite.arquivos.length
+    });
 
     estadoSite.categorias.forEach(c => {
         const nome = paraString(c.nome).trim();
         if (nome && !categoriasMap.has(nome)) {
-            categoriasMap.set(nome, { nome: nome, icone: c.icone || 'fa-folder', total: contagem[nome] || 0 });
+            categoriasMap.set(nome, {
+                nome: nome,
+                icone: c.icone || 'fa-folder',
+                total: contagem[nome] || 0
+            });
         }
     });
 
     Object.keys(contagem).forEach(nome => {
         if (!categoriasMap.has(nome)) {
-            categoriasMap.set(nome, { nome: nome, icone: 'fa-folder', total: contagem[nome] });
+            categoriasMap.set(nome, {
+                nome: nome,
+                icone: 'fa-folder',
+                total: contagem[nome]
+            });
         }
     });
 
-    container.innerHTML = Array.from(categoriasMap.values()).map(cat => `
-        <button class="categoria-tab ${estadoSite.categoriaAtiva === cat.nome ? 'active' : ''}"
-            onclick="selecionarCategoria('${cat.nome.replace(/'/g, "&#39;")}')">
-            <i class="fas ${cat.icone}"></i>
-            <span>${escapeHTML(cat.nome)}</span>
-            <span class="contador">${cat.total}</span>
-        </button>
-    `).join('');
+    // Atualiza o texto do botão com a categoria ativa
+    const catAtiva = categoriasMap.get(estadoSite.categoriaAtiva) || categoriasMap.get('todas');
+    if (nomeEl) nomeEl.textContent = catAtiva.nome;
+    if (countEl) countEl.textContent = catAtiva.total;
+
+    // Popula a lista de categorias
+    listaEl.innerHTML = Array.from(categoriasMap.values()).map(cat => {
+        const isActive =
+            estadoSite.categoriaAtiva === cat.nome ||
+            (estadoSite.categoriaAtiva === 'todas' && cat.nome === 'Todas as categorias');
+
+        return `
+            <button class="categoria-item ${isActive ? 'active' : ''}"
+                onclick="selecionarCategoriaDropdown('${cat.nome.replace(/'/g, "&#39;")}')"
+                data-nome="${cat.nome.toLowerCase()}">
+                <i class="fas ${cat.icone}"></i>
+                <span class="categoria-item-nome">${escapeHTML(cat.nome)}</span>
+                <span class="categoria-item-count">${cat.total}</span>
+            </button>
+        `;
+    }).join('');
 }
 
-function selecionarCategoria(nomeCategoria) {
-    estadoSite.categoriaAtiva = nomeCategoria;
+function toggleCategoriasMenu() {
+    const dropdown = document.getElementById('categoriasDropdown');
+    const botao = document.getElementById('categoriasToggle');
+    if (!dropdown || !botao) return;
+
+    const aberto = dropdown.classList.contains('open');
+
+    if (aberto) {
+        dropdown.classList.remove('open');
+        botao.classList.remove('active');
+    } else {
+        dropdown.classList.add('open');
+        botao.classList.add('active');
+        setTimeout(() => {
+            const filtro = document.getElementById('categoriasFiltro');
+            if (filtro) filtro.focus();
+        }, 200);
+    }
+}
+
+function selecionarCategoriaDropdown(nomeCategoria) {
+    const nomeReal = nomeCategoria === 'Todas as categorias' ? 'todas' : nomeCategoria;
+
+    estadoSite.categoriaAtiva = nomeReal;
     renderizarCategorias();
     renderizarArquivos();
+
+    // Fecha o dropdown
+    const dropdown = document.getElementById('categoriasDropdown');
+    const botao = document.getElementById('categoriasToggle');
+    if (dropdown) dropdown.classList.remove('open');
+    if (botao) botao.classList.remove('active');
+
+    // Limpa o filtro
+    const filtro = document.getElementById('categoriasFiltro');
+    if (filtro) {
+        filtro.value = '';
+        filtrarCategoriasDropdown();
+    }
+}
+
+function filtrarCategoriasDropdown() {
+    const filtro = document.getElementById('categoriasFiltro');
+    const lista = document.querySelectorAll('.categoria-item');
+    if (!filtro) return;
+
+    const termo = filtro.value.toLowerCase().trim();
+
+    lista.forEach(item => {
+        const nome = item.dataset.nome || '';
+        item.style.display = nome.includes(termo) ? 'flex' : 'none';
+    });
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener('click', (e) => {
+    const wrapper = document.querySelector('.categorias-wrapper');
+    const dropdown = document.getElementById('categoriasDropdown');
+    const botao = document.getElementById('categoriasToggle');
+
+    if (wrapper && !wrapper.contains(e.target)) {
+        if (dropdown) dropdown.classList.remove('open');
+        if (botao) botao.classList.remove('active');
+    }
+});
+
+// Mantém compatibilidade com função antiga (usada em outros lugares)
+function selecionarCategoria(nomeCategoria) {
+    selecionarCategoriaDropdown(nomeCategoria);
 }
 
 // ============================================================
@@ -320,7 +415,9 @@ function renderizarArquivos() {
     const catAtiva = paraString(estadoSite.categoriaAtiva || 'todas').trim();
 
     if (catAtiva && catAtiva.toLowerCase() !== 'todas') {
-        arquivosFiltrados = arquivosFiltrados.filter(a => paraString(a.categoria || 'Geral').trim() === catAtiva);
+        arquivosFiltrados = arquivosFiltrados.filter(a =>
+            paraString(a.categoria || 'Geral').trim() === catAtiva
+        );
     }
 
     if (estadoSite.buscaAtiva) {
@@ -341,8 +438,17 @@ function renderizarArquivos() {
     }
 
     if (!arquivosFiltrados.length) {
-        const msg = catAtiva.toLowerCase() === 'todas' ? 'Nenhum arquivo disponível.' : `Nenhum arquivo na categoria "${catAtiva}".`;
-        grid.innerHTML = `<div class="empty-categoria"><i class="fas fa-folder-open"></i><h3>${msg}</h3><p>${catAtiva.toLowerCase() !== 'todas' ? 'Tente outra categoria.' : 'Os materiais serão adicionados em breve.'}</p></div>`;
+        const msg = catAtiva.toLowerCase() === 'todas'
+            ? 'Nenhum arquivo disponível.'
+            : `Nenhum arquivo na categoria "${catAtiva}".`;
+
+        grid.innerHTML = `
+            <div class="empty-categoria">
+                <i class="fas fa-folder-open"></i>
+                <h3>${msg}</h3>
+                <p>${catAtiva.toLowerCase() !== 'todas' ? 'Tente outra categoria.' : 'Os materiais serão adicionados em breve.'}</p>
+            </div>
+        `;
         return;
     }
 
@@ -350,6 +456,7 @@ function renderizarArquivos() {
         const indexOriginal = estadoSite.arquivos.indexOf(a);
         const icone = obterIcone(a.tipo);
         const isNovo = indexOriginal < 3;
+
         return `
             <div class="card" onclick="abrirPreview(${indexOriginal})">
                 <div class="card-thumb">
@@ -422,16 +529,39 @@ function renderizarCarrossel() {
     if (!track) return;
 
     const slides = [];
+
     estadoSite.carrossel.forEach(s => {
-        slides.push({ tipo: 'aviso', titulo: paraString(s.titulo), descricao: paraString(s.descricao), badge: paraString(s.badge) || 'Aviso', link: paraString(s.link), textoBotao: paraString(s.textoBotao) || 'Saber mais', arquivoIndex: null });
+        slides.push({
+            tipo: 'aviso',
+            titulo: paraString(s.titulo),
+            descricao: paraString(s.descricao),
+            badge: paraString(s.badge) || 'Aviso',
+            link: paraString(s.link),
+            textoBotao: paraString(s.textoBotao) || 'Saber mais',
+            arquivoIndex: null
+        });
     });
 
     estadoSite.arquivos.slice(0, 5).forEach((arq, index) => {
-        slides.push({ tipo: 'arquivo', titulo: paraString(arq.nome), descricao: paraString(arq.descricao) || `Novo material disponível: ${paraString(arq.tipo)}`, badge: 'Novo', arquivoIndex: index, arquivo: arq });
+        slides.push({
+            tipo: 'arquivo',
+            titulo: paraString(arq.nome),
+            descricao: paraString(arq.descricao) || `Novo material disponível: ${paraString(arq.tipo)}`,
+            badge: 'Novo',
+            arquivoIndex: index,
+            arquivo: arq
+        });
     });
 
     if (slides.length === 0) {
-        slides.push({ tipo: 'aviso', titulo: 'Bem-vindo ao Portal', descricao: 'Acesse materiais exclusivos.', badge: 'Novo', link: '#downloads', textoBotao: 'Explorar' });
+        slides.push({
+            tipo: 'aviso',
+            titulo: 'Bem-vindo ao Portal',
+            descricao: 'Acesse materiais exclusivos.',
+            badge: 'Novo',
+            link: '#downloads',
+            textoBotao: 'Explorar'
+        });
     }
 
     track.innerHTML = slides.map((s, i) => {
@@ -460,7 +590,9 @@ function renderizarCarrossel() {
         `;
     }).join('');
 
-    dotsContainer.innerHTML = slides.map((_, i) => `<span class="dot ${i === 0 ? 'active' : ''}" onclick="irParaSlide(${i})"></span>`).join('');
+    dotsContainer.innerHTML = slides.map((_, i) =>
+        `<span class="dot ${i === 0 ? 'active' : ''}" onclick="irParaSlide(${i})"></span>`
+    ).join('');
 }
 
 function isImagem(tipo) {
@@ -859,7 +991,7 @@ async function enviarPSDModal() {
 }
 
 // ============================================================
-// PHOTOPEA - EDITOR (CORRIGIDO)
+// PHOTOPEA - EDITOR
 // ============================================================
 function creativeAbrirEditor(index) {
     const arquivo = estadoSite.criativos[index];
@@ -933,8 +1065,6 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor...';
 
-    // ⭐ URL do Photopea em modo embedded
-    // Isso força ele a ir direto pro editor SEM mostrar a landing page
     iframe.src = 'https://www.photopea.com/?embedded';
 
     let arquivoEnviado = false;
@@ -947,9 +1077,7 @@ async function abrirEditorComArquivo(arquivo) {
     window.addEventListener('message', photopeaHandler);
     window._photopeaHandler = photopeaHandler;
 
-    // ⭐ onload dispara quando o iframe carrega o Photopea
     iframe.onload = () => {
-        // Envia o arquivo imediatamente (o Photopea já processa)
         setTimeout(() => {
             if (arquivoEnviado) return;
             arquivoEnviado = true;
@@ -965,7 +1093,6 @@ async function abrirEditorComArquivo(arquivo) {
         }, 800);
     };
 
-    // Fallback: força envio após 5s
     setTimeout(() => {
         if (arquivoEnviado) return;
         arquivoEnviado = true;
@@ -975,7 +1102,6 @@ async function abrirEditorComArquivo(arquivo) {
         } catch (err) {}
     }, 5000);
 
-    // Garantia: remove loading em 15s
     setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
 }
 
@@ -993,14 +1119,11 @@ function editorFechar() {
     }
 }
 
-// ⭐ BOTÃO MENU DO EDITOR (mobile)
-// Abre o menu do Photopea automaticamente enviando um clique simulado
 function editorToggleMenu() {
     const iframe = document.getElementById('editorIframe');
     if (!iframe || !iframe.contentWindow) return;
-    // Envia comando para o Photopea abrir o menu Arquivo
     iframe.contentWindow.postMessage('app.showMenu();', '*');
-    // Fallback: abre uma notificação para o usuário
+
     const aviso = document.createElement('div');
     aviso.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:999999; background:#D4AF37; color:#0A1C3A; padding:15px 20px; border-radius:12px; font-weight:700; box-shadow:0 8px 25px rgba(0,0,0,0.3); font-family:Inter, sans-serif; font-size:0.85rem; max-width:280px;`;
     aviso.innerHTML = `ℹ️ Use o menu <strong>Arquivo</strong> no topo do Photopea para exportar.`;

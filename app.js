@@ -1,6 +1,7 @@
 /* ============================================================
  * SITE PÚBLICO - Marketing IEAD v34
- * Correções finais do Photopea
+ * - Photopea em modo EMBED (menos anúncios)
+ * - Preview de PSD gerado automaticamente no upload
  * ============================================================ */
 
 let estadoSite = {
@@ -649,21 +650,8 @@ async function processarUploadCreative(file) {
 }
 
 // ============================================================
-// ⭐ PHOTOPEA - ESTRATÉGIA CORRETA
+// PHOTOPEA - EDITOR
 // ============================================================
-// Referência: https://www.photopea.com/api/
-//
-// O Photopea aceita arquivos via postMessage SOMENTE quando:
-//   1. O iframe foi carregado DIRETO de https://www.photopea.com/
-//   2. Enviamos o ArrayBuffer como transferable
-//   3. Esperamos o Photopea estar pronto (ele emite um evento)
-//
-// Estratégia usada aqui:
-//   1. Carrega o Photopea com um arquivo de config vazio
-//   2. Espera 5 segundos (tempo de inicialização)
-//   3. Envia o ArrayBuffer do PSD
-// ============================================================
-
 function creativeAbrirEditor(index) {
     const arquivo = estadoSite.criativos[index];
     if (!arquivo) {
@@ -694,11 +682,11 @@ async function abrirEditorComArquivo(arquivo) {
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    // Remove loading antigo se houver
+    // Remove loading antigo
     const oldLoading = document.getElementById('editorLoading');
     if (oldLoading) oldLoading.remove();
 
-    // Cria div de loading
+    // Loading div
     const loadingDiv = document.createElement('div');
     loadingDiv.id = 'editorLoading';
     loadingDiv.style.cssText = `
@@ -726,7 +714,6 @@ async function abrirEditorComArquivo(arquivo) {
     bodyParent.style.position = 'relative';
     bodyParent.appendChild(loadingDiv);
 
-    // Adiciona animação de spin se não existir
     if (!document.getElementById('spinAnimation')) {
         const style = document.createElement('style');
         style.id = 'spinAnimation';
@@ -744,7 +731,6 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Baixando arquivo do Google Drive...';
 
-    // ⭐ 1. Baixa o PSD via Apps Script (evita CORS)
     const resp = await window.apiGet('baixar_psd', { fileId: fileId });
 
     if (!resp || resp.status !== 'ok') {
@@ -755,7 +741,6 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = `Arquivo baixado (${resp.tamanhoMB} MB). Preparando...`;
 
-    // ⭐ 2. Converte Base64 para ArrayBuffer
     const binaryString = atob(resp.base64);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
@@ -765,36 +750,23 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor Photopea...';
 
-    // ⭐ 3. Carrega o Photopea LIMPO (sem arquivo)
-    // Estratégia: usa postMessage com o ArrayBuffer após o Photopea estar pronto
-    iframe.src = 'https://www.photopea.com/';
+    // ⭐ EMBED MODE - reduz anúncios laterais
+    iframe.src = 'https://www.photopea.com/?embedded';
 
-    // Flag para não enviar 2x
     let arquivoEnviado = false;
 
-    // Listener de mensagens
     const photopeaHandler = (event) => {
         if (event.source !== iframe.contentWindow) return;
-
         try {
-            // O Photopea pode enviar strings JSON
-            const data = event.data;
-            console.log('📨 Photopea:', data);
-
-            // Quando o Photopea está pronto, ele envia "done" ou {}
-            // Vamos enviar o arquivo após 3 segundos de qualquer forma
-
+            console.log('📨 Photopea:', event.data);
         } catch (err) {}
     };
 
     window.addEventListener('message', photopeaHandler);
     window._photopeaHandler = photopeaHandler;
 
-    // ⭐ 4. Aguarda o Photopea carregar e envia o arquivo
     iframe.onload = () => {
         console.log('✅ Photopea iframe carregado');
-
-        // Aguarda 4 segundos para o Photopea inicializar completamente
         setTimeout(() => {
             if (arquivoEnviado) return;
             arquivoEnviado = true;
@@ -803,29 +775,22 @@ async function abrirEditorComArquivo(arquivo) {
             statusEl().textContent = 'Enviando PSD para o editor...';
 
             try {
-                // Envia o ArrayBuffer como transferable
                 iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-
                 console.log('✅ PSD enviado com sucesso');
 
-                // Remove o loading após 2s
                 setTimeout(() => {
                     if (loadingDiv.parentElement) loadingDiv.remove();
                 }, 2000);
-
             } catch (err) {
                 console.error('❌ Erro ao enviar para Photopea:', err);
-                loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>
-                    <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);margin-top:10px;">Tente novamente ou use outro navegador.</p>`;
+                loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
             }
         }, 4000);
     };
 
-    // Fallback: se o iframe.onload não disparar, força o envio após 8s
     setTimeout(() => {
         if (arquivoEnviado) return;
         arquivoEnviado = true;
-
         console.log('📤 Enviando PSD (fallback)...');
         try {
             iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
@@ -837,7 +802,6 @@ async function abrirEditorComArquivo(arquivo) {
         }
     }, 8000);
 
-    // Fallback final: remove o loading após 12s
     setTimeout(() => {
         if (loadingDiv.parentElement) loadingDiv.remove();
     }, 12000);
@@ -884,13 +848,7 @@ function editorExportar(formato) {
     setTimeout(() => aviso.remove(), 5000);
 }
 
-function editorSalvarNoDrive() {
-    const aviso = document.createElement('div');
-    aviso.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:999999; background:#D4AF37; color:#0A1C3A; padding:15px 20px; border-radius:12px; font-weight:700; box-shadow:0 8px 25px rgba(0,0,0,0.3); font-family:Inter, sans-serif; font-size:0.9rem; max-width:320px;`;
-    aviso.innerHTML = `<strong>💾 Salvar no Drive</strong><br>Use o menu <strong>"File → Save as PSD"</strong> no editor e depois faça upload novamente pelo formulário.`;
-    document.body.appendChild(aviso);
-    setTimeout(() => aviso.remove(), 8000);
-}
+// ⚠️ Função removida: editorSalvarNoDrive() - não é mais usada
 
 // ============================================================
 // PREVIEW MODAL (Downloads)

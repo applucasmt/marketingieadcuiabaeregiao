@@ -1,9 +1,9 @@
 /* ============================================================
  * SITE PÚBLICO - Marketing IEAD v33
  * Correções:
- *  - Preview de PSD gerado no cliente (via Photopea)
- *  - Photopea recebe arquivo via Blob (não URL do Drive)
- *  - Upload até 50 MB via Apps Script
+ *  - PSD carregado via Apps Script (Base64) - sem CORS
+ *  - Preview gerado no upload (não mais via Drive)
+ *  - Photopea recebe o arquivo via postMessage
  * ============================================================ */
 
 let estadoSite = {
@@ -21,8 +21,7 @@ let estadoSite = {
     buscaAtiva: '',
     creativeAbaAtiva: 'templates',
     creativeBusca: '',
-    creativeArquivoAtual: null,
-    creativePSDBuffer: null
+    creativeArquivoAtual: null
 };
 
 // ============================================================
@@ -308,10 +307,12 @@ function gerarThumb(arquivo) {
     const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
     const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
     const isPdf = ext === 'PDF';
+    const isPsd = ext === 'PSD';
 
     if (isImg && arquivo.preview) return `<img src="${arquivo.preview}" alt="${escapeHTML(arquivo.nome)}" loading="lazy">`;
     if (isVid && arquivo.preview) return `<div class="thumb-video"><img src="${arquivo.preview}" alt=""><div class="play-overlay"><i class="fas fa-play"></i></div></div>`;
     if (isPdf) return `<div class="thumb-fallback pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></div>`;
+    if (isPsd) return `<div class="thumb-fallback" style="color:#D4AF37;"><i class="fas fa-file-alt"></i><span>PSD</span></div>`;
     return `<div class="thumb-fallback"><i class="fas fa-file"></i></div>`;
 }
 
@@ -495,7 +496,7 @@ function renderizarCreativeMeus() {
 
     grid.innerHTML = meus.map(c => {
         return `
-            <div class="creative-card" data-fileid="${c.fileId}">
+            <div class="creative-card">
                 <div class="creative-card-thumb">
                     ${c.preview ? `<img src="${c.preview}" alt="${escapeHTML(c.nome)}" loading="lazy">` : `<i class="fas fa-file-alt psd-icon"></i>`}
                     <span class="creative-card-badge" style="background:#28A745;">Enviado</span>
@@ -580,21 +581,17 @@ async function processarUploadCreative(file) {
     barEl.style.width = '0%';
     pctEl.textContent = '0%';
 
-    // Valida tipo
     if (!file.name.toLowerCase().endsWith('.psd')) {
         statusEl.textContent = '❌ Por favor, envie apenas arquivos .psd';
         statusEl.style.color = '#FF3B30';
         return;
     }
 
-    // ⚠️ Limite do Apps Script: 50 MB
     const LIMITE_MB = 50;
     const tamanhoMB = file.size / (1024 * 1024);
 
     if (tamanhoMB > LIMITE_MB) {
-        statusEl.innerHTML = `❌ Arquivo muito grande (${tamanhoMB.toFixed(1)} MB).<br>
-        O limite do Google Apps Script é <strong>${LIMITE_MB} MB</strong>.<br>
-        Para arquivos maiores, use o painel administrativo ou entre em contato.`;
+        statusEl.innerHTML = `❌ Arquivo muito grande (${tamanhoMB.toFixed(1)} MB).<br>Limite: <strong>${LIMITE_MB} MB</strong>.`;
         statusEl.style.color = '#FF3B30';
         return;
     }
@@ -603,39 +600,23 @@ async function processarUploadCreative(file) {
     statusEl.style.color = '#0A1C3A';
 
     try {
-        // ⭐ Gera preview do PSD no cliente usando Photopea
-        statusEl.textContent = '⏳ Gerando preview...';
-        barEl.style.width = '10%';
-        pctEl.textContent = '10%';
+        barEl.style.width = '20%';
+        pctEl.textContent = '20%';
+        statusEl.textContent = '⏳ Convertendo arquivo...';
 
-        let previewBase64 = null;
-        try {
-            previewBase64 = await gerarPreviewPSD(file);
-        } catch (previewErr) {
-            console.warn('⚠️ Não foi possível gerar preview automático:', previewErr);
-            previewBase64 = null;
-        }
-
-        barEl.style.width = '30%';
-        pctEl.textContent = '30%';
-        statusEl.textContent = '⏳ Enviando PSD para o Google Drive...';
-
-        // Converte PSD para base64
         const base64 = await window.fileToBase64(file);
 
         barEl.style.width = '50%';
         pctEl.textContent = '50%';
+        statusEl.textContent = '⏳ Enviando PSD para o Google Drive...';
 
-        // Envia para o Apps Script
         const result = await window.apiPost({
             acao: 'creative_upload',
             nomeArquivo: file.name,
             tipoMime: file.type || 'image/vnd.adobe.photoshop',
             dadosBase64: base64.split(',')[1],
             nome: file.name.replace(/\.[^/.]+$/, ''),
-            descricao: 'Enviado pelo site',
-            thumbBase64: previewBase64,
-            thumbTipoMime: previewBase64 ? 'image/png' : null
+            descricao: 'Enviado pelo site'
         });
 
         barEl.style.width = '100%';
@@ -645,7 +626,6 @@ async function processarUploadCreative(file) {
             statusEl.textContent = '✅ PSD enviado com sucesso!';
             statusEl.style.color = '#28A745';
 
-            // Adiciona à lista local
             estadoSite.criativosPublicos.push({
                 nome: file.name.replace(/\.[^/.]+$/, ''),
                 descricao: 'Enviado pelo site',
@@ -658,9 +638,7 @@ async function processarUploadCreative(file) {
             setTimeout(() => {
                 progressDiv.style.display = 'none';
                 renderizarCreativeMeus();
-                carregarDadosSite().then(() => {
-                    renderizarCreative();
-                });
+                carregarDadosSite().then(() => renderizarCreative());
             }, 1500);
         } else {
             statusEl.textContent = `❌ ${result?.mensagem || 'Erro ao enviar'}`;
@@ -674,102 +652,26 @@ async function processarUploadCreative(file) {
 }
 
 // ============================================================
-// GERAÇÃO DE PREVIEW DE PSD VIA PHOTOPEA
-// ============================================================
-function gerarPreviewPSD(file) {
-    return new Promise((resolve) => {
-        // Timeout máximo de 15s para não travar
-        const timeout = setTimeout(() => {
-            console.warn('Timeout ao gerar preview');
-            resolve(null);
-        }, 15000);
-
-        // Lê o arquivo como ArrayBuffer
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const arrayBuffer = e.target.result;
-
-                // Cria um iframe invisível com Photopea
-                const iframe = document.createElement('iframe');
-                iframe.style.cssText = 'position:fixed; left:-9999px; width:500px; height:500px;';
-                iframe.src = 'https://www.photopea.com/';
-                document.body.appendChild(iframe);
-
-                let respondido = false;
-
-                const handler = (event) => {
-                    if (event.source !== iframe.contentWindow) return;
-                    if (respondido) return;
-
-                    try {
-                        const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-                        if (msg && msg.type === 'save' && msg.data) {
-                            respondido = true;
-                            clearTimeout(timeout);
-                            window.removeEventListener('message', handler);
-                            document.body.removeChild(iframe);
-                            resolve(msg.data);
-                        }
-                    } catch (err) {}
-                };
-
-                window.addEventListener('message', handler);
-
-                // Aguarda o iframe carregar
-                iframe.onload = () => {
-                    setTimeout(() => {
-                        // Envia o arquivo PSD via PostMessage
-                        const buffer = arrayBuffer;
-                        iframe.contentWindow.postMessage(buffer, '*');
-
-                        // Comando para exportar como PNG
-                        setTimeout(() => {
-                            const script = `app.activeDocument.saveToOE("png");`;
-                            iframe.contentWindow.postMessage(script, '*');
-                        }, 3000);
-                    }, 2000);
-                };
-
-            } catch (err) {
-                clearTimeout(timeout);
-                resolve(null);
-            }
-        };
-        reader.onerror = () => {
-            clearTimeout(timeout);
-            resolve(null);
-        };
-        reader.readAsArrayBuffer(file);
-    });
-}
-
-// ============================================================
-// PHOTOPEA - EDITOR
+// ⭐ ABRIR NO PHOTOPEA — via Base64 do Apps Script
 // ============================================================
 function creativeAbrirEditor(index) {
     const arquivo = estadoSite.criativos[index];
     if (!arquivo) {
-        alert('Arquivo não encontrado. Recarregue a página.');
+        alert('Arquivo não encontrado.');
         return;
     }
-
-    estadoSite.creativeArquivoAtual = arquivo;
     abrirEditorComArquivo(arquivo);
 }
 
 function creativeAbrirEditorPublico(fileId) {
-    // Procura o arquivo na lista local
     const arquivo = estadoSite.criativosPublicos.find(x => x.fileId === fileId);
     if (arquivo) {
         abrirEditorComArquivo(arquivo);
     } else {
-        // Fallback: tenta carregar via URL do Drive
-        abrirEditorComArquivo({
-            nome: 'Arquivo',
-            link: `https://drive.google.com/uc?export=download&id=${fileId}`,
-            link_download: `https://drive.google.com/uc?export=download&id=${fileId}`
-        });
+        // Busca na lista completa
+        const naLista = estadoSite.criativos.find(x => x.fileId === fileId);
+        if (naLista) abrirEditorComArquivo(naLista);
+        else alert('Arquivo não encontrado.');
     }
 }
 
@@ -780,60 +682,110 @@ async function abrirEditorComArquivo(arquivo) {
 
     titulo.textContent = `Editando: ${arquivo.nome}`;
 
-    // ⭐ ESTRATÉGIA: Baixar o arquivo via fetch e enviar como Blob para o Photopea
-    // Isso resolve o problema de CORS/autenticação do Google Drive
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    // Inicializa iframe com Photopea vazio
-    iframe.src = 'https://www.photopea.com/';
+    // Mostra status de carregamento
+    iframe.src = 'about:blank';
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'editorLoading';
+    loadingDiv.style.cssText = `
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(10, 28, 58, 0.95);
+        color: #D4AF37;
+        padding: 25px 40px;
+        border-radius: 12px;
+        font-family: Inter, sans-serif;
+        font-weight: 700;
+        z-index: 10;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    `;
+    loadingDiv.innerHTML = `
+        <div class="spinner" style="width:40px;height:40px;border:4px solid rgba(212,175,55,0.2);border-top-color:#D4AF37;border-radius:50%;margin:0 auto 15px;animation:spin 1s linear infinite;"></div>
+        <p style="margin-bottom:5px;">Carregando PSD...</p>
+        <p id="editorLoadingStatus" style="font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:400;">Preparando arquivo</p>
+    `;
 
-    // Listener de mensagens
-    if (window._photopeaHandler) {
-        window.removeEventListener('message', window._photopeaHandler);
+    const bodyParent = iframe.parentElement;
+    bodyParent.style.position = 'relative';
+    bodyParent.appendChild(loadingDiv);
+
+    // ⭐ 1. Baixa o PSD via Apps Script (evita CORS)
+    const fileId = arquivo.fileId || extrairFileId(arquivo.link);
+    if (!fileId) {
+        loadingDiv.innerHTML = '❌ fileId não encontrado';
+        return;
     }
 
-    window._photopeaHandler = (event) => {
+    const statusEl = () => document.getElementById('editorLoadingStatus');
+
+    statusEl().textContent = 'Baixando arquivo do Drive...';
+
+    const resp = await window.apiGet('baixar_psd', { fileId: fileId });
+
+    if (!resp || resp.status !== 'ok') {
+        loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${resp?.mensagem || 'Erro ao baixar arquivo'}</p>
+            <button onclick="editorFechar()" style="margin-top:15px;padding:10px 20px;background:#D4AF37;color:#0A1C3A;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Fechar</button>`;
+        return;
+    }
+
+    statusEl().textContent = `Arquivo baixado (${resp.tamanhoMB} MB). Abrindo editor...`;
+
+    // ⭐ 2. Converte Base64 para Uint8Array
+    const binaryString = atob(resp.base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    statusEl().textContent = 'Enviando para o editor...';
+
+    // ⭐ 3. Carrega o Photopea e envia o arquivo
+    iframe.src = 'https://www.photopea.com/';
+
+    // Listener para comunicação com Photopea
+    let arquivoEnviado = false;
+
+    const photopeaHandler = (event) => {
         if (event.source !== iframe.contentWindow) return;
         try {
             const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-            console.log('📨 Photopea:', msg);
-        } catch (err) {}
-    };
-    window.addEventListener('message', window._photopeaHandler);
 
-    // Aguarda o iframe carregar e envia o arquivo
-    iframe.onload = async () => {
-        setTimeout(async () => {
-            try {
-                const fileURL = arquivo.link_download || arquivo.link;
-                console.log('📥 Baixando PSD de:', fileURL);
+            // Photopea envia {type:"ready"} quando está pronto
+            if (msg && msg.type === 'ready' && !arquivoEnviado) {
+                arquivoEnviado = true;
+                console.log('✅ Photopea pronto, enviando PSD...');
 
-                // Baixa o arquivo via fetch
-                const response = await fetch(fileURL);
-                if (!response.ok) throw new Error('Erro ao baixar arquivo');
+                // Envia o arquivo
+                iframe.contentWindow.postMessage(bytes.buffer, '*', [bytes.buffer]);
 
-                const blob = await response.blob();
-                console.log('✅ Arquivo baixado:', blob.size, 'bytes');
-
-                // Envia o blob via PostMessage para o Photopea
-                const arrayBuffer = await blob.arrayBuffer();
-                iframe.contentWindow.postMessage(arrayBuffer, '*');
-
-            } catch (err) {
-                console.error('❌ Erro ao carregar no Photopea:', err);
-                
-                // Fallback: usa URL direta
-                const fileURL = arquivo.link_download || arquivo.link;
-                const config = {
-                    files: [fileURL],
-                    environment: { showtools: true, showcrop: true, showlayers: true }
-                };
-                const configStr = encodeURIComponent(JSON.stringify(config));
-                iframe.src = `https://www.photopea.com/#${configStr}`;
+                // Remove o loading
+                setTimeout(() => {
+                    if (loadingDiv.parentElement) loadingDiv.remove();
+                }, 1000);
             }
-        }, 2000);
+        } catch (err) {
+            console.log('Mensagem do Photopea:', event.data);
+        }
     };
+
+    window.addEventListener('message', photopeaHandler);
+
+    // Guarda o handler para remover depois
+    if (window._photopeaHandler) {
+        window.removeEventListener('message', window._photopeaHandler);
+    }
+    window._photopeaHandler = photopeaHandler;
+
+    // Fallback: se não receber "ready" em 8s, remove loading
+    setTimeout(() => {
+        if (loadingDiv.parentElement) {
+            loadingDiv.remove();
+        }
+    }, 8000);
 }
 
 function editorFechar() {
@@ -847,11 +799,14 @@ function editorFechar() {
         iframe.src = 'about:blank';
     }, 300);
 
+    // Remove o loading se ainda estiver
+    const loading = document.getElementById('editorLoading');
+    if (loading) loading.remove();
+
     if (window._photopeaHandler) {
         window.removeEventListener('message', window._photopeaHandler);
         window._photopeaHandler = null;
     }
-    estadoSite.creativeArquivoAtual = null;
 }
 
 function editorExportar(formato) {
@@ -878,7 +833,7 @@ function editorExportar(formato) {
 function editorSalvarNoDrive() {
     const aviso = document.createElement('div');
     aviso.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:999999; background:#D4AF37; color:#0A1C3A; padding:15px 20px; border-radius:12px; font-weight:700; box-shadow:0 8px 25px rgba(0,0,0,0.3); font-family:Inter, sans-serif; font-size:0.9rem; max-width:320px;`;
-    aviso.innerHTML = `<strong>💾 Salvar no Drive</strong><br>Use o menu <strong>"File → Save as PSD"</strong> no editor e depois envie novamente pelo formulário de upload.`;
+    aviso.innerHTML = `<strong>💾 Salvar no Drive</strong><br>Use o menu <strong>"File → Save as PSD"</strong> no editor e depois faça upload novamente pelo formulário.`;
     document.body.appendChild(aviso);
     setTimeout(() => aviso.remove(), 8000);
 }

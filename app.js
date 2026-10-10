@@ -1,6 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v20
- * Com sistema de categorias
+ * SITE PÚBLICO - Marketing IEAD v22
+ * Com sistema de categorias corrigido
  * ============================================================ */
 
 let estadoSite = {
@@ -240,22 +240,25 @@ function selecionarCategoria(nomeCategoria) {
 }
 
 // ============================================================
-// ARQUIVOS
+// ARQUIVOS - FILTRO CORRIGIDO
 // ============================================================
 function renderizarArquivos() {
     const grid = document.getElementById('downloadsGrid');
     const info = document.getElementById('resultadoInfo');
     if (!grid) return;
 
-    let arquivosFiltrados = estadoSite.arquivos;
+    let arquivosFiltrados = estadoSite.arquivos.slice();
 
-    if (estadoSite.categoriaAtiva && estadoSite.categoriaAtiva !== 'todas') {
+    // ✅ CORRIGIDO: só filtra por categoria se NÃO for "todas"
+    const catAtiva = (estadoSite.categoriaAtiva || 'todas').trim();
+    if (catAtiva && catAtiva.toLowerCase() !== 'todas') {
         arquivosFiltrados = arquivosFiltrados.filter(a => {
             const cat = (a.categoria || 'Geral').trim();
-            return cat === estadoSite.categoriaAtiva;
+            return cat === catAtiva;
         });
     }
 
+    // Filtro de busca
     if (estadoSite.buscaAtiva) {
         const t = estadoSite.buscaAtiva.toLowerCase();
         arquivosFiltrados = arquivosFiltrados.filter(a =>
@@ -265,29 +268,34 @@ function renderizarArquivos() {
         );
     }
 
+    // Info
     if (info) {
         if (arquivosFiltrados.length === 0) {
             info.innerHTML = '';
         } else {
-            const catNome = estadoSite.categoriaAtiva === 'todas' ? 'todas as categorias' : `"${estadoSite.categoriaAtiva}"`;
+            const catNome = catAtiva.toLowerCase() === 'todas' 
+                ? 'todas as categorias' 
+                : `"${catAtiva}"`;
             info.innerHTML = `Mostrando <strong>${arquivosFiltrados.length}</strong> arquivo${arquivosFiltrados.length > 1 ? 's' : ''} em ${catNome}`;
         }
     }
 
+    // Vazio
     if (!arquivosFiltrados.length) {
-        const msg = estadoSite.categoriaAtiva === 'todas'
+        const msg = catAtiva.toLowerCase() === 'todas'
             ? 'Nenhum arquivo disponível.'
-            : `Nenhum arquivo na categoria "${estadoSite.categoriaAtiva}".`;
+            : `Nenhum arquivo na categoria "${catAtiva}".`;
 
         grid.innerHTML = `
             <div class="empty-categoria">
                 <i class="fas fa-folder-open"></i>
                 <h3>${msg}</h3>
-                <p>${estadoSite.categoriaAtiva !== 'todas' ? 'Tente outra categoria.' : 'Os materiais serão adicionados em breve.'}</p>
+                <p>${catAtiva.toLowerCase() !== 'todas' ? 'Tente outra categoria.' : 'Os materiais serão adicionados em breve.'}</p>
             </div>`;
         return;
     }
 
+    // Renderiza
     grid.innerHTML = arquivosFiltrados.map((a) => {
         const indexOriginal = estadoSite.arquivos.indexOf(a);
         const icone = obterIcone(a.tipo);

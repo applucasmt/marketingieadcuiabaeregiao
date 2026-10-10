@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketing IEAD | Cuiabá e Região</title>
-    <link rel="stylesheet" href="style.css?v=35">
+    <link rel="stylesheet" href="style.css?v=36">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +12,7 @@
 </head>
 <body>
 
-    <!-- SPLASH -->
+    <!-- ============ SPLASH SCREEN ============ -->
     <div class="splash-screen" id="splashScreen">
         <div class="splash-content">
             <div class="splash-logo-wrapper">
@@ -28,9 +28,10 @@
         </div>
     </div>
 
-    <!-- SITE -->
+    <!-- ============ SITE ============ -->
     <div class="site-wrapper" id="siteWrapper">
 
+        <!-- HEADER -->
         <header class="glass-header">
             <div class="header-content">
                 <div class="logo-area">
@@ -48,9 +49,9 @@
                     <a href="#contato" data-route="contato">Contato</a>
                 </nav>
                 <div class="header-actions">
-                    <!-- Botão de usuário (login/cadastro) -->
                     <button id="userBtn" class="user-btn" onclick="abrirModalAuth()">
-                        <i class="fas fa-user-circle"></i>
+                        <img id="userBtnFoto" class="user-btn-foto" src="" alt="" style="display:none;">
+                        <i id="userBtnIcone" class="fas fa-user-circle"></i>
                         <span id="userBtnText">Entrar</span>
                     </button>
                     <a href="admin.html" class="admin-link" title="Painel Administrativo">
@@ -60,7 +61,7 @@
             </div>
         </header>
 
-        <!-- PÁGINA: INÍCIO -->
+        <!-- ============ PÁGINA: INÍCIO ============ -->
         <div class="page active" id="page-inicio">
             <section class="carousel-section" id="carouselSection">
                 <div class="carousel-header">
@@ -88,7 +89,7 @@
             </section>
         </div>
 
-        <!-- PÁGINA: DOWNLOADS -->
+        <!-- ============ PÁGINA: DOWNLOADS ============ -->
         <div class="page" id="page-downloads">
             <main class="main-content">
                 <div class="page-header">
@@ -110,7 +111,7 @@
             </main>
         </div>
 
-        <!-- PÁGINA: IEAD CREATIVE -->
+        <!-- ============ PÁGINA: IEAD CREATIVE ============ -->
         <div class="page" id="page-creative">
             <main class="creative-content">
                 <div class="creative-hero">
@@ -157,7 +158,6 @@
 
                 <!-- ABA MEUS ARQUIVOS -->
                 <div class="creative-panel" id="creativePanelMeus">
-                    <!-- AVISO DE LOGIN -->
                     <div id="creativeBloqueado" class="creative-bloqueado">
                         <div class="creative-bloqueado-icon">
                             <i class="fas fa-lock"></i>
@@ -170,10 +170,9 @@
                         </button>
                     </div>
 
-                    <!-- ÁREA DE UPLOAD (só visível após login) -->
                     <div id="creativeAreaLogado" style="display:none;">
                         <div class="creative-user-card">
-                            <img id="creativeUserFoto" src="" alt="Foto" class="creative-user-foto">
+                            <img id="creativeUserFoto" src="" alt="Foto" class="creative-user-foto" onerror="this.src='https://ui-avatars.com/api/?name=U&background=D4AF37&color=0A1C3A&size=200'">
                             <div class="creative-user-info">
                                 <h3 id="creativeUserName">Nome</h3>
                                 <p id="creativeUserInfo"></p>
@@ -187,61 +186,14 @@
                             <i class="fas fa-cloud-upload-alt"></i>
                             <div>
                                 <strong>Envie seu PSD</strong>
-                                <p>Faça upload de arquivos <strong>.psd</strong> para editar no navegador.
-                                <strong>A capa é obrigatória</strong> — ela será exibida como miniatura.</p>
+                                <p>Clique no botão abaixo para abrir o formulário de envio. 
+                                Você pode escolher a capa (obrigatória) e dar um título ao seu template.</p>
                             </div>
                         </div>
 
-                        <!-- Upload do PSD -->
-                        <div class="cms-upload-area" id="creativeUploadArea" style="background:white;">
-                            <i class="fas fa-file-alt" style="font-size:3rem; color:#D4AF37; margin-bottom:15px; display:block;"></i>
-                            <h3 style="color:#0A1C3A; margin-bottom:8px;">1. Arraste seu PSD aqui</h3>
-                            <p style="color:#86868B; font-size:0.9rem;">ou clique para selecionar</p>
-                            <small style="color:#86868B; font-size:0.8rem; display:block; margin-top:12px;">Arquivo .psd • até 50 MB</small>
-                        </div>
-                        <input type="file" id="creativeUploadInput" accept=".psd,image/vnd.adobe.photoshop" style="display:none;">
-
-                        <!-- Upload da Capa (OBRIGATÓRIA) -->
-                        <div class="cms-upload-area" id="creativeCapaArea" style="background:white; border-color: #FF3B30;">
-                            <i class="fas fa-image" style="font-size:3rem; color:#D4AF37; margin-bottom:15px; display:block;"></i>
-                            <h3 style="color:#0A1C3A; margin-bottom:8px;">2. Capa do PSD <span style="color:#FF3B30;">*Obrigatória</span></h3>
-                            <p style="color:#86868B; font-size:0.9rem;">ou clique para selecionar</p>
-                            <small style="color:#86868B; font-size:0.8rem; display:block; margin-top:12px;">PNG, JPG • até 5 MB</small>
-                        </div>
-                        <input type="file" id="creativeCapaInput" accept="image/*" style="display:none;">
-
-                        <!-- Pré-visualização da Capa -->
-                        <div id="creativeCapaPreview" style="display:none; margin-top:20px;">
-                            <div style="background:#F5F5F7; border-radius:12px; padding:15px; text-align:center;">
-                                <p style="color:#0A1C3A; font-weight:700; margin-bottom:10px;">Capa selecionada:</p>
-                                <img id="creativeCapaImg" style="max-width:200px; max-height:200px; border-radius:8px;">
-                            </div>
-                        </div>
-
-                        <div id="creativeUploadProgress" style="display:none; margin-top:20px;">
-                            <div style="background:#F5F5F7; border-radius:12px; padding:20px; text-align:center;">
-                                <p id="creativeUploadStatus" style="color:#0A1C3A; font-weight:600; margin-bottom:12px;">Enviando...</p>
-                                <div style="height:12px; background:#E5E5EA; border-radius:10px; overflow:hidden;">
-                                    <div id="creativeUploadBar" style="height:100%; width:0%; background:linear-gradient(90deg,#D4AF37,#F1D570); transition:width 0.3s; border-radius:10px;"></div>
-                                </div>
-                                <p id="creativeUploadPercent" style="color:#D4AF37; font-weight:700; margin-top:10px; font-size:1.2rem;">0%</p>
-                            </div>
-                        </div>
-
-                        <div class="cms-form-grid" style="margin-top:20px;">
-                            <div class="cms-form-group cms-full">
-                                <label>Nome do template</label>
-                                <input type="text" id="creativeNomeTemplate" placeholder="Ex: Cartaz Culto Jovem">
-                            </div>
-                            <div class="cms-form-group cms-full">
-                                <label>Descrição (opcional)</label>
-                                <textarea id="creativeDescricaoTemplate" placeholder="Breve descrição do template..."></textarea>
-                            </div>
-                        </div>
-
-                        <button id="creativeUploadBtn" class="cms-btn-primary cms-full">
-                            <i class="fas fa-upload"></i>
-                            <span>Enviar PSD para o Drive</span>
+                        <button class="creative-enviar-btn" onclick="abrirModalEnvio()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Enviar Novo PSD</span>
                         </button>
 
                         <h3 style="color:#D4AF37; margin: 30px 0 20px; font-size:1.3rem;">
@@ -257,7 +209,7 @@
             </main>
         </div>
 
-        <!-- PÁGINA: SOBRE -->
+        <!-- ============ PÁGINA: SOBRE ============ -->
         <div class="page" id="page-sobre">
             <section class="about-section">
                 <div class="about-content">
@@ -274,7 +226,7 @@
             </section>
         </div>
 
-        <!-- PÁGINA: CONTATO -->
+        <!-- ============ PÁGINA: CONTATO ============ -->
         <div class="page" id="page-contato">
             <section class="contact-section">
                 <div class="contact-content">
@@ -298,7 +250,90 @@
         </footer>
     </div>
 
-    <!-- MODAL DE AUTH -->
+    <!-- ============ MODAL DE ENVIO PSD ============ -->
+    <div class="modal-envio" id="modalEnvio">
+        <div class="modal-envio-content">
+            <button class="modal-envio-close" onclick="fecharModalEnvio()">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <div class="modal-envio-header">
+                <div class="modal-envio-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <h2>Enviar Novo PSD</h2>
+                <p>Preencha os dados e escolha a capa do seu template</p>
+            </div>
+
+            <div class="modal-envio-body">
+                <!-- PSD -->
+                <div class="modal-envio-field">
+                    <label><i class="fas fa-file-alt"></i> Arquivo PSD *</label>
+                    <div class="modal-envio-upload" id="modalUploadPSD">
+                        <i class="fas fa-file-upload"></i>
+                        <div class="modal-envio-upload-text">
+                            <strong>Clique para escolher o PSD</strong>
+                            <span>ou arraste o arquivo aqui • até 50 MB</span>
+                        </div>
+                        <div class="modal-envio-upload-status" id="modalPSDStatus"></div>
+                    </div>
+                    <input type="file" id="modalInputPSD" accept=".psd,image/vnd.adobe.photoshop" style="display:none;">
+                </div>
+
+                <!-- CAPA -->
+                <div class="modal-envio-field">
+                    <label><i class="fas fa-image"></i> Capa do PSD * <span style="color:#FF3B30;">(obrigatória)</span></label>
+                    <div class="modal-envio-upload" id="modalUploadCapa" style="border-color:#FF3B30;">
+                        <i class="fas fa-image"></i>
+                        <div class="modal-envio-upload-text">
+                            <strong>Clique para escolher a capa</strong>
+                            <span>PNG ou JPG • até 5 MB</span>
+                        </div>
+                    </div>
+                    <input type="file" id="modalInputCapa" accept="image/*" style="display:none;">
+                    <div class="modal-envio-capa-preview" id="modalCapaPreview" style="display:none;">
+                        <img id="modalCapaImg" src="" alt="Capa">
+                        <button type="button" onclick="removerCapa()" class="modal-envio-capa-remove">
+                            <i class="fas fa-trash"></i> Trocar capa
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TÍTULO -->
+                <div class="modal-envio-field">
+                    <label><i class="fas fa-heading"></i> Título do template *</label>
+                    <input type="text" id="modalTitulo" placeholder="Ex: Cartaz Culto Jovem" maxlength="100">
+                    <small>Este será o nome que aparecerá na listagem</small>
+                </div>
+
+                <!-- DESCRIÇÃO -->
+                <div class="modal-envio-field">
+                    <label><i class="fas fa-align-left"></i> Descrição (opcional)</label>
+                    <textarea id="modalDescricao" placeholder="Breve descrição do template..." maxlength="300"></textarea>
+                </div>
+
+                <!-- PROGRESSO -->
+                <div class="modal-envio-progress" id="modalEnvioProgress" style="display:none;">
+                    <p id="modalEnvioStatus">Enviando...</p>
+                    <div class="modal-envio-progress-bar">
+                        <div id="modalEnvioBar"></div>
+                    </div>
+                    <span id="modalEnvioPercent">0%</span>
+                </div>
+            </div>
+
+            <div class="modal-envio-footer">
+                <button class="modal-envio-btn modal-envio-btn-cancel" onclick="fecharModalEnvio()">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button class="modal-envio-btn modal-envio-btn-submit" id="modalEnvioSubmit" onclick="enviarPSDModal()">
+                    <i class="fas fa-cloud-upload-alt"></i> Enviar PSD
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ MODAL DE AUTH ============ -->
     <div class="modal-auth" id="modalAuth">
         <div class="modal-auth-content">
             <button class="modal-auth-close" onclick="fecharModalAuth()">
@@ -310,7 +345,6 @@
                 <button class="modal-auth-tab" onclick="trocarAbaAuth('cadastro')">Criar Conta</button>
             </div>
 
-            <!-- LOGIN -->
             <div class="modal-auth-panel active" id="panelLogin">
                 <div class="modal-auth-icon">
                     <i class="fas fa-user-circle"></i>
@@ -334,7 +368,6 @@
                 </div>
             </div>
 
-            <!-- CADASTRO -->
             <div class="modal-auth-panel" id="panelCadastro">
                 <div class="modal-auth-icon">
                     <i class="fas fa-user-plus"></i>
@@ -376,7 +409,7 @@
         </div>
     </div>
 
-    <!-- MODAL DO EDITOR PHOTOPEA -->
+    <!-- ============ MODAL DO EDITOR PHOTOPEA ============ -->
     <div class="editor-modal" id="editorModal">
         <div class="editor-modal-header">
             <div class="editor-modal-title">
@@ -399,7 +432,7 @@
         </div>
     </div>
 
-    <script src="config.js?v=35"></script>
-    <script src="app.js?v=35"></script>
+    <script src="config.js?v=36"></script>
+    <script src="app.js?v=36"></script>
 </body>
 </html>

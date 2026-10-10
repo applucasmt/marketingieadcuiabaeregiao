@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketing IEAD | Cuiabá e Região</title>
-    <link rel="stylesheet" href="style.css?v=34">
+    <link rel="stylesheet" href="style.css?v=35">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +12,7 @@
 </head>
 <body>
 
-    <!-- ============ SPLASH SCREEN ============ -->
+    <!-- SPLASH -->
     <div class="splash-screen" id="splashScreen">
         <div class="splash-content">
             <div class="splash-logo-wrapper">
@@ -28,10 +28,9 @@
         </div>
     </div>
 
-    <!-- ============ SITE ============ -->
+    <!-- SITE -->
     <div class="site-wrapper" id="siteWrapper">
 
-        <!-- HEADER -->
         <header class="glass-header">
             <div class="header-content">
                 <div class="logo-area">
@@ -48,21 +47,28 @@
                     <a href="#sobre" data-route="sobre">Sobre</a>
                     <a href="#contato" data-route="contato">Contato</a>
                 </nav>
-                <a href="admin.html" class="admin-link" title="Painel Administrativo">
-                    <i class="fas fa-lock"></i>
-                </a>
+                <div class="header-actions">
+                    <!-- Botão de usuário (login/cadastro) -->
+                    <button id="userBtn" class="user-btn" onclick="abrirModalAuth()">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="userBtnText">Entrar</span>
+                    </button>
+                    <a href="admin.html" class="admin-link" title="Painel Administrativo">
+                        <i class="fas fa-lock"></i>
+                    </a>
+                </div>
             </div>
         </header>
 
-        <!-- ============ PÁGINA: INÍCIO ============ -->
+        <!-- PÁGINA: INÍCIO -->
         <div class="page active" id="page-inicio">
             <section class="carousel-section" id="carouselSection">
                 <div class="carousel-header">
                     <h2><i class="fas fa-bullhorn"></i> Destaques e Novidades</h2>
                     <div class="carousel-controls">
-                        <button id="prevBtn" aria-label="Anterior"><i class="fas fa-chevron-left"></i></button>
+                        <button id="prevBtn"><i class="fas fa-chevron-left"></i></button>
                         <div class="dots" id="dotsContainer"></div>
-                        <button id="nextBtn" aria-label="Próximo"><i class="fas fa-chevron-right"></i></button>
+                        <button id="nextBtn"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
                 <div class="carousel-container">
@@ -82,23 +88,19 @@
             </section>
         </div>
 
-        <!-- ============ PÁGINA: DOWNLOADS ============ -->
+        <!-- PÁGINA: DOWNLOADS -->
         <div class="page" id="page-downloads">
             <main class="main-content">
                 <div class="page-header">
                     <h2><i class="fas fa-download"></i> Central de Downloads</h2>
                     <p>Todos os arquivos são hospedados no Google Drive oficial.</p>
                 </div>
-
                 <div class="search-wrapper" id="searchWrapper">
                     <i class="fas fa-search"></i>
                     <input type="text" id="searchInput" placeholder="Buscar por nome ou tipo de arquivo...">
                 </div>
-
                 <div class="categorias-tabs" id="categoriasTabs"></div>
-
                 <div class="resultado-info" id="resultadoInfo"></div>
-
                 <div class="downloads-grid" id="downloadsGrid">
                     <div class="loading-state">
                         <div class="spinner"></div>
@@ -108,10 +110,9 @@
             </main>
         </div>
 
-        <!-- ============ PÁGINA: IEAD CREATIVE ============ -->
+        <!-- PÁGINA: IEAD CREATIVE -->
         <div class="page" id="page-creative">
             <main class="creative-content">
-                
                 <div class="creative-hero">
                     <div class="creative-hero-icon">
                         <i class="fas fa-magic"></i>
@@ -132,7 +133,7 @@
                     </button>
                 </div>
 
-                <!-- ABA: TEMPLATES DISPONÍVEIS -->
+                <!-- ABA TEMPLATES -->
                 <div class="creative-panel active" id="creativePanelTemplates">
                     <div class="creative-info-box">
                         <i class="fas fa-info-circle"></i>
@@ -142,12 +143,10 @@
                             Edite à vontade, depois faça download em PNG, JPG ou PDF.</p>
                         </div>
                     </div>
-
                     <div class="search-wrapper-creative">
                         <i class="fas fa-search"></i>
                         <input type="text" id="creativeBusca" placeholder="Buscar template PSD...">
                     </div>
-
                     <div class="creative-grid" id="creativeGrid">
                         <div class="loading-state">
                             <div class="spinner"></div>
@@ -156,131 +155,228 @@
                     </div>
                 </div>
 
-                <!-- ABA: MEUS ARQUIVOS (UPLOAD PÚBLICO) -->
+                <!-- ABA MEUS ARQUIVOS -->
                 <div class="creative-panel" id="creativePanelMeus">
-                    <div class="creative-info-box">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <div>
-                            <strong>Envie seu PSD</strong>
-                            <p>Faça upload de arquivos <strong>.psd</strong> para editar no navegador. 
-                            Depois de enviar, seu PSD aparecerá na lista abaixo.</p>
+                    <!-- AVISO DE LOGIN -->
+                    <div id="creativeBloqueado" class="creative-bloqueado">
+                        <div class="creative-bloqueado-icon">
+                            <i class="fas fa-lock"></i>
                         </div>
+                        <h2>Acesso Restrito</h2>
+                        <p>Para enviar seus PSDs e gerenciar seus arquivos, é necessário fazer login.</p>
+                        <button onclick="abrirModalAuth()" class="cms-btn-primary">
+                            <i class="fas fa-user-circle"></i>
+                            <span>Entrar ou Cadastrar</span>
+                        </button>
                     </div>
 
-                    <div class="cms-upload-area" id="creativeUploadArea" style="background:white; border: 2px dashed #D4AF37; border-radius:16px; padding: 50px 20px; text-align: center; cursor: pointer; transition: all 0.3s;">
-                        <i class="fas fa-cloud-upload-alt" style="font-size:3rem; color:#D4AF37; margin-bottom:15px; display:block;"></i>
-                        <h3 style="color:#0A1C3A; margin-bottom:8px;">Arraste seu PSD aqui</h3>
-                        <p style="color:#86868B; font-size:0.9rem;">ou clique para selecionar</p>
-                        <small style="color:#86868B; font-size:0.8rem; display:block; margin-top:12px;">Arquivos .psd • até 50 MB</small>
-                    </div>
-                    <input type="file" id="creativeUploadInput" accept=".psd,image/vnd.adobe.photoshop" style="display:none;">
-
-                    <div id="creativeUploadProgress" style="display:none; margin-top:20px;">
-                        <div style="background:#F5F5F7; border-radius:12px; padding:20px; text-align:center;">
-                            <p id="creativeUploadStatus" style="color:#0A1C3A; font-weight:600; margin-bottom:12px;">Enviando...</p>
-                            <div style="height:12px; background:#E5E5EA; border-radius:10px; overflow:hidden;">
-                                <div id="creativeUploadBar" style="height:100%; width:0%; background:linear-gradient(90deg,#D4AF37,#F1D570); transition:width 0.3s; border-radius:10px;"></div>
+                    <!-- ÁREA DE UPLOAD (só visível após login) -->
+                    <div id="creativeAreaLogado" style="display:none;">
+                        <div class="creative-user-card">
+                            <img id="creativeUserFoto" src="" alt="Foto" class="creative-user-foto">
+                            <div class="creative-user-info">
+                                <h3 id="creativeUserName">Nome</h3>
+                                <p id="creativeUserInfo"></p>
                             </div>
-                            <p id="creativeUploadPercent" style="color:#D4AF37; font-weight:700; margin-top:10px; font-size:1.2rem;">0%</p>
+                            <button onclick="fazerLogout()" class="creative-logout-btn">
+                                <i class="fas fa-sign-out-alt"></i> Sair
+                            </button>
                         </div>
-                    </div>
 
-                    <div class="creative-info-box" style="border-left-color:#D4AF37; margin-top:20px;">
-                        <i class="fas fa-lightbulb" style="color:#D4AF37;"></i>
-                        <div>
-                            <strong>Dica:</strong>
-                            <p>Após o upload, seu PSD aparecerá na lista abaixo. Clique nele para abrir no editor.
-                            Você pode editar textos, imagens, camadas e exportar como PNG, JPG ou PDF.</p>
+                        <div class="creative-info-box">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <div>
+                                <strong>Envie seu PSD</strong>
+                                <p>Faça upload de arquivos <strong>.psd</strong> para editar no navegador.
+                                <strong>A capa é obrigatória</strong> — ela será exibida como miniatura.</p>
+                            </div>
                         </div>
-                    </div>
 
-                    <h3 style="color:#D4AF37; margin: 30px 0 20px; font-size:1.3rem;">
-                        <i class="fas fa-list"></i> Meus PSDs Enviados
-                    </h3>
-                    <div class="creative-grid" id="creativeMeusGrid">
-                        <p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:40px;">
-                            Nenhum PSD enviado ainda.
-                        </p>
+                        <!-- Upload do PSD -->
+                        <div class="cms-upload-area" id="creativeUploadArea" style="background:white;">
+                            <i class="fas fa-file-alt" style="font-size:3rem; color:#D4AF37; margin-bottom:15px; display:block;"></i>
+                            <h3 style="color:#0A1C3A; margin-bottom:8px;">1. Arraste seu PSD aqui</h3>
+                            <p style="color:#86868B; font-size:0.9rem;">ou clique para selecionar</p>
+                            <small style="color:#86868B; font-size:0.8rem; display:block; margin-top:12px;">Arquivo .psd • até 50 MB</small>
+                        </div>
+                        <input type="file" id="creativeUploadInput" accept=".psd,image/vnd.adobe.photoshop" style="display:none;">
+
+                        <!-- Upload da Capa (OBRIGATÓRIA) -->
+                        <div class="cms-upload-area" id="creativeCapaArea" style="background:white; border-color: #FF3B30;">
+                            <i class="fas fa-image" style="font-size:3rem; color:#D4AF37; margin-bottom:15px; display:block;"></i>
+                            <h3 style="color:#0A1C3A; margin-bottom:8px;">2. Capa do PSD <span style="color:#FF3B30;">*Obrigatória</span></h3>
+                            <p style="color:#86868B; font-size:0.9rem;">ou clique para selecionar</p>
+                            <small style="color:#86868B; font-size:0.8rem; display:block; margin-top:12px;">PNG, JPG • até 5 MB</small>
+                        </div>
+                        <input type="file" id="creativeCapaInput" accept="image/*" style="display:none;">
+
+                        <!-- Pré-visualização da Capa -->
+                        <div id="creativeCapaPreview" style="display:none; margin-top:20px;">
+                            <div style="background:#F5F5F7; border-radius:12px; padding:15px; text-align:center;">
+                                <p style="color:#0A1C3A; font-weight:700; margin-bottom:10px;">Capa selecionada:</p>
+                                <img id="creativeCapaImg" style="max-width:200px; max-height:200px; border-radius:8px;">
+                            </div>
+                        </div>
+
+                        <div id="creativeUploadProgress" style="display:none; margin-top:20px;">
+                            <div style="background:#F5F5F7; border-radius:12px; padding:20px; text-align:center;">
+                                <p id="creativeUploadStatus" style="color:#0A1C3A; font-weight:600; margin-bottom:12px;">Enviando...</p>
+                                <div style="height:12px; background:#E5E5EA; border-radius:10px; overflow:hidden;">
+                                    <div id="creativeUploadBar" style="height:100%; width:0%; background:linear-gradient(90deg,#D4AF37,#F1D570); transition:width 0.3s; border-radius:10px;"></div>
+                                </div>
+                                <p id="creativeUploadPercent" style="color:#D4AF37; font-weight:700; margin-top:10px; font-size:1.2rem;">0%</p>
+                            </div>
+                        </div>
+
+                        <div class="cms-form-grid" style="margin-top:20px;">
+                            <div class="cms-form-group cms-full">
+                                <label>Nome do template</label>
+                                <input type="text" id="creativeNomeTemplate" placeholder="Ex: Cartaz Culto Jovem">
+                            </div>
+                            <div class="cms-form-group cms-full">
+                                <label>Descrição (opcional)</label>
+                                <textarea id="creativeDescricaoTemplate" placeholder="Breve descrição do template..."></textarea>
+                            </div>
+                        </div>
+
+                        <button id="creativeUploadBtn" class="cms-btn-primary cms-full">
+                            <i class="fas fa-upload"></i>
+                            <span>Enviar PSD para o Drive</span>
+                        </button>
+
+                        <h3 style="color:#D4AF37; margin: 30px 0 20px; font-size:1.3rem;">
+                            <i class="fas fa-list"></i> Meus PSDs Enviados
+                        </h3>
+                        <div class="creative-grid" id="creativeMeusGrid">
+                            <p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:40px;">
+                                Você ainda não enviou nenhum PSD.
+                            </p>
+                        </div>
                     </div>
                 </div>
-
             </main>
         </div>
 
-        <!-- ============ PÁGINA: SOBRE ============ -->
+        <!-- PÁGINA: SOBRE -->
         <div class="page" id="page-sobre">
             <section class="about-section">
                 <div class="about-content">
                     <span class="page-tag">Institucional</span>
                     <h2>Sobre o Ministério de Marketing</h2>
                     <p class="about-lead">O departamento de Marketing da IEAD Cuiabá e Região tem como missão fornecer ferramentas de comunicação de excelência para todas as congregações.</p>
-                    
                     <div class="about-grid">
-                        <div class="about-card">
-                            <i class="fas fa-palette"></i>
-                            <h3>Identidade Visual</h3>
-                            <p>Padronização de logos, cores e tipografia.</p>
-                        </div>
-                        <div class="about-card">
-                            <i class="fas fa-photo-video"></i>
-                            <h3>Materiais Gráficos</h3>
-                            <p>Cartazes, folders, artes e apresentações.</p>
-                        </div>
-                        <div class="about-card">
-                            <i class="fas fa-bullhorn"></i>
-                            <h3>Campanhas</h3>
-                            <p>Suporte para campanhas evangelísticas.</p>
-                        </div>
-                        <div class="about-card">
-                            <i class="fas fa-hands-helping"></i>
-                            <h3>Suporte</h3>
-                            <p>Materiais prontos para as igrejas.</p>
-                        </div>
+                        <div class="about-card"><i class="fas fa-palette"></i><h3>Identidade Visual</h3><p>Padronização de logos, cores e tipografia.</p></div>
+                        <div class="about-card"><i class="fas fa-photo-video"></i><h3>Materiais Gráficos</h3><p>Cartazes, folders, artes e apresentações.</p></div>
+                        <div class="about-card"><i class="fas fa-bullhorn"></i><h3>Campanhas</h3><p>Suporte para campanhas evangelísticas.</p></div>
+                        <div class="about-card"><i class="fas fa-hands-helping"></i><h3>Suporte</h3><p>Materiais prontos para as igrejas.</p></div>
                     </div>
                 </div>
             </section>
         </div>
 
-        <!-- ============ PÁGINA: CONTATO ============ -->
+        <!-- PÁGINA: CONTATO -->
         <div class="page" id="page-contato">
             <section class="contact-section">
                 <div class="contact-content">
                     <span class="page-tag">Fale Conosco</span>
                     <h2>Entre em Contato</h2>
                     <p class="contact-lead">Precisa de algum material ou tem dúvidas? Entre em contato.</p>
-
                     <div class="contact-grid">
-                        <a href="#" id="contatoEmail" class="contact-card" target="_blank">
-                            <i class="fas fa-envelope"></i>
-                            <h3>E-mail</h3>
-                            <p id="contatoEmailTexto">marketing@ieadcuiaba.com.br</p>
-                        </a>
-                        <a href="#" id="contatoInstagram" class="contact-card" target="_blank">
-                            <i class="fab fa-instagram"></i>
-                            <h3>Instagram</h3>
-                            <p id="contatoInstagramTexto">@ieadcuiaba</p>
-                        </a>
-                        <a href="#" id="contatoWhatsapp" class="contact-card" target="_blank">
-                            <i class="fab fa-whatsapp"></i>
-                            <h3>WhatsApp</h3>
-                            <p>Solicite materiais</p>
-                        </a>
+                        <a href="#" id="contatoEmail" class="contact-card" target="_blank"><i class="fas fa-envelope"></i><h3>E-mail</h3><p id="contatoEmailTexto">marketing@ieadcuiaba.com.br</p></a>
+                        <a href="#" id="contatoInstagram" class="contact-card" target="_blank"><i class="fab fa-instagram"></i><h3>Instagram</h3><p id="contatoInstagramTexto">@ieadcuiaba</p></a>
+                        <a href="#" id="contatoWhatsapp" class="contact-card" target="_blank"><i class="fab fa-whatsapp"></i><h3>WhatsApp</h3><p>Solicite materiais</p></a>
                     </div>
                 </div>
             </section>
         </div>
 
-        <!-- FOOTER -->
         <footer>
             <div class="footer-content">
                 <p id="siteRodape">© 2026 IEAD Cuiabá e Região.</p>
                 <div class="footer-social" id="siteSocial"></div>
             </div>
         </footer>
-
     </div>
 
-    <!-- ============ MODAL DO EDITOR PHOTOPEA ============ -->
+    <!-- MODAL DE AUTH -->
+    <div class="modal-auth" id="modalAuth">
+        <div class="modal-auth-content">
+            <button class="modal-auth-close" onclick="fecharModalAuth()">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <div class="modal-auth-tabs">
+                <button class="modal-auth-tab active" onclick="trocarAbaAuth('login')">Entrar</button>
+                <button class="modal-auth-tab" onclick="trocarAbaAuth('cadastro')">Criar Conta</button>
+            </div>
+
+            <!-- LOGIN -->
+            <div class="modal-auth-panel active" id="panelLogin">
+                <div class="modal-auth-icon">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <h2>Bem-vindo de volta!</h2>
+                <p>Entre para acessar o IEAD Creative</p>
+
+                <div class="modal-auth-form">
+                    <div class="modal-auth-group">
+                        <label>E-mail</label>
+                        <input type="email" id="loginEmail" placeholder="seu@email.com">
+                    </div>
+                    <div class="modal-auth-group">
+                        <label>Senha</label>
+                        <input type="password" id="loginSenha" placeholder="Sua senha">
+                    </div>
+                    <button onclick="fazerLogin()" class="modal-auth-btn">
+                        <i class="fas fa-sign-in-alt"></i> Entrar
+                    </button>
+                    <p id="loginErro" class="modal-auth-erro"></p>
+                </div>
+            </div>
+
+            <!-- CADASTRO -->
+            <div class="modal-auth-panel" id="panelCadastro">
+                <div class="modal-auth-icon">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <h2>Criar Conta</h2>
+                <p>Preencha seus dados para começar</p>
+
+                <div class="modal-auth-form">
+                    <div class="modal-auth-group">
+                        <label>Nome completo *</label>
+                        <input type="text" id="cadNome" placeholder="Seu nome">
+                    </div>
+                    <div class="modal-auth-group">
+                        <label>E-mail *</label>
+                        <input type="email" id="cadEmail" placeholder="seu@email.com">
+                    </div>
+                    <div class="modal-auth-group">
+                        <label>WhatsApp *</label>
+                        <input type="tel" id="cadWhatsapp" placeholder="(65) 99999-9999">
+                    </div>
+                    <div class="modal-auth-group">
+                        <label>Congregação *</label>
+                        <input type="text" id="cadCongregacao" placeholder="Ex: Sede, Jardim Novo Aliança...">
+                    </div>
+                    <div class="modal-auth-group">
+                        <label>Idade *</label>
+                        <input type="number" id="cadIdade" placeholder="Ex: 25" min="10" max="120">
+                    </div>
+                    <div class="modal-auth-group">
+                        <label>Senha * (mínimo 6 caracteres)</label>
+                        <input type="password" id="cadSenha" placeholder="Crie uma senha">
+                    </div>
+                    <button onclick="fazerCadastro()" class="modal-auth-btn">
+                        <i class="fas fa-user-plus"></i> Criar Conta
+                    </button>
+                    <p id="cadErro" class="modal-auth-erro"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DO EDITOR PHOTOPEA -->
     <div class="editor-modal" id="editorModal">
         <div class="editor-modal-header">
             <div class="editor-modal-title">
@@ -288,18 +384,10 @@
                 <span id="editorTitulo">Editor IEAD Creative</span>
             </div>
             <div class="editor-modal-actions">
-                <button onclick="editorExportar('png')" class="editor-btn editor-btn-export" title="Exportar PNG">
-                    <i class="fas fa-image"></i> <span>PNG</span>
-                </button>
-                <button onclick="editorExportar('jpg')" class="editor-btn editor-btn-export" title="Exportar JPG">
-                    <i class="fas fa-file-image"></i> <span>JPG</span>
-                </button>
-                <button onclick="editorExportar('pdf')" class="editor-btn editor-btn-export" title="Exportar PDF">
-                    <i class="fas fa-file-pdf"></i> <span>PDF</span>
-                </button>
-                <button onclick="editorFechar()" class="editor-btn editor-btn-close" title="Fechar">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button onclick="editorExportar('png')" class="editor-btn editor-btn-export"><i class="fas fa-image"></i> <span>PNG</span></button>
+                <button onclick="editorExportar('jpg')" class="editor-btn editor-btn-export"><i class="fas fa-file-image"></i> <span>JPG</span></button>
+                <button onclick="editorExportar('pdf')" class="editor-btn editor-btn-export"><i class="fas fa-file-pdf"></i> <span>PDF</span></button>
+                <button onclick="editorFechar()" class="editor-btn editor-btn-close"><i class="fas fa-times"></i></button>
             </div>
         </div>
         <div class="editor-modal-body">
@@ -311,7 +399,7 @@
         </div>
     </div>
 
-    <script src="config.js?v=34"></script>
-    <script src="app.js?v=34"></script>
+    <script src="config.js?v=35"></script>
+    <script src="app.js?v=35"></script>
 </body>
 </html>

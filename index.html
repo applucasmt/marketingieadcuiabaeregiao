@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <title>Marketing IEAD | Cuiabá e Região</title>
-    <link rel="stylesheet" href="style.css?v=42">
+    <link rel="stylesheet" href="style.css?v=44">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -143,14 +143,13 @@
                     </button>
                 </div>
 
-                <!-- ABA: TEMPLATES -->
                 <div class="creative-panel active" id="creativePanelTemplates">
                     <div class="creative-info-box">
                         <i class="fas fa-info-circle"></i>
                         <div>
                             <strong>Como funciona:</strong>
-                            <p>Escolha um template PSD abaixo. O editor abrirá. 
-                            Edite à vontade, depois para exportar use o menu <strong>Arquivo → Exportar como</strong> do editor para baixar em PNG, JPG ou PDF.</p>
+                            <p>Escolha um template PSD abaixo. O editor abrirá direto com o arquivo carregado. 
+                            Edite à vontade, depois use o menu <strong>Arquivo → Exportar como</strong> para baixar.</p>
                         </div>
                     </div>
 
@@ -167,7 +166,6 @@
                     </div>
                 </div>
 
-                <!-- ABA: MEUS ARQUIVOS -->
                 <div class="creative-panel" id="creativePanelMeus">
                     <div id="creativeBloqueado" class="creative-bloqueado">
                         <div class="creative-bloqueado-icon">
@@ -487,24 +485,24 @@
                 <span id="editorTitulo">Editor IEAD Creative</span>
             </div>
             <div class="editor-modal-actions">
-                <span style="color: #D4AF37; font-size: 0.85rem; font-weight: 600; padding: 0 15px; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-info-circle"></i> Para exportar use o menu <strong>Arquivo → Exportar como</strong> para baixar
-                </span>
+                <button onclick="editorToggleMenu()" class="editor-btn editor-btn-menu" title="Menu do Editor">
+                    <i class="fas fa-bars"></i> <span class="editor-btn-label">Menu</span>
+                </button>
                 <button onclick="editorFechar()" class="editor-btn editor-btn-close" title="Fechar">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
         </div>
         <div class="editor-modal-body">
-            <iframe id="editorIframe" allow="clipboard-read; clipboard-write"></iframe>
+            <iframe id="editorIframe" allow="clipboard-read; clipboard-write; fullscreen"></iframe>
         </div>
         <div class="editor-modal-footer">
             <i class="fas fa-info-circle" style="color:#D4AF37;"></i>
-            <span>Editor powered by <strong>IEAD Nova Aliança</strong> <span>em parceria com <strong>Photopea</strong>. Suporta mais de 40 formatos.</span>
+            <span>Editor powered by <strong>IEAD Nova Aliança</strong> em parceria com <strong>Photopea</strong>.</span>
         </div>
     </div>
 
-    <script src="config.js?v=42"></script>
-    <script src="app.js?v=42"></script>
+    <script src="config.js?v=44"></script>
+    <script src="app.js?v=44"></script>
 </body>
 </html>

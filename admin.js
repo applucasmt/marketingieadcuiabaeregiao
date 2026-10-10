@@ -1,6 +1,6 @@
 /* ============================================================
- * PAINEL ADMINISTRATIVO - Marketing IEAD v21
- * Todas as referências a CONFIG usam window.CONFIG
+ * PAINEL ADMINISTRATIVO - Marketing IEAD v22
+ * Com upload múltiplo + categorias
  * ============================================================ */
 
 console.log("🚀 admin.js carregando...");
@@ -36,7 +36,7 @@ let cmsEstado = {
     categorias: [],
     carrossel: [],
     menus: [],
-    arquivoAtual: null
+    arquivosAtuais: []  // ← array para múltiplos
 };
 
 // ============================================================
@@ -60,15 +60,11 @@ window.cmsFazerLogin = function() {
         return;
     }
 
-    // ✅ USA window.CONFIG
     if (typeof window.CONFIG === 'undefined' || !window.CONFIG.SENHA_ADMIN) {
         if (erroEl) erroEl.textContent = 'Erro: config.js não carregado corretamente.';
         console.error('❌ window.CONFIG indefinido ou sem SENHA_ADMIN');
         return;
     }
-
-    console.log('Senha digitada:', senha);
-    console.log('Senha esperada:', window.CONFIG.SENHA_ADMIN);
 
     if (senha === window.CONFIG.SENHA_ADMIN) {
         console.log('✅ Senha correta! Entrando...');
@@ -110,7 +106,6 @@ window.cmsMostrarPainel = function() {
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOMContentLoaded - admin.js ativo');
-    console.log('window.CONFIG:', typeof window.CONFIG !== 'undefined' ? 'OK' : 'NÃO DEFINIDO');
 
     if (sessionStorage.getItem('adminLogged') === 'true') {
         console.log('🔓 Sessão ativa — auto-login');
@@ -149,11 +144,9 @@ document.querySelectorAll('.cms-nav a').forEach(link => {
 // ============================================================
 window.cmsCarregarTudo = async function() {
     try {
-        console.log('📥 Carregando dados...');
         const dados = await window.apiGet('tudo');
 
         if (!dados) {
-            console.warn('⚠️ Sem dados (API offline)');
             const statusText = document.getElementById('cmsStatusText');
             if (statusText) statusText.textContent = '⚠️ Modo offline';
             window.cmsRenderizarDashboard();
@@ -171,8 +164,6 @@ window.cmsCarregarTudo = async function() {
         cmsEstado.categorias = dados.categorias || [];
         cmsEstado.carrossel = dados.carrossel || [];
         cmsEstado.menus = dados.menus || [];
-
-        console.log('✅ Dados carregados:', cmsEstado);
 
         cmsEstado.categorias.forEach(c => {
             c.total_arquivos = cmsEstado.arquivos.filter(a => (a.categoria || '').trim() === c.nome).length;
@@ -393,7 +384,7 @@ window.cmsRemoverCategoria = async function(id) {
 window.cmsEditarCategoria = function(c) { window.cmsAbrirModalCategoria(c); };
 
 // ============================================================
-// UPLOAD
+// UPLOAD MÚLTIPLO
 // ============================================================
 const cmsUploadArea = document.getElementById('cmsUploadArea');
 const cmsFileInput = document.getElementById('cmsFileInput');
@@ -405,56 +396,90 @@ cmsUploadArea?.addEventListener('drop', e => {
     e.preventDefault();
     cmsUploadArea.classList.remove('cms-dragover');
     if (e.dataTransfer.files.length) {
+        // ✅ Múltiplos arquivos via drag & drop
         cmsFileInput.files = e.dataTransfer.files;
-        window.cmsSelecionarArquivo(e.dataTransfer.files[0]);
+        window.cmsSelecionarArquivos(Array.from(e.dataTransfer.files));
     }
 });
 cmsFileInput?.addEventListener('change', () => {
-    if (cmsFileInput.files.length) window.cmsSelecionarArquivo(cmsFileInput.files[0]);
+    if (cmsFileInput.files.length) {
+        window.cmsSelecionarArquivos(Array.from(cmsFileInput.files));
+    }
 });
 
-window.cmsSelecionarArquivo = function(file) {
-    cmsEstado.arquivoAtual = file;
-    document.getElementById('cmsUploadPreview').style.display = 'block';
-    const previewContent = document.getElementById('cmsPreviewContent');
-    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+// ✅ NOVO: recebe ARRAY de arquivos
+window.cmsSelecionarArquivos = function(files) {
+    cmsEstado.arquivosAtuais = files;
 
-    if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = e => {
-            previewContent.innerHTML = `
-                <img src="${e.target.result}" class="cms-upload-thumb" alt="">
-                <p style="color:#0A1C3A;font-weight:600;">${file.name}</p>
-                <p style="color:#86868B;font-size:0.85rem;">${sizeMB} MB</p>
-            `;
-        };
-        reader.readAsDataURL(file);
-    } else if (file.type.startsWith('video/')) {
-        previewContent.innerHTML = `
-            <svg class="cms-icon cms-icon-3xl" style="color:#D4AF37;"><use href="#i-video"></use></svg>
-            <p style="color:#0A1C3A;font-weight:600;">${file.name}</p>
-            <p style="color:#86868B;font-size:0.85rem;">${sizeMB} MB • Vídeo</p>
-        `;
-    } else if (file.type === 'application/pdf') {
-        previewContent.innerHTML = `
-            <svg class="cms-icon cms-icon-3xl" style="color:#DC3545;"><use href="#i-pdf"></use></svg>
-            <p style="color:#0A1C3A;font-weight:600;">${file.name}</p>
-            <p style="color:#86868B;font-size:0.85rem;">${sizeMB} MB</p>
-        `;
-    } else {
-        previewContent.innerHTML = `
-            <svg class="cms-icon cms-icon-3xl" style="color:#0A1C3A;"><use href="#i-file"></use></svg>
-            <p style="color:#0A1C3A;font-weight:600;">${file.name}</p>
-            <p style="color:#86868B;font-size:0.85rem;">${sizeMB} MB</p>
-        `;
+    const previewDiv = document.getElementById('cmsUploadPreview');
+    const previewContent = document.getElementById('cmsPreviewContent');
+    
+    if (!files.length) {
+        previewDiv.style.display = 'none';
+        return;
     }
 
-    document.getElementById('cmsNomeAmigavel').value = file.name.replace(/\.[^/.]+$/, '');
+    previewDiv.style.display = 'block';
+
+    // Mostra cada arquivo com miniatura
+    const itensHTML = files.map((file, idx) => {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        const isImg = file.type.startsWith('image/');
+        const isVid = file.type.startsWith('video/');
+        const isPdf = file.type === 'application/pdf';
+
+        let icon = '📄';
+        if (isImg) icon = '🖼️';
+        else if (isVid) icon = '🎬';
+        else if (isPdf) icon = '📕';
+
+        return `
+            <div style="display:flex; align-items:center; gap:12px; padding:10px; background:#F5F5F7; border-radius:10px; margin-bottom:8px;">
+                <span style="font-size:1.5rem;">${icon}</span>
+                <div style="flex:1; text-align:left;">
+                    <p style="color:#0A1C3A; font-weight:600; font-size:0.9rem; margin-bottom:2px;">${escHTML(file.name)}</p>
+                    <p style="color:#86868B; font-size:0.8rem;">${sizeMB} MB</p>
+                </div>
+                <span style="color:#D4AF37; font-weight:700; font-size:0.85rem;">#${idx + 1}</span>
+            </div>
+        `;
+    }).join('');
+
+    previewContent.innerHTML = `
+        <p style="color:#0A1C3A; font-weight:700; margin-bottom:12px;">
+            ${files.length} arquivo${files.length > 1 ? 's' : ''} selecionado${files.length > 1 ? 's' : ''}
+        </p>
+        <div style="max-height:220px; overflow-y:auto; text-align:left;">
+            ${itensHTML}
+        </div>
+        <button onclick="cmsLimparSelecao()" class="cms-btn-secondary" style="margin-top:12px; font-size:0.85rem;">
+            Limpar seleção
+        </button>
+    `;
+
+    // Preenche o nome amigável apenas se for 1 arquivo
+    if (files.length === 1) {
+        const f = files[0];
+        const nomeBase = f.name.replace(/\.[^/.]+$/, '');
+        document.getElementById('cmsNomeAmigavel').value = nomeBase;
+    } else {
+        document.getElementById('cmsNomeAmigavel').value = '';
+    }
 };
 
+window.cmsLimparSelecao = function() {
+    cmsEstado.arquivosAtuais = [];
+    cmsFileInput.value = '';
+    document.getElementById('cmsUploadPreview').style.display = 'none';
+    document.getElementById('cmsNomeAmigavel').value = '';
+};
+
+// ✅ UPLOAD EM LOTE
 document.getElementById('cmsUploadBtn')?.addEventListener('click', async () => {
-    if (!cmsEstado.arquivoAtual) {
-        alert('Selecione um arquivo primeiro!');
+    const files = cmsEstado.arquivosAtuais || [];
+
+    if (!files.length) {
+        alert('Selecione pelo menos um arquivo!');
         return;
     }
 
@@ -462,48 +487,92 @@ document.getElementById('cmsUploadBtn')?.addEventListener('click', async () => {
     const btn = document.getElementById('cmsUploadBtn');
     const limiteMB = (window.CONFIG && window.CONFIG.LIMITE_UPLOAD_MB) || 25;
     const categoria = document.getElementById('cmsCategoriaUpload').value;
+    const descricao = document.getElementById('cmsDescricaoUpload').value;
+    const nomeAmigavel = document.getElementById('cmsNomeAmigavel').value;
 
-    if (cmsEstado.arquivoAtual.size > limiteMB * 1024 * 1024) {
-        status.innerHTML = `<div class="cms-status-msg cms-error">❌ Arquivo muito grande (máx: ${limiteMB} MB)</div>`;
+    // Valida tamanho de todos
+    const arquivosGrandes = files.filter(f => f.size > limiteMB * 1024 * 1024);
+    if (arquivosGrandes.length) {
+        status.innerHTML = `<div class="cms-status-msg cms-error">
+            ❌ ${arquivosGrandes.length} arquivo(s) excedem o limite de ${limiteMB} MB:<br>
+            ${arquivosGrandes.map(f => f.name).join(', ')}
+        </div>`;
         return;
     }
 
     btn.disabled = true;
     btn.innerHTML = '<svg class="cms-icon cms-spin"><use href="#i-spinner"></use></svg><span>Enviando...</span>';
-    status.innerHTML = '<div class="cms-status-msg">⏳ Lendo arquivo...</div>';
 
-    try {
-        const base64 = await base64FromFile(cmsEstado.arquivoAtual);
-        status.innerHTML = '<div class="cms-status-msg">⏳ Enviando para o Google Drive...</div>';
+    let sucessos = 0;
+    let falhas = 0;
+    const erros = [];
 
-        const result = await window.apiPost({
-            acao: 'upload',
-            nomeArquivo: cmsEstado.arquivoAtual.name,
-            tipoMime: cmsEstado.arquivoAtual.type || 'application/octet-stream',
-            dadosBase64: base64.split(',')[1],
-            descricao: document.getElementById('cmsDescricaoUpload').value,
-            categoria: categoria,
-            nomeAmigavel: document.getElementById('cmsNomeAmigavel').value
-        });
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const pct = Math.round(((i) / files.length) * 100);
 
-        if (result && result.status === 'ok') {
-            status.innerHTML = `<div class="cms-status-msg cms-success">✅ Upload concluído com sucesso!</div>`;
-            cmsEstado.arquivoAtual = null;
-            cmsFileInput.value = '';
-            document.getElementById('cmsUploadPreview').style.display = 'none';
-            document.getElementById('cmsNomeAmigavel').value = '';
-            document.getElementById('cmsDescricaoUpload').value = '';
-            document.getElementById('cmsCategoriaUpload').value = '';
-            window.cmsCarregarTudo();
-        } else {
-            status.innerHTML = `<div class="cms-status-msg cms-error">❌ ${result?.mensagem || 'Erro desconhecido'}</div>`;
+        status.innerHTML = `<div class="cms-status-msg">
+            ⏳ Enviando ${i + 1} de ${files.length} (${pct}%)<br>
+            <strong>${escHTML(file.name)}</strong>
+        </div>`;
+
+        try {
+            const base64 = await base64FromFile(file);
+            const nomeFinal = files.length === 1 && nomeAmigavel
+                ? nomeAmigavel
+                : file.name.replace(/\.[^/.]+$/, '');
+
+            const result = await window.apiPost({
+                acao: 'upload',
+                nomeArquivo: file.name,
+                tipoMime: file.type || 'application/octet-stream',
+                dadosBase64: base64.split(',')[1],
+                descricao: descricao,
+                categoria: categoria,
+                nomeAmigavel: nomeFinal
+            });
+
+            if (result && result.status === 'ok') {
+                sucessos++;
+            } else {
+                falhas++;
+                erros.push(`${file.name}: ${result?.mensagem || 'erro'}`);
+            }
+        } catch (err) {
+            falhas++;
+            erros.push(`${file.name}: ${err.message}`);
         }
-    } catch (err) {
-        status.innerHTML = `<div class="cms-status-msg cms-error">❌ ${err.message}</div>`;
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<svg class="cms-icon"><use href="#i-upload"></use></svg><span>Enviar para o Google Drive</span>';
     }
+
+    // Finalização
+    if (falhas === 0) {
+        status.innerHTML = `<div class="cms-status-msg cms-success">
+            ✅ ${sucessos} arquivo${sucessos > 1 ? 's' : ''} enviado${sucessos > 1 ? 's' : ''} com sucesso!
+        </div>`;
+    } else if (sucessos === 0) {
+        status.innerHTML = `<div class="cms-status-msg cms-error">
+            ❌ Nenhum arquivo foi enviado.<br>
+            ${erros.join('<br>')}
+        </div>`;
+    } else {
+        status.innerHTML = `<div class="cms-status-msg cms-error">
+            ⚠️ ${sucessos} enviado${sucessos > 1 ? 's' : ''}, ${falhas} falhou/falharam:<br>
+            ${erros.join('<br>')}
+        </div>`;
+    }
+
+    // Limpa
+    cmsEstado.arquivosAtuais = [];
+    cmsFileInput.value = '';
+    document.getElementById('cmsUploadPreview').style.display = 'none';
+    document.getElementById('cmsNomeAmigavel').value = '';
+    document.getElementById('cmsDescricaoUpload').value = '';
+    document.getElementById('cmsCategoriaUpload').value = '';
+    btn.disabled = false;
+    btn.innerHTML = '<svg class="cms-icon"><use href="#i-upload"></use></svg><span>Enviar para o Google Drive</span>';
+
+    // Recarrega
+    window.cmsCarregarTudo();
 });
 
 // ============================================================

@@ -1,808 +1,595 @@
-/* ============================================================
- * PAINEL ADMINISTRATIVO - Marketing IEAD
- * Versão 3.2 - CORRIGIDO (sem redeclaração de CONFIG)
- * Ícones SVG inline + Login blindado
- * ============================================================ */
+/**
+ * ============================================================
+ *  CMS MARKETING IEAD CUIABÁ E REGIÃO
+ *  Backend: Google Sheets + Drive + API REST
+ *  Versão: 20.0 (Sistema de Categorias)
+ * ============================================================
+ */
 
-// ============================================================
-// HELPERS EMBUTIDOS
-// ============================================================
-function escapeHTML(str) {
-    if (str === null || str === undefined) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+const ABA_ARQUIVOS = "Arquivos";
+const ABA_CONFIG = "Configuracoes";
+const ABA_LOGS = "Logs";
+const ABA_CATEGORIAS = "Categorias";
+const ABA_CARROSSEL = "Carrossel";
+const ABA_MENUS = "Menus";
+
+const PASTA_DRIVE = "Marketing IEAD - Arquivos";
+
+const CAB_ARQUIVOS = ["ID", "Nome", "Tipo", "Link", "Descricao", "Categoria", "Data_Adicao", "Ativo", "File_ID", "Tamanho", "Preview_URL"];
+const CAB_CONFIG = ["Chave", "Valor", "Descricao"];
+const CAB_LOGS = ["Data_Hora", "Usuario", "Acao", "Detalhes"];
+const CAB_CATEGORIAS = ["ID", "Nome", "Icone", "Ordem"];
+const CAB_CARROSSEL = ["ID", "Titulo", "Descricao", "Badge", "Link_Botao", "Texto_Botao", "Ordem", "Ativo"];
+const CAB_MENUS = ["ID", "Nome", "Link", "Ordem", "Ativo", "Nova_Aba"];
+
+function doGet(e) {
+    try {
+        setupPlanilha();
+        const p = e.parameter || {};
+        const acao = p.acao || "listar";
+        let resp;
+
+        switch (acao) {
+            case "listar": resp = listarArquivos(p.filtro, p.categoria); break;
+            case "configuracoes": resp = obterConfiguracoes(); break;
+            case "categorias": resp = listarCategorias(); break;
+            case "carrossel": resp = listarCarrossel(); break;
+            case "menus": resp = listarMenus(); break;
+            case "estatisticas": resp = obterEstatisticas(); break;
+            case "buscar": resp = buscarArquivos(p.termo); break;
+            case "tudo": resp = obterTudo(); break;
+            case "ping": resp = { status: "ok", ts: new Date().toISOString() }; break;
+            default: resp = { status: "erro", mensagem: "Ação desconhecida: " + acao };
+        }
+        return responderJSON(resp, p.callback);
+    } catch (err) {
+        registrarLog("SISTEMA", "ERRO", err.toString());
+        return responderJSON({ status: "erro", mensagem: err.toString() }, e.parameter.callback);
+    }
 }
 
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+function doPost(e) {
+    try {
+        setupPlanilha();
+        const p = JSON.parse(e.postData.contents);
+        let resp;
+
+        switch (p.acao) {
+            case "upload": resp = uploadArquivo(p); break;
+            case "upload_logo": resp = uploadLogo(p); break;
+            case "remover": resp = removerArquivo(p.id); break;
+            case "atualizar_config": resp = atualizarConfiguracoes(p.dados); break;
+            case "carrossel_salvar": resp = salvarSlide(p.dados, p.id); break;
+            case "carrossel_remover": resp = removerSlide(p.id); break;
+            case "menu_salvar": resp = salvarMenu(p.dados, p.id); break;
+            case "menu_remover": resp = removerMenu(p.id); break;
+            case "categoria_salvar": resp = salvarCategoria(p.dados, p.id); break;
+            case "categoria_remover": resp = removerCategoria(p.id); break;
+            default: resp = { status: "erro", mensagem: "Ação POST desconhecida: " + p.acao };
+        }
+        return responderJSON(resp);
+    } catch (err) {
+        registrarLog("SISTEMA", "ERRO_POST", err.toString());
+        return responderJSON({ status: "erro", mensagem: err.toString() });
+    }
+}
+
+function setupPlanilha() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    let a = ss.getSheetByName(ABA_ARQUIVOS);
+    if (!a) {
+        a = ss.insertSheet(ABA_ARQUIVOS);
+        a.appendRow(CAB_ARQUIVOS);
+        formatarCabecalho(a, CAB_ARQUIVOS.length);
+        [60,280,90,450,350,140,130,80,250,100,300].forEach((w, i) => a.setColumnWidth(i+1, w));
+        a.setFrozenRows(1);
+    }
+
+    let c = ss.getSheetByName(ABA_CONFIG);
+    if (!c) {
+        c = ss.insertSheet(ABA_CONFIG);
+        c.appendRow(CAB_CONFIG);
+        formatarCabecalho(c, CAB_CONFIG.length);
+        const config = [
+            ["Titulo_Site", "Marketing IEAD Cuiabá e Região", "Título principal"],
+            ["Subtitulo_Hero", "Recursos Oficiais. Excelência em Comunicação.", "Subtítulo do hero"],
+            ["Descricao_Hero", "Acesse materiais institucionais, manuais de marca e conteúdos exclusivos.", "Descrição do hero"],
+            ["Texto_Botao_Hero", "Explorar Materiais", "Texto do botão do hero"],
+            ["Logo_URL", "", "URL da logo"],
+            ["Logo_File_ID", "", "ID do arquivo da logo no Drive"],
+            ["Cor_Primaria", "#0A1C3A", "Cor azul escuro"],
+            ["Cor_Secundaria", "#1A3A6B", "Cor azul médio"],
+            ["Cor_Destaque", "#D4AF37", "Cor dourada"],
+            ["Texto_Rodape", "© 2026 IEAD Cuiabá e Região. Todos os direitos reservados.", "Texto do rodapé"],
+            ["Email_Contato", "marketing@ieadcuiaba.com.br", "Email"],
+            ["Instagram", "@ieadcuiaba", "Instagram"],
+            ["Pasta_Drive_ID", "", "ID pasta principal"],
+            ["Pasta_Drive_URL", "", "URL pasta principal"],
+            ["Mostrar_Carrossel", "TRUE", "Exibir carrossel"],
+            ["Mostrar_Busca", "TRUE", "Exibir barra de busca"]
+        ];
+        c.getRange(2, 1, config.length, 3).setValues(config);
+        c.setColumnWidth(1, 220); c.setColumnWidth(2, 500); c.setColumnWidth(3, 400);
+        c.setFrozenRows(1);
+    }
+
+    let cat = ss.getSheetByName(ABA_CATEGORIAS);
+    if (!cat) {
+        cat = ss.insertSheet(ABA_CATEGORIAS);
+        cat.appendRow(CAB_CATEGORIAS);
+        formatarCabecalho(cat, CAB_CATEGORIAS.length);
+        cat.getRange(2, 1, 4, 4).setValues([
+            [1, "Logo IEAD", "fa-image", 1],
+            [2, "Manuais", "fa-book", 2],
+            [3, "Apresentações", "fa-file-powerpoint", 3],
+            [4, "Campanhas", "fa-bullhorn", 4]
+        ]);
+        cat.setColumnWidth(1, 60);
+        cat.setColumnWidth(2, 250);
+        cat.setColumnWidth(3, 200);
+        cat.setColumnWidth(4, 80);
+        cat.setFrozenRows(1);
+    }
+
+    let l = ss.getSheetByName(ABA_LOGS);
+    if (!l) {
+        l = ss.insertSheet(ABA_LOGS);
+        l.appendRow(CAB_LOGS);
+        formatarCabecalho(l, CAB_LOGS.length);
+        l.setFrozenRows(1);
+    }
+
+    let car = ss.getSheetByName(ABA_CARROSSEL);
+    if (!car) {
+        car = ss.insertSheet(ABA_CARROSSEL);
+        car.appendRow(CAB_CARROSSEL);
+        formatarCabecalho(car, CAB_CARROSSEL.length);
+        car.getRange(2, 1, 3, 8).setValues([
+            [1, "Bem-vindo ao Portal", "Acesse materiais exclusivos, manuais e apresentações.", "Novo", "#downloads", "Explorar", 1, true],
+            [2, "Manual de Identidade Visual 2026", "Garanta a padronização de todas as peças.", "Atualizado", "#downloads", "Baixar agora", 2, true],
+            [3, "Campanha de Missões", "Confira os materiais para download.", "Campanha", "#downloads", "Acessar", 3, true]
+        ]);
+        car.setColumnWidth(1, 60); car.setColumnWidth(2, 300); car.setColumnWidth(3, 400);
+        car.setFrozenRows(1);
+    }
+
+    let m = ss.getSheetByName(ABA_MENUS);
+    if (!m) {
+        m = ss.insertSheet(ABA_MENUS);
+        m.appendRow(CAB_MENUS);
+        formatarCabecalho(m, CAB_MENUS.length);
+        m.getRange(2, 1, 4, 6).setValues([
+            [1, "Início", "#inicio", 1, true, false],
+            [2, "Downloads", "#downloads", 2, true, false],
+            [3, "Sobre", "#sobre", 3, true, false],
+            [4, "Contato", "#contato", 4, true, false]
+        ]);
+        m.setFrozenRows(1);
+    }
+
+    ["Sheet1", "Página1", "Page1", "Planilha1"].forEach(nome => {
+        const s = ss.getSheetByName(nome);
+        if (s && s.getLastRow() === 0 && ss.getSheets().length > 6) {
+            try { ss.deleteSheet(s); } catch(e) {}
+        }
     });
 }
 
-// ⚠️ NÃO redeclarar CONFIG — o config.js já faz isso
-if (typeof CONFIG === 'undefined') {
-    console.error('❌ CONFIG não definido. O config.js precisa ser carregado ANTES do admin.js.');
+function formatarCabecalho(aba, numCols) {
+    const r = aba.getRange(1, 1, 1, numCols);
+    r.setBackground("#0A1C3A");
+    r.setFontColor("#D4AF37");
+    r.setFontWeight("bold");
+    r.setFontSize(11);
+    r.setHorizontalAlignment("center");
+    r.setVerticalAlignment("middle");
+    r.setBorder(true, true, true, true, true, true, "#D4AF37", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
 }
 
-// ============================================================
-// ESTADO
-// ============================================================
-let cmsEstado = {
-    config: {},
-    arquivos: [],
-    categorias: [],
-    carrossel: [],
-    menus: [],
-    arquivoAtual: null
-};
+function obterPastaPrincipal() {
+    const pastas = DriveApp.getFoldersByName(PASTA_DRIVE);
+    if (pastas.hasNext()) return pastas.next();
+    const nova = DriveApp.createFolder(PASTA_DRIVE);
+    nova.setDescription("Pasta oficial do site Marketing IEAD");
+    return nova;
+}
 
-// ============================================================
-// LOGIN
-// ============================================================
-function cmsFazerLogin() {
-    console.log('🔐 Tentando login...');
+function obterSubpasta(pastaPai, nome) {
+    const subs = pastaPai.getFoldersByName(nome);
+    if (subs.hasNext()) return subs.next();
+    return pastaPai.createFolder(nome);
+}
 
-    const inputSenha = document.getElementById('cmsPassword');
-    const erroEl = document.getElementById('cmsLoginError');
+function determinarSubpasta(nomeArq) {
+    const ext = (nomeArq.split(".").pop() || "").toUpperCase();
+    const mapa = {
+        PDF: "Documentos PDF", DOC: "Word", DOCX: "Word",
+        XLS: "Planilhas", XLSX: "Planilhas",
+        PPT: "Apresentações", PPTX: "Apresentações",
+        PNG: "Imagens", JPG: "Imagens", JPEG: "Imagens", GIF: "Imagens", SVG: "Imagens", WEBP: "Imagens",
+        MP4: "Vídeos", MOV: "Vídeos", AVI: "Vídeos",
+        MP3: "Áudios", WAV: "Áudios",
+        ZIP: "Compactados", RAR: "Compactados",
+        PSD: "Editáveis", AI: "Editáveis",
+        ICO: "Logos"
+    };
+    return mapa[ext] || "Outros";
+}
 
-    if (!inputSenha) {
-        console.error('❌ Input #cmsPassword não encontrado');
-        return;
+function uploadArquivo(p) {
+    try {
+        if (!p.nomeArquivo || !p.dadosBase64) return { status: "erro", mensagem: "Dados incompletos" };
+
+        const tamanho = Math.ceil(p.dadosBase64.length * 3 / 4);
+        const tamanhoMB = (tamanho / (1024 * 1024)).toFixed(2);
+        if (tamanho > 25 * 1024 * 1024) return { status: "erro", mensagem: "Arquivo muito grande (máx 25MB)" };
+
+        const pasta = obterPastaPrincipal();
+        const subpasta = obterSubpasta(pasta, determinarSubpasta(p.nomeArquivo));
+
+        const blob = Utilities.newBlob(
+            Utilities.base64Decode(p.dadosBase64),
+            p.tipoMime || "application/octet-stream",
+            p.nomeArquivo
+        );
+
+        const arquivo = subpasta.createFile(blob);
+        arquivo.setDescription(p.descricao || "Arquivo Marketing IEAD");
+        arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+        const fileId = arquivo.getId();
+        const link = "https://drive.google.com/uc?export=download&id=" + fileId;
+        const preview = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w800";
+
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const aba = ss.getSheetByName(ABA_ARQUIVOS);
+        const id = Math.max(aba.getLastRow(), 1);
+        const ext = p.nomeArquivo.split(".").pop().toUpperCase();
+
+        aba.appendRow([
+            id,
+            p.nomeAmigavel || p.nomeArquivo.replace(/\.[^/.]+$/, ""),
+            ext,
+            link,
+            p.descricao || "Clique para baixar",
+            p.categoria || "Geral",
+            new Date(),
+            true,
+            fileId,
+            tamanhoMB + " MB",
+            preview
+        ]);
+
+        registrarLog("SITE", "UPLOAD", p.nomeArquivo + " (" + tamanhoMB + "MB) | Cat: " + (p.categoria || "Geral"));
+        return { status: "ok", mensagem: "Upload concluído!", arquivo: { id, link, preview, fileId, subpasta: subpasta.getName() } };
+
+    } catch (err) {
+        return { status: "erro", mensagem: err.toString() };
     }
+}
 
-    const senha = inputSenha.value;
+function uploadLogo(p) {
+    try {
+        if (!p.nomeArquivo || !p.dadosBase64) return { status: "erro", mensagem: "Dados incompletos" };
 
-    if (!senha) {
-        if (erroEl) erroEl.textContent = 'Digite a senha.';
-        return;
-    }
+        const pasta = obterPastaPrincipal();
+        const subLogo = obterSubpasta(pasta, "Logos Site");
 
-    if (typeof CONFIG === 'undefined' || !CONFIG.SENHA_ADMIN) {
-        if (erroEl) erroEl.textContent = 'Erro: config.js não carregado corretamente.';
-        console.error('❌ CONFIG indefinido ou sem SENHA_ADMIN');
-        return;
-    }
-
-    console.log('Senha digitada:', senha);
-    console.log('Senha esperada:', CONFIG.SENHA_ADMIN);
-
-    if (senha === CONFIG.SENHA_ADMIN) {
-        console.log('✅ Senha correta! Entrando...');
-        sessionStorage.setItem('adminLogged', 'true');
-        cmsMostrarPainel();
-    } else {
-        console.warn('❌ Senha incorreta');
-        if (erroEl) erroEl.textContent = 'Senha incorreta. Tente novamente.';
-        const box = document.querySelector('.cms-login-box');
-        if (box) {
-            box.style.animation = 'none';
-            setTimeout(() => box.style.animation = 'cmsFadeIn 0.4s ease', 10);
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const abaConf = ss.getSheetByName(ABA_CONFIG);
+        const dados = abaConf.getDataRange().getValues();
+        for (let i = 1; i < dados.length; i++) {
+            if (dados[i][0] === "Logo_File_ID" && dados[i][1]) {
+                try { DriveApp.getFileById(dados[i][1]).setTrashed(true); } catch(e){}
+            }
         }
+
+        const blob = Utilities.newBlob(
+            Utilities.base64Decode(p.dadosBase64),
+            p.tipoMime || "image/png",
+            p.nomeArquivo
+        );
+
+        const arquivo = subLogo.createFile(blob);
+        arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+        const fileId = arquivo.getId();
+        const url = "https://drive.google.com/uc?export=view&id=" + fileId;
+
+        for (let i = 1; i < dados.length; i++) {
+            if (dados[i][0] === "Logo_URL") abaConf.getRange(i+1, 2).setValue(url);
+            if (dados[i][0] === "Logo_File_ID") abaConf.getRange(i+1, 2).setValue(fileId);
+        }
+
+        registrarLog("SITE", "LOGO", "Nova logo enviada");
+        return { status: "ok", mensagem: "Logo atualizada!", url, fileId };
+    } catch (err) {
+        return { status: "erro", mensagem: err.toString() };
     }
 }
 
-function cmsFazerLogout() {
-    sessionStorage.removeItem('adminLogged');
-    location.reload();
-}
-
-function cmsMostrarPainel() {
-    const loginScreen = document.getElementById('cmsLoginScreen');
-    const wrapper = document.getElementById('cmsWrapper');
-
-    if (!loginScreen || !wrapper) {
-        console.error('❌ Elementos do painel não encontrados');
-        return;
-    }
-
-    loginScreen.style.display = 'none';
-    wrapper.style.display = 'grid';
-    console.log('✅ Painel exibido');
-    cmsCarregarTudo();
-}
-
-// Auto-login + Enter no input
-window.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Admin JS carregado');
-    console.log('CONFIG:', typeof CONFIG !== 'undefined' ? CONFIG : 'NÃO DEFINIDO');
-
-    if (sessionStorage.getItem('adminLogged') === 'true') {
-        console.log('🔓 Sessão ativa — auto-login');
-        cmsMostrarPainel();
-    }
-
-    const inputSenha = document.getElementById('cmsPassword');
-    if (inputSenha) {
-        inputSenha.addEventListener('keypress', e => {
-            if (e.key === 'Enter') cmsFazerLogin();
+function listarArquivos(filtro, categoria) {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_ARQUIVOS);
+    if (!aba) return [];
+    const dados = aba.getDataRange().getValues();
+    const out = [];
+    for (let i = 1; i < dados.length; i++) {
+        const l = dados[i];
+        if (!l[1] || !l[3]) continue;
+        if (l[7] !== true && l[7] !== "TRUE" && l[7] !== "") continue;
+        if (filtro && !l[1].toLowerCase().includes(filtro.toLowerCase())) continue;
+        if (categoria && l[5] && l[5].toLowerCase() !== categoria.toLowerCase()) continue;
+        out.push({
+            id: l[0], nome: l[1], tipo: l[2], link: l[3], descricao: l[4],
+            categoria: l[5] || "Geral",
+            data: l[6] ? Utilities.formatDate(new Date(l[6]), Session.getScriptTimeZone(), "dd/MM/yyyy") : "",
+            fileId: l[8] || "", tamanho: l[9] || "", preview: l[10] || ""
         });
     }
-});
-
-// ============================================================
-// NAVEGAÇÃO
-// ============================================================
-document.querySelectorAll('.cms-nav a').forEach(link => {
-    link.addEventListener('click', e => {
-        e.preventDefault();
-        const tab = link.dataset.tab;
-        if (!tab) return;
-
-        document.querySelectorAll('.cms-nav a').forEach(a => a.classList.remove('active'));
-        document.querySelectorAll('.cms-section').forEach(s => s.classList.remove('active'));
-        link.classList.add('active');
-        const section = document.getElementById('cmsTab' + tab.charAt(0).toUpperCase() + tab.slice(1));
-        if (section) section.classList.add('active');
-        const title = document.getElementById('cmsPageTitle');
-        if (title) title.textContent = link.textContent.trim();
-    });
-});
-
-// ============================================================
-// CARREGAR TUDO
-// ============================================================
-async function cmsCarregarTudo() {
-    try {
-        console.log('📥 Carregando dados...');
-        const dados = await apiGet('tudo');
-
-        if (!dados) {
-            console.warn('⚠️ Sem dados (API offline)');
-            const statusText = document.getElementById('cmsStatusText');
-            if (statusText) statusText.textContent = '⚠️ Modo offline';
-            cmsRenderizarDashboard();
-            cmsRenderizarArquivos();
-            cmsRenderizarCategorias();
-            cmsRenderizarCarrossel();
-            cmsRenderizarMenus();
-            cmsPreencherFormularios();
-            return;
-        }
-
-        cmsEstado.config = dados.config || {};
-        cmsEstado.arquivos = dados.arquivos || [];
-        cmsEstado.categorias = dados.categorias || [];
-        cmsEstado.carrossel = dados.carrossel || [];
-        cmsEstado.menus = dados.menus || [];
-
-        console.log('✅ Dados carregados:', cmsEstado);
-
-        cmsRenderizarDashboard();
-        cmsRenderizarArquivos();
-        cmsRenderizarCategorias();
-        cmsRenderizarCarrossel();
-        cmsRenderizarMenus();
-        cmsPreencherFormularios();
-    } catch (err) {
-        console.error('❌ Erro:', err);
-        const statusText = document.getElementById('cmsStatusText');
-        if (statusText) statusText.textContent = '⚠️ Erro';
-    }
+    return out.reverse();
 }
 
-// ============================================================
-// DASHBOARD
-// ============================================================
-function cmsRenderizarDashboard() {
-    const statsEl = document.getElementById('cmsStats');
-    if (!statsEl) return;
+function buscarArquivos(t) { return t ? listarArquivos(t) : listarArquivos(); }
 
-    const totalMB = cmsEstado.arquivos.reduce((s, a) => s + (parseFloat(a.tamanho) || 0), 0).toFixed(1);
-    statsEl.innerHTML = `
-        <div class="cms-stat-card">
-            <svg class="cms-icon"><use href="#i-file"></use></svg>
-            <h2>${cmsEstado.arquivos.length}</h2>
-            <p>Arquivos</p>
-        </div>
-        <div class="cms-stat-card">
-            <svg class="cms-icon"><use href="#i-database"></use></svg>
-            <h2>${totalMB} MB</h2>
-            <p>Tamanho Total</p>
-        </div>
-        <div class="cms-stat-card">
-            <svg class="cms-icon"><use href="#i-folder"></use></svg>
-            <h2>${cmsEstado.categorias.length}</h2>
-            <p>Categorias</p>
-        </div>
-    `;
-
-    const linkDrive = document.getElementById('cmsLinkPastaDrive');
-    if (linkDrive && cmsEstado.config.Pasta_Drive_URL) {
-        linkDrive.href = cmsEstado.config.Pasta_Drive_URL;
-    }
+function obterConfiguracoes() {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CONFIG);
+    if (!aba) return {};
+    const dados = aba.getDataRange().getValues();
+    const cfg = {};
+    for (let i = 1; i < dados.length; i++) if (dados[i][0]) cfg[dados[i][0]] = dados[i][1];
+    return cfg;
 }
 
-// ============================================================
-// ARQUIVOS
-// ============================================================
-function cmsRenderizarArquivos() {
-    const container = document.getElementById('cmsArquivosList');
-    if (!container) return;
-
-    if (!cmsEstado.arquivos.length) {
-        container.innerHTML = '<p class="cms-empty">Nenhum arquivo ainda.</p>';
-        return;
-    }
-
-    container.innerHTML = cmsEstado.arquivos.map(a => {
-        const ext = (a.tipo || '').toUpperCase();
-        const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
-        const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
-        const isPdf = ext === 'PDF';
-
-        let preview = '';
-        if (isImg && a.preview) {
-            preview = `<img src="${a.preview}" class="cms-preview-thumb" alt="">`;
-        } else if (isVid) {
-            preview = `<svg class="cms-icon" style="width:36px;height:36px;color:#D4AF37;"><use href="#i-video"></use></svg>`;
-        } else if (isPdf) {
-            preview = `<svg class="cms-icon" style="width:36px;height:36px;color:#DC3545;"><use href="#i-pdf"></use></svg>`;
-        } else {
-            preview = `<svg class="cms-icon" style="width:36px;height:36px;"><use href="#i-file"></use></svg>`;
-        }
-
-        return `
-            <div class="cms-arquivo-item">
-                <div class="cms-arquivo-preview">${preview}</div>
-                <div class="cms-arquivo-info">
-                    <h4>${escapeHTML(a.nome)}</h4>
-                    <p>${escapeHTML(a.descricao || '')}</p>
-                    <div class="cms-arquivo-meta">
-                        <span class="cms-tag">${escapeHTML(a.tipo || '')}</span>
-                        <span class="cms-tag">${escapeHTML(a.categoria || '')}</span>
-                        ${a.tamanho ? `<span class="cms-tag">${escapeHTML(a.tamanho)}</span>` : ''}
-                    </div>
-                </div>
-                <div class="cms-arquivo-actions">
-                    <a href="${a.link}" target="_blank" rel="noopener" class="cms-btn-icon" title="Abrir">
-                        <svg class="cms-icon"><use href="#i-external"></use></svg>
-                    </a>
-                    <button onclick="cmsRemoverArquivo(${a.id})" class="cms-btn-icon cms-danger" title="Excluir">
-                        <svg class="cms-icon"><use href="#i-trash"></use></svg>
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-async function cmsRemoverArquivo(id) {
-    if (!confirm('Remover este arquivo? Ele será movido para a lixeira do Drive.')) return;
-    const r = await apiPost({ acao: 'remover', id });
-    if (r && r.status === 'ok') cmsCarregarTudo();
-}
-
-document.getElementById('cmsFiltroArquivos')?.addEventListener('input', function () {
-    const t = this.value.toLowerCase();
-    document.querySelectorAll('.cms-arquivo-item').forEach(item => {
-        item.style.display = item.textContent.toLowerCase().includes(t) ? 'flex' : 'none';
-    });
-});
-
-// ============================================================
-// CATEGORIAS
-// ============================================================
-function cmsRenderizarCategorias() {
-    const sel = document.getElementById('cmsCategoriaUpload');
-    if (!sel) return;
-    sel.innerHTML = cmsEstado.categorias.map(c =>
-        `<option value="${c.nome}">${c.nome}</option>`
-    ).join('');
-}
-
-// ============================================================
-// UPLOAD
-// ============================================================
-const cmsUploadArea = document.getElementById('cmsUploadArea');
-const cmsFileInput = document.getElementById('cmsFileInput');
-
-cmsUploadArea?.addEventListener('click', () => cmsFileInput.click());
-cmsUploadArea?.addEventListener('dragover', e => { e.preventDefault(); cmsUploadArea.classList.add('cms-dragover'); });
-cmsUploadArea?.addEventListener('dragleave', () => cmsUploadArea.classList.remove('cms-dragover'));
-cmsUploadArea?.addEventListener('drop', e => {
-    e.preventDefault();
-    cmsUploadArea.classList.remove('cms-dragover');
-    if (e.dataTransfer.files.length) {
-        cmsFileInput.files = e.dataTransfer.files;
-        cmsSelecionarArquivo(e.dataTransfer.files[0]);
-    }
-});
-cmsFileInput?.addEventListener('change', () => {
-    if (cmsFileInput.files.length) cmsSelecionarArquivo(cmsFileInput.files[0]);
-});
-
-function cmsSelecionarArquivo(file) {
-    cmsEstado.arquivoAtual = file;
-    document.getElementById('cmsUploadPreview').style.display = 'block';
-    const previewContent = document.getElementById('cmsPreviewContent');
-    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-
-    if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = e => {
-            previewContent.innerHTML = `
-                <img src="${e.target.result}" class="cms-upload-thumb" alt="">
-                <p style="color:#0A1C3A;font-weight:600;">${file.name}</p>
-                <p style="color:#86868B;font-size:0.85rem;">${sizeMB} MB</p>
-            `;
-        };
-        reader.readAsDataURL(file);
-    } else if (file.type.startsWith('video/')) {
-        previewContent.innerHTML = `
-            <svg class="cms-icon cms-icon-3xl" style="color:#D4AF37;"><use href="#i-video"></use></svg>
-            <p style="color:#0A1C3A;font-weight:600;">${file.name}</p>
-            <p style="color:#86868B;font-size:0.85rem;">${sizeMB} MB • Vídeo</p>
-        `;
-    } else if (file.type === 'application/pdf') {
-        previewContent.innerHTML = `
-            <svg class="cms-icon cms-icon-3xl" style="color:#DC3545;"><use href="#i-pdf"></use></svg>
-            <p style="color:#0A1C3A;font-weight:600;">${file.name}</p>
-            <p style="color:#86868B;font-size:0.85rem;">${sizeMB} MB</p>
-        `;
-    } else {
-        previewContent.innerHTML = `
-            <svg class="cms-icon cms-icon-3xl" style="color:#0A1C3A;"><use href="#i-file"></use></svg>
-            <p style="color:#0A1C3A;font-weight:600;">${file.name}</p>
-            <p style="color:#86868B;font-size:0.85rem;">${sizeMB} MB</p>
-        `;
-    }
-
-    document.getElementById('cmsNomeAmigavel').value = file.name.replace(/\.[^/.]+$/, '');
-}
-
-document.getElementById('cmsUploadBtn')?.addEventListener('click', async () => {
-    if (!cmsEstado.arquivoAtual) {
-        alert('Selecione um arquivo primeiro!');
-        return;
-    }
-
-    const status = document.getElementById('cmsUploadStatus');
-    const btn = document.getElementById('cmsUploadBtn');
-    const limiteMB = (typeof CONFIG !== 'undefined' && CONFIG.LIMITE_UPLOAD_MB) || 25;
-
-    if (cmsEstado.arquivoAtual.size > limiteMB * 1024 * 1024) {
-        status.innerHTML = `<div class="cms-status-msg cms-error">❌ Arquivo muito grande (máx: ${limiteMB} MB)</div>`;
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = '<svg class="cms-icon cms-spin"><use href="#i-spinner"></use></svg><span>Enviando...</span>';
-    status.innerHTML = '<div class="cms-status-msg">⏳ Lendo arquivo...</div>';
-
-    try {
-        const base64 = await fileToBase64(cmsEstado.arquivoAtual);
-        status.innerHTML = '<div class="cms-status-msg">⏳ Enviando para o Google Drive...</div>';
-
-        const result = await apiPost({
-            acao: 'upload',
-            nomeArquivo: cmsEstado.arquivoAtual.name,
-            tipoMime: cmsEstado.arquivoAtual.type || 'application/octet-stream',
-            dadosBase64: base64.split(',')[1],
-            descricao: document.getElementById('cmsDescricaoUpload').value,
-            categoria: document.getElementById('cmsCategoriaUpload').value,
-            nomeAmigavel: document.getElementById('cmsNomeAmigavel').value
+function listarCategorias() {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CATEGORIAS);
+    if (!aba) return [];
+    const dados = aba.getDataRange().getValues();
+    const out = [];
+    for (let i = 1; i < dados.length; i++) {
+        const l = dados[i];
+        if (!l[1]) continue;
+        out.push({
+            id: l[0],
+            nome: l[1],
+            icone: l[2] || 'fa-folder',
+            ordem: l[3] || i
         });
-
-        if (result && result.status === 'ok') {
-            status.innerHTML = `<div class="cms-status-msg cms-success">✅ Upload concluído com sucesso!</div>`;
-            cmsEstado.arquivoAtual = null;
-            cmsFileInput.value = '';
-            document.getElementById('cmsUploadPreview').style.display = 'none';
-            document.getElementById('cmsNomeAmigavel').value = '';
-            document.getElementById('cmsDescricaoUpload').value = '';
-            cmsCarregarTudo();
-        } else {
-            status.innerHTML = `<div class="cms-status-msg cms-error">❌ ${result?.mensagem || 'Erro desconhecido'}</div>`;
-        }
-    } catch (err) {
-        status.innerHTML = `<div class="cms-status-msg cms-error">❌ ${err.message}</div>`;
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<svg class="cms-icon"><use href="#i-upload"></use></svg><span>Enviar para o Google Drive</span>';
     }
-});
+    return out.sort((a, b) => a.ordem - b.ordem);
+}
 
-// ============================================================
-// CARROSSEL
-// ============================================================
-function cmsRenderizarCarrossel() {
-    const c = document.getElementById('cmsCarrosselList');
-    if (!c) return;
-
-    if (!cmsEstado.carrossel.length) {
-        c.innerHTML = '<p class="cms-empty">Nenhum slide ainda. Clique em "Novo Slide" para começar.</p>';
-        return;
+function listarCarrossel() {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CARROSSEL);
+    if (!aba) return [];
+    const dados = aba.getDataRange().getValues();
+    const out = [];
+    for (let i = 1; i < dados.length; i++) {
+        const l = dados[i];
+        if (!l[1] || (l[7] !== true && l[7] !== "TRUE")) continue;
+        out.push({ id: l[0], titulo: l[1], descricao: l[2], badge: l[3], link: l[4], textoBotao: l[5], ordem: l[6] });
     }
-
-    c.innerHTML = cmsEstado.carrossel.map(s => `
-        <div class="cms-item">
-            <div class="cms-item-info">
-                ${s.badge ? `<span class="cms-badge">${escapeHTML(s.badge)}</span>` : ''}
-                <h4>${escapeHTML(s.titulo)}</h4>
-                <p>${escapeHTML(s.descricao || '')}</p>
-            </div>
-            <div class="cms-item-actions">
-                <button onclick='cmsEditarSlide(${JSON.stringify(s).replace(/'/g, "&#39;")})' class="cms-btn-icon" title="Editar">
-                    <svg class="cms-icon"><use href="#i-edit"></use></svg>
-                </button>
-                <button onclick="cmsRemoverSlide(${s.id})" class="cms-btn-icon cms-danger" title="Excluir">
-                    <svg class="cms-icon"><use href="#i-trash"></use></svg>
-                </button>
-            </div>
-        </div>
-    `).join('');
+    return out.sort((a, b) => a.ordem - b.ordem);
 }
 
-function cmsAbrirModalSlide(slide = null) {
-    const modal = document.getElementById('cmsModal');
-    const box = document.getElementById('cmsModalBox');
-    box.innerHTML = `
-        <h2>${slide ? 'Editar' : 'Novo'} Slide</h2>
-        <div class="cms-form-grid">
-            <div class="cms-form-group cms-full">
-                <label>Título</label>
-                <input id="cmsSlTitulo" value="${slide?.titulo || ''}" placeholder="Título do slide">
-            </div>
-            <div class="cms-form-group cms-full">
-                <label>Descrição</label>
-                <textarea id="cmsSlDescricao" placeholder="Descrição breve">${slide?.descricao || ''}</textarea>
-            </div>
-            <div class="cms-form-group">
-                <label>Badge</label>
-                <input id="cmsSlBadge" value="${slide?.badge || ''}" placeholder="Ex: Novo">
-            </div>
-            <div class="cms-form-group">
-                <label>Texto do Botão</label>
-                <input id="cmsSlBotao" value="${slide?.textoBotao || ''}" placeholder="Ver mais">
-            </div>
-            <div class="cms-form-group cms-full">
-                <label>Link do Botão</label>
-                <input id="cmsSlLink" value="${slide?.link || '#downloads'}" placeholder="#downloads">
-            </div>
-            <div class="cms-form-group">
-                <label>Ordem</label>
-                <input type="number" id="cmsSlOrdem" value="${slide?.ordem || 1}">
-            </div>
-        </div>
-        <div class="cms-modal-actions">
-            <button onclick="cmsFecharModal()" class="cms-btn-secondary">Cancelar</button>
-            <button onclick="cmsSalvarSlide(${slide?.id || 'null'})" class="cms-btn-primary">
-                <svg class="cms-icon"><use href="#i-save"></use></svg><span>Salvar</span>
-            </button>
-        </div>
-    `;
-    modal.classList.add('cms-active');
-}
-
-async function cmsSalvarSlide(id) {
-    const dados = {
-        titulo: document.getElementById('cmsSlTitulo').value,
-        descricao: document.getElementById('cmsSlDescricao').value,
-        badge: document.getElementById('cmsSlBadge').value,
-        textoBotao: document.getElementById('cmsSlBotao').value,
-        link: document.getElementById('cmsSlLink').value,
-        ordem: parseInt(document.getElementById('cmsSlOrdem').value) || 1
-    };
-    await apiPost({ acao: 'carrossel_salvar', dados, id });
-    cmsFecharModal();
-    cmsCarregarTudo();
-}
-
-async function cmsRemoverSlide(id) {
-    if (!confirm('Remover este slide?')) return;
-    await apiPost({ acao: 'carrossel_remover', id });
-    cmsCarregarTudo();
-}
-
-function cmsEditarSlide(s) { cmsAbrirModalSlide(s); }
-
-// ============================================================
-// MENUS
-// ============================================================
-function cmsRenderizarMenus() {
-    const c = document.getElementById('cmsMenusList');
-    if (!c) return;
-
-    if (!cmsEstado.menus.length) {
-        c.innerHTML = '<p class="cms-empty">Nenhum menu ainda. Clique em "Nova Aba" para começar.</p>';
-        return;
+function listarMenus() {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_MENUS);
+    if (!aba) return [];
+    const dados = aba.getDataRange().getValues();
+    const out = [];
+    for (let i = 1; i < dados.length; i++) {
+        const l = dados[i];
+        if (!l[1] || (l[4] !== true && l[4] !== "TRUE")) continue;
+        out.push({ id: l[0], nome: l[1], link: l[2], ordem: l[3], novaAba: l[5] === true || l[5] === "TRUE" });
     }
-
-    c.innerHTML = cmsEstado.menus.map(m => `
-        <div class="cms-item">
-            <div class="cms-item-info">
-                <h4>${escapeHTML(m.nome)}</h4>
-                <p>${escapeHTML(m.link)} ${m.novaAba ? '• nova aba' : ''}</p>
-            </div>
-            <div class="cms-item-actions">
-                <button onclick='cmsEditarMenu(${JSON.stringify(m).replace(/'/g, "&#39;")})' class="cms-btn-icon" title="Editar">
-                    <svg class="cms-icon"><use href="#i-edit"></use></svg>
-                </button>
-                <button onclick="cmsRemoverMenu(${m.id})" class="cms-btn-icon cms-danger" title="Excluir">
-                    <svg class="cms-icon"><use href="#i-trash"></use></svg>
-                </button>
-            </div>
-        </div>
-    `).join('');
+    return out.sort((a, b) => a.ordem - b.ordem);
 }
 
-function cmsAbrirModalMenu(menu = null) {
-    const modal = document.getElementById('cmsModal');
-    const box = document.getElementById('cmsModalBox');
-    box.innerHTML = `
-        <h2>${menu ? 'Editar' : 'Nova'} Aba / Menu</h2>
-        <div class="cms-form-grid">
-            <div class="cms-form-group cms-full">
-                <label>Nome do Menu</label>
-                <input id="cmsMnNome" value="${menu?.nome || ''}" placeholder="Ex: Downloads">
-            </div>
-            <div class="cms-form-group cms-full">
-                <label>Link</label>
-                <input id="cmsMnLink" value="${menu?.link || ''}" placeholder="#downloads ou https://...">
-            </div>
-            <div class="cms-form-group">
-                <label>Ordem</label>
-                <input type="number" id="cmsMnOrdem" value="${menu?.ordem || 1}">
-            </div>
-            <div class="cms-form-group">
-                <label>Abrir em nova aba?</label>
-                <label class="cms-toggle">
-                    <input type="checkbox" id="cmsMnNovaAba" ${menu?.novaAba ? 'checked' : ''}>
-                    <span>Sim, nova aba</span>
-                </label>
-            </div>
-        </div>
-        <div class="cms-modal-actions">
-            <button onclick="cmsFecharModal()" class="cms-btn-secondary">Cancelar</button>
-            <button onclick="cmsSalvarMenu(${menu?.id || 'null'})" class="cms-btn-primary">
-                <svg class="cms-icon"><use href="#i-save"></use></svg><span>Salvar</span>
-            </button>
-        </div>
-    `;
-    modal.classList.add('cms-active');
-}
-
-async function cmsSalvarMenu(id) {
-    const dados = {
-        nome: document.getElementById('cmsMnNome').value,
-        link: document.getElementById('cmsMnLink').value,
-        ordem: parseInt(document.getElementById('cmsMnOrdem').value) || 1,
-        novaAba: document.getElementById('cmsMnNovaAba').checked
-    };
-    await apiPost({ acao: 'menu_salvar', dados, id });
-    cmsFecharModal();
-    cmsCarregarTudo();
-}
-
-async function cmsRemoverMenu(id) {
-    if (!confirm('Remover este menu?')) return;
-    await apiPost({ acao: 'menu_remover', id });
-    cmsCarregarTudo();
-}
-
-function cmsEditarMenu(m) { cmsAbrirModalMenu(m); }
-
-// ============================================================
-// APARÊNCIA
-// ============================================================
-document.getElementById('cmsLogoInput')?.addEventListener('change', async function () {
-    if (!this.files.length) return;
-    const file = this.files[0];
-    const base64 = await fileToBase64(file);
-
-    const result = await apiPost({
-        acao: 'upload_logo',
-        nomeArquivo: file.name,
-        tipoMime: file.type,
-        dadosBase64: base64.split(',')[1]
+function obterEstatisticas() {
+    const arqs = listarArquivos();
+    const cats = listarCategorias();
+    let totalMB = 0;
+    const porTipo = {};
+    arqs.forEach(a => {
+        porTipo[a.tipo] = (porTipo[a.tipo] || 0) + 1;
+        if (a.tamanho) { const m = a.tamanho.match(/([\d.]+)/); if (m) totalMB += parseFloat(m[1]); }
     });
-
-    if (result && result.status === 'ok') {
-        document.getElementById('cmsLogoPreview').innerHTML = `<img src="${result.url}" alt="Logo">`;
-        alert('✅ Logo atualizada com sucesso!');
-        cmsCarregarTudo();
-    } else {
-        alert('❌ Erro ao atualizar logo');
-    }
-});
-
-async function cmsSalvarCores() {
-    const dados = {
-        Cor_Primaria: document.getElementById('cmsCorPrimaria').value,
-        Cor_Secundaria: document.getElementById('cmsCorSecundaria').value,
-        Cor_Destaque: document.getElementById('cmsCorDestaque').value
+    return {
+        total_arquivos: arqs.length,
+        total_categorias: cats.length,
+        total_mb: totalMB.toFixed(2),
+        por_tipo: porTipo,
+        atualizado: new Date().toISOString()
     };
-    const r = await apiPost({ acao: 'atualizar_config', dados });
-    if (r && r.status === 'ok') {
-        alert('✅ Cores salvas!');
-        cmsCarregarTudo();
-    }
 }
 
-// ============================================================
-// TEXTOS
-// ============================================================
-function cmsPreencherFormularios() {
-    const c = cmsEstado.config;
-
-    const setVal = (id, val) => {
-        const el = document.getElementById(id);
-        if (el) el.value = val || '';
+function obterTudo() {
+    return {
+        config: obterConfiguracoes(),
+        arquivos: listarArquivos(),
+        categorias: listarCategorias(),
+        carrossel: listarCarrossel(),
+        menus: listarMenus()
     };
-    const setCheck = (id, val) => {
-        const el = document.getElementById(id);
-        if (el) el.checked = val;
-    };
+}
 
-    setVal('cmsTxtTitulo', c.Titulo_Site);
-    setVal('cmsTxtSubtituloHero', c.Subtitulo_Hero);
-    setVal('cmsTxtDescricaoHero', c.Descricao_Hero);
-    setVal('cmsTxtBotaoHero', c.Texto_Botao_Hero);
-    setVal('cmsTxtInstagram', c.Instagram);
-    setVal('cmsTxtEmail', c.Email_Contato);
-    setVal('cmsTxtRodape', c.Texto_Rodape);
+function removerArquivo(id) {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_ARQUIVOS);
+    const dados = aba.getDataRange().getValues();
+    for (let i = 1; i < dados.length; i++) {
+        if (dados[i][0] == id) {
+            if (dados[i][8]) { try { DriveApp.getFileById(dados[i][8]).setTrashed(true); } catch(e){} }
+            aba.deleteRow(i + 1);
+            return { status: "ok", mensagem: "Removido" };
+        }
+    }
+    return { status: "erro", mensagem: "Não encontrado" };
+}
 
-    setVal('cmsCorPrimaria', c.Cor_Primaria || '#0A1C3A');
-    setVal('cmsCorSecundaria', c.Cor_Secundaria || '#1A3A6B');
-    setVal('cmsCorDestaque', c.Cor_Destaque || '#D4AF37');
+function atualizarConfiguracoes(dados) {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CONFIG);
+    const range = aba.getDataRange();
+    const valores = range.getValues();
+    Object.keys(dados).forEach(chave => {
+        let achou = false;
+        for (let i = 1; i < valores.length; i++) {
+            if (valores[i][0] === chave) {
+                aba.getRange(i + 1, 2).setValue(dados[chave]);
+                achou = true;
+                break;
+            }
+        }
+        if (!achou) aba.appendRow([chave, dados[chave], ""]);
+    });
+    registrarLog("ADMIN", "CONFIG", "Configurações atualizadas");
+    return { status: "ok", mensagem: "Configurações salvas" };
+}
 
-    setCheck('cmsOptCarrossel', c.Mostrar_Carrossel !== 'FALSE');
-    setCheck('cmsOptBusca', c.Mostrar_Busca !== 'FALSE');
+function salvarSlide(dados, id) {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CARROSSEL);
+    const valores = aba.getDataRange().getValues();
 
-    if (c.Logo_URL) {
-        const preview = document.getElementById('cmsLogoPreview');
-        if (preview) preview.innerHTML = `<img src="${c.Logo_URL}" alt="Logo">`;
+    if (id) {
+        for (let i = 1; i < valores.length; i++) {
+            if (valores[i][0] == id) {
+                aba.getRange(i + 1, 1, 1, 8).setValues([[
+                    id, dados.titulo, dados.descricao, dados.badge,
+                    dados.link, dados.textoBotao, dados.ordem || i, true
+                ]]);
+                return { status: "ok", mensagem: "Slide atualizado", id };
+            }
+        }
+        return { status: "erro", mensagem: "Slide não encontrado" };
+    }
+
+    const novoId = Math.max(aba.getLastRow(), 1);
+    aba.appendRow([novoId, dados.titulo, dados.descricao, dados.badge || "", dados.link || "#", dados.textoBotao || "Ver mais", dados.ordem || novoId, true]);
+    return { status: "ok", mensagem: "Slide criado", id: novoId };
+}
+
+function removerSlide(id) {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CARROSSEL);
+    const dados = aba.getDataRange().getValues();
+    for (let i = 1; i < dados.length; i++) {
+        if (dados[i][0] == id) { aba.deleteRow(i + 1); return { status: "ok", mensagem: "Slide removido" }; }
+    }
+    return { status: "erro", mensagem: "Não encontrado" };
+}
+
+function salvarMenu(dados, id) {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_MENUS);
+    const valores = aba.getDataRange().getValues();
+
+    if (id) {
+        for (let i = 1; i < valores.length; i++) {
+            if (valores[i][0] == id) {
+                aba.getRange(i + 1, 1, 1, 6).setValues([[
+                    id, dados.nome, dados.link, dados.ordem || i, true, dados.novaAba || false
+                ]]);
+                return { status: "ok", mensagem: "Menu atualizado", id };
+            }
+        }
+        return { status: "erro", mensagem: "Menu não encontrado" };
+    }
+
+    const novoId = Math.max(aba.getLastRow(), 1);
+    aba.appendRow([novoId, dados.nome, dados.link, dados.ordem || novoId, true, dados.novaAba || false]);
+    return { status: "ok", mensagem: "Menu criado", id: novoId };
+}
+
+function removerMenu(id) {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_MENUS);
+    const dados = aba.getDataRange().getValues();
+    for (let i = 1; i < dados.length; i++) {
+        if (dados[i][0] == id) { aba.deleteRow(i + 1); return { status: "ok", mensagem: "Menu removido" }; }
+    }
+    return { status: "erro", mensagem: "Não encontrado" };
+}
+
+function salvarCategoria(dados, id) {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CATEGORIAS);
+    const valores = aba.getDataRange().getValues();
+
+    if (id) {
+        for (let i = 1; i < valores.length; i++) {
+            if (valores[i][0] == id) {
+                aba.getRange(i + 1, 1, 1, 4).setValues([[
+                    id,
+                    dados.nome,
+                    dados.icone || 'fa-folder',
+                    dados.ordem || i
+                ]]);
+                registrarLog("ADMIN", "CATEGORIA", "Editada: " + dados.nome);
+                return { status: "ok", mensagem: "Categoria atualizada", id };
+            }
+        }
+        return { status: "erro", mensagem: "Categoria não encontrada" };
+    }
+
+    const novoId = Math.max(aba.getLastRow(), 1);
+    aba.appendRow([novoId, dados.nome, dados.icone || 'fa-folder', dados.ordem || novoId]);
+    registrarLog("ADMIN", "CATEGORIA", "Criada: " + dados.nome);
+    return { status: "ok", mensagem: "Categoria criada", id: novoId };
+}
+
+function removerCategoria(id) {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CATEGORIAS);
+    const dados = aba.getDataRange().getValues();
+    for (let i = 1; i < dados.length; i++) {
+        if (dados[i][0] == id) {
+            const nome = dados[i][1];
+            aba.deleteRow(i + 1);
+            registrarLog("ADMIN", "CATEGORIA", "Removida: " + nome);
+            return { status: "ok", mensagem: "Categoria removida" };
+        }
+    }
+    return { status: "erro", mensagem: "Categoria não encontrada" };
+}
+
+function registrarLog(usuario, acao, detalhes) {
+    try {
+        const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_LOGS);
+        if (aba) {
+            aba.appendRow([new Date(), usuario, acao, detalhes]);
+            if (aba.getLastRow() > 1000) aba.deleteRows(2, 100);
+        }
+    } catch (e) {}
+}
+
+function responderJSON(dados, callback) {
+    const json = JSON.stringify(dados);
+    if (callback) {
+        return ContentService.createTextOutput(callback + "(" + json + ");")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+
+function setupInicial() {
+    try {
+        setupPlanilha();
+        const pasta = obterPastaPrincipal();
+        const abaConf = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CONFIG);
+        const dados = abaConf.getDataRange().getValues();
+        for (let i = 1; i < dados.length; i++) {
+            if (dados[i][0] === "Pasta_Drive_ID") abaConf.getRange(i+1, 2).setValue(pasta.getId());
+            if (dados[i][0] === "Pasta_Drive_URL") abaConf.getRange(i+1, 2).setValue(pasta.getUrl());
+        }
+        registrarLog("SISTEMA", "SETUP", "CMS configurado");
+        SpreadsheetApp.getUi().alert("✅ CMS Configurado!\n\nAbas criadas:\n• Arquivos\n• Configuracoes\n• Categorias\n• Logs\n• Carrossel\n• Menus");
+    } catch (err) {
+        SpreadsheetApp.getUi().alert("❌ Erro: " + err.toString());
     }
 }
 
-async function cmsSalvarTextos() {
-    const dados = {
-        Titulo_Site: document.getElementById('cmsTxtTitulo').value,
-        Subtitulo_Hero: document.getElementById('cmsTxtSubtituloHero').value,
-        Descricao_Hero: document.getElementById('cmsTxtDescricaoHero').value,
-        Texto_Botao_Hero: document.getElementById('cmsTxtBotaoHero').value,
-        Instagram: document.getElementById('cmsTxtInstagram').value,
-        Email_Contato: document.getElementById('cmsTxtEmail').value,
-        Texto_Rodape: document.getElementById('cmsTxtRodape').value
-    };
-    const r = await apiPost({ acao: 'atualizar_config', dados });
-    if (r && r.status === 'ok') {
-        alert('✅ Textos salvos!');
-        cmsCarregarTudo();
-    }
+function onOpen() {
+    SpreadsheetApp.getUi().createMenu("⚙️ Marketing IEAD")
+        .addItem("🚀 Setup Inicial", "setupInicial")
+        .addSeparator()
+        .addItem("📊 Testar Listagem", "testarListagem")
+        .addToUi();
 }
 
-async function cmsSalvarOpcoes() {
-    const dados = {
-        Mostrar_Carrossel: document.getElementById('cmsOptCarrossel').checked ? 'TRUE' : 'FALSE',
-        Mostrar_Busca: document.getElementById('cmsOptBusca').checked ? 'TRUE' : 'FALSE'
-    };
-    const r = await apiPost({ acao: 'atualizar_config', dados });
-    if (r && r.status === 'ok') {
-        alert('✅ Opções salvas!');
-    }
+function testarListagem() {
+    Logger.log(JSON.stringify(listarArquivos(), null, 2));
 }
-
-// ============================================================
-// MODAL
-// ============================================================
-function cmsFecharModal() {
-    const m = document.getElementById('cmsModal');
-    if (m) m.classList.remove('cms-active');
-}
-
-document.getElementById('cmsModal')?.addEventListener('click', e => {
-    if (e.target.id === 'cmsModal') cmsFecharModal();
-});
-
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') cmsFecharModal();
-});
-
-// ============================================================
-// GERENCIAMENTO DE CATEGORIAS (NOVO)
-// ============================================================
-function cmsRenderizarCategoriasAdmin() {
-    const container = document.getElementById('cmsCategoriasList');
-    if (!container) return;
-
-    if (!cmsEstado.categorias.length) {
-        container.innerHTML = '<p class="cms-empty">Nenhuma categoria ainda.</p>';
-        return;
-    }
-
-    container.innerHTML = cmsEstado.categorias.map(c => `
-        <div class="cms-item">
-            <div class="cms-item-info">
-                <h4>${escapeHTML(c.nome)}</h4>
-                <p>${c.total_arquivos || 0} arquivo(s)</p>
-            </div>
-            <div class="cms-item-actions">
-                <button onclick='cmsEditarCategoria(${JSON.stringify(c).replace(/'/g, "&#39;")})' class="cms-btn-icon" title="Editar">
-                    <svg class="cms-icon"><use href="#i-edit"></use></svg>
-                </button>
-                <button onclick="cmsRemoverCategoria(${c.id})" class="cms-btn-icon cms-danger" title="Excluir">
-                    <svg class="cms-icon"><use href="#i-trash"></use></svg>
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function cmsAbrirModalCategoria(cat = null) {
-    const modal = document.getElementById('cmsModal');
-    const box = document.getElementById('cmsModalBox');
-    box.innerHTML = `
-        <h2>${cat ? 'Editar' : 'Nova'} Categoria</h2>
-        <div class="cms-form-grid">
-            <div class="cms-form-group cms-full">
-                <label>Nome da Categoria</label>
-                <input id="cmsCatNome" value="${cat?.nome || ''}" placeholder="Ex: Logo IEAD">
-            </div>
-            <div class="cms-form-group cms-full">
-                <label>Ícone (classe Font Awesome)</label>
-                <input id="cmsCatIcone" value="${cat?.icone || 'fa-folder'}" placeholder="Ex: fa-image, fa-book">
-                <small style="color:#86868B;font-size:0.75rem;margin-top:5px;">Sugestões: fa-image, fa-book, fa-file-pdf, fa-video, fa-music, fa-bullhorn</small>
-            </div>
-            <div class="cms-form-group">
-                <label>Ordem</label>
-                <input type="number" id="cmsCatOrdem" value="${cat?.ordem || cmsEstado.categorias.length + 1}">
-            </div>
-        </div>
-        <div class="cms-modal-actions">
-            <button onclick="cmsFecharModal()" class="cms-btn-secondary">Cancelar</button>
-            <button onclick="cmsSalvarCategoria(${cat?.id || 'null'})" class="cms-btn-primary">
-                <svg class="cms-icon"><use href="#i-save"></use></svg><span>Salvar</span>
-            </button>
-        </div>
-    `;
-    modal.classList.add('cms-active');
-}
-
-async function cmsSalvarCategoria(id) {
-    const dados = {
-        nome: document.getElementById('cmsCatNome').value.trim(),
-        icone: document.getElementById('cmsCatIcone').value.trim() || 'fa-folder',
-        ordem: parseInt(document.getElementById('cmsCatOrdem').value) || 1
-    };
-
-    if (!dados.nome) {
-        alert('Digite um nome para a categoria.');
-        return;
-    }
-
-    const acao = id ? 'categoria_salvar' : 'categoria_salvar';
-    const r = await apiPost({ acao, dados, id });
-    
-    if (r && r.status === 'ok') {
-        cmsFecharModal();
-        cmsCarregarTudo();
-        alert('✅ Categoria salva!');
-    } else {
-        alert('❌ Erro ao salvar categoria');
-    }
-}
-
-async function cmsRemoverCategoria(id) {
-    if (!confirm('Remover esta categoria? Os arquivos dela ficarão sem categoria.')) return;
-    const r = await apiPost({ acao: 'categoria_remover', id });
-    if (r && r.status === 'ok') cmsCarregarTudo();
-}
-
-function cmsEditarCategoria(c) { cmsAbrirModalCategoria(c); }
-
-// ⚠️ OBRIGATÓRIO: adicionar essas linhas ao cmsCarregarTudo() existente
-// Encontre a função cmsCarregarTudo() e ADICIONE dentro dela (junto com os outros renderizar):
-//   cmsRenderizarCategoriasAdmin();
-//
-// E ao carregar cmsEstado.categorias, adicione total_arquivos:
-//   cmsEstado.categorias.forEach(c => {
-//       c.total_arquivos = cmsEstado.arquivos.filter(a => a.categoria === c.nome).length;
-//   });

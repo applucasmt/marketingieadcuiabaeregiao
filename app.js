@@ -11,7 +11,6 @@ let estadoSite = {
     menus: [],
     categorias: [],
     criativos: [],
-    criativosPublicos: [],
     slideAtual: 0,
     carrosselInterval: null,
     rotaAtual: 'inicio',
@@ -19,7 +18,10 @@ let estadoSite = {
     buscaAtiva: '',
     creativeAbaAtiva: 'templates',
     creativeBusca: '',
-    creativeArquivoAtual: null
+    creativeArquivoAtual: null,
+    usuario: null,
+    criativoPSD: null,
+    criativoCapa: null
 };
 
 // ============================================================

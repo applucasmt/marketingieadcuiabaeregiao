@@ -1,6 +1,7 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v42
- * Versão responsiva completa
+ * SITE PÚBLICO - Marketing IEAD v43
+ * - Esconde div de preços do Photopea
+ * - Corrige carregamento no mobile
  * ============================================================ */
 
 let estadoSite = {
@@ -38,7 +39,7 @@ function somenteDigitos(valor) {
 }
 
 function isMobile() {
-    return window.innerWidth < 768;
+    return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) || window.innerWidth < 768;
 }
 
 // ============================================================
@@ -127,26 +128,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 // RESPONSIVIDADE
 // ============================================================
 function inicializarResponsividade() {
-    // Detecta mudança de orientação e redimensiona
     let resizeTimeout;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
-            // Reajusta o carrossel
             irParaSlide(estadoSite.slideAtual);
         }, 250);
     });
 
-    // Ajusta altura do viewport para mobile (evita problemas com barra de endereço)
     const setVH = () => {
         const vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
     };
     setVH();
     window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', () => {
-        setTimeout(setVH, 100);
-    });
+    window.addEventListener('orientationchange', () => setTimeout(setVH, 100));
 }
 
 // ============================================================
@@ -476,7 +472,6 @@ function inicializarCarrossel() {
     if (prev) prev.addEventListener('click', () => { irParaSlide(estadoSite.slideAtual - 1); reiniciarAutoPlay(); });
     if (next) next.addEventListener('click', () => { irParaSlide(estadoSite.slideAtual + 1); reiniciarAutoPlay(); });
 
-    // Suporte a swipe em mobile
     const container = document.querySelector('.carousel-container');
     if (container) {
         let touchStartX = 0;
@@ -494,11 +489,8 @@ function inicializarCarrossel() {
         function handleSwipe() {
             const diff = touchStartX - touchEndX;
             if (Math.abs(diff) > 50) {
-                if (diff > 0) {
-                    irParaSlide(estadoSite.slideAtual + 1);
-                } else {
-                    irParaSlide(estadoSite.slideAtual - 1);
-                }
+                if (diff > 0) irParaSlide(estadoSite.slideAtual + 1);
+                else irParaSlide(estadoSite.slideAtual - 1);
                 reiniciarAutoPlay();
             }
         }
@@ -866,7 +858,7 @@ async function enviarPSDModal() {
 }
 
 // ============================================================
-// PHOTOPEA - EDITOR
+// PHOTOPEA - EDITOR (com correção mobile e bloqueio de anúncios)
 // ============================================================
 function creativeAbrirEditor(index) {
     const arquivo = estadoSite.criativos[index];
@@ -940,9 +932,11 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor...';
 
+    // ⭐ URL do Photopea em modo embedded (anúncios reduzidos pelo próprio Photopea)
     iframe.src = 'https://www.photopea.com/?embedded';
 
     let arquivoEnviado = false;
+    const tempoEspera = isMobile() ? 3000 : 1500; // Mobile precisa de mais tempo
 
     const photopeaHandler = (event) => {
         if (event.source !== iframe.contentWindow) return;
@@ -961,23 +955,25 @@ async function abrirEditorComArquivo(arquivo) {
 
             try {
                 iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-                setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 800);
+                setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 1500);
             } catch (err) {
                 loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
             }
-        }, 500);
+        }, tempoEspera);
     };
 
+    // Fallback: se onload não disparar, força após 6s
     setTimeout(() => {
         if (arquivoEnviado) return;
         arquivoEnviado = true;
         try {
             iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-            setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 800);
+            setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 1500);
         } catch (err) {}
-    }, 3000);
+    }, 6000);
 
-    setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 10000);
+    // Garantia: remove loading em 15s
+    setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
 }
 
 function editorFechar() {

@@ -882,8 +882,9 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor Photopea...';
 
-    // ⭐ URL do Photopea SEM noad (noad quebrava exportação)
-    iframe.src = 'https://www.photopea.com/?embedded';
+    // URL do Photopea com noad via hash + embedded
+// A config precisa estar no HASH (depois de #) e não como query string
+iframe.src = 'https://www.photopea.com/?embedded#%7B%22environment%22%3A%7B%22noad%22%3Atrue%2C%22showtools%22%3Atrue%2C%22showlayers%22%3Atrue%7D%7D';
 
     let arquivoEnviado = false;
 
@@ -948,16 +949,7 @@ function editorExportar(formato) {
         return;
     }
 
-    let script = '';
-    if (formato === 'png') {
-        script = `app.activeDocument.saveToOE("png");`;
-    } else if (formato === 'jpg') {
-        script = `app.activeDocument.saveToOE("jpg");`;
-    } else if (formato === 'pdf') {
-        script = `app.activeDocument.saveToOE("pdf");`;
-    }
-
-    // Remove aviso anterior se existir
+    // Remove aviso anterior
     const avisoAntigo = document.getElementById('exportAviso');
     if (avisoAntigo) avisoAntigo.remove();
 
@@ -982,30 +974,48 @@ function editorExportar(formato) {
     aviso.innerHTML = `📥 Exportando ${formato.toUpperCase()}...<br><small style="font-weight:400;">Aguarde alguns segundos</small>`;
     document.body.appendChild(aviso);
 
-    // Envia comando para o Photopea
+    // ⭐ MÉTODO CORRETO: Photopea aceita scripts via postMessage
+    // O comando precisa ser enviado como STRING (não como objeto JSON)
+    // E precisa terminar com ponto e vírgula.
+    let script = '';
+    if (formato === 'png') {
+        script = 'app.activeDocument.saveToOE("png");';
+    } else if (formato === 'jpg') {
+        script = 'app.activeDocument.saveToOE("jpg");';
+    } else if (formato === 'pdf') {
+        // PDF precisa de um script especial no Photopea
+        script = `
+            var doc = app.activeDocument;
+            var opts = new ExportOptionsSaveForWeb();
+            opts.format = SaveDocumentType.PDF;
+            doc.exportDocument(new File("/tmp/file.pdf"), ExportType.SAVEFORWEB, opts);
+        `.trim();
+    }
+
     try {
+        // Envia via postMessage como string pura
         iframe.contentWindow.postMessage(script, '*');
-        console.log('✅ Comando enviado ao Photopea:', script);
+        console.log('✅ Comando enviado:', script);
     } catch (err) {
-        console.error('❌ Erro ao enviar comando:', err);
-        aviso.innerHTML = `❌ Erro ao exportar`;
-        setTimeout(() => aviso.remove(), 3000);
+        console.error('❌ Erro:', err);
+        aviso.innerHTML = `❌ Erro: ${err.message}`;
+        setTimeout(() => aviso.remove(), 4000);
         return;
     }
 
-    // Se em 6 segundos não fechar, mostra instruções
+    // Se em 6 segundos não baixar, avisa
     setTimeout(() => {
         const avisoEl = document.getElementById('exportAviso');
         if (avisoEl) {
             avisoEl.innerHTML = `
-                ⚠️ <strong>Não baixou?</strong><br>
+                ⚠️ <strong>Demorando?</strong><br>
                 <small style="font-weight:400;">
-                    Use o menu <strong>Arquivo → Exportar como → ${formato.toUpperCase()}</strong> dentro do editor.
+                    Se não baixar em 10s, tente o menu <strong>Arquivo → Exportar como</strong> dentro do editor.
                 </small>
             `;
             setTimeout(() => {
                 if (avisoEl.parentElement) avisoEl.remove();
-            }, 8000);
+            }, 10000);
         }
     }, 6000);
 }

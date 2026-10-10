@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <title>Marketing IEAD | Cuiabá e Região</title>
-    <link rel="stylesheet" href="style.css?v=44">
+    <link rel="stylesheet" href="style.css?v=48">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -106,7 +106,23 @@
                     <input type="text" id="searchInput" placeholder="Buscar por nome ou tipo de arquivo...">
                 </div>
 
-                <div class="categorias-tabs" id="categoriasTabs"></div>
+                <!-- Filtro de categorias (botão + dropdown) -->
+                <div class="categorias-wrapper">
+                    <button class="categorias-toggle" id="categoriasToggle" onclick="toggleCategoriasMenu()">
+                        <i class="fas fa-folder-open"></i>
+                        <span id="categoriaSelecionadaNome">Todas as categorias</span>
+                        <span class="categorias-toggle-count" id="categoriaSelecionadaCount">0</span>
+                        <i class="fas fa-chevron-down categorias-toggle-arrow"></i>
+                    </button>
+                    
+                    <div class="categorias-dropdown" id="categoriasDropdown">
+                        <div class="categorias-dropdown-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="categoriasFiltro" placeholder="Filtrar categorias..." oninput="filtrarCategoriasDropdown()">
+                        </div>
+                        <div class="categorias-dropdown-list" id="categoriasLista"></div>
+                    </div>
+                </div>
 
                 <div class="resultado-info" id="resultadoInfo"></div>
 
@@ -321,7 +337,7 @@
                 </div>
 
                 <div class="modal-envio-field">
-                    <label><i class="fas fa-image"></i> Capa do PSD * <span style="color:#FF3B30;">(obrigatória)</span></label>
+                    <label><i class="fas fa-image"></i> Capa do PSD * <span class="required">(obrigatória)</span></label>
                     <div class="modal-envio-upload" id="modalUploadCapa" style="border-color:#FF3B30;">
                         <i class="fas fa-image"></i>
                         <div class="modal-envio-upload-text">
@@ -502,7 +518,7 @@
         </div>
     </div>
 
-    <script src="config.js?v=44"></script>
-    <script src="app.js?v=44"></script>
+    <script src="config.js?v=48"></script>
+    <script src="app.js?v=48"></script>
 </body>
 </html>

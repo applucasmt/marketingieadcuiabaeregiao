@@ -1,8 +1,8 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v40
- * - Exportação do Photopea corrigida
- * - Removida flag noad que quebrava exportação
- * - Tratamento completo de erros
+ * SITE PÚBLICO - Marketing IEAD v41
+ * - Removidos botões customizados de exportação
+ * - Exportação feita pelo próprio menu do Photopea
+ * - Photopea em modo embedded
  * ============================================================ */
 
 let estadoSite = {
@@ -882,9 +882,8 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor Photopea...';
 
-    // URL do Photopea com noad via hash + embedded
-// A config precisa estar no HASH (depois de #) e não como query string
-iframe.src = 'https://www.photopea.com/?embedded#%7B%22environment%22%3A%7B%22noad%22%3Atrue%2C%22showtools%22%3Atrue%2C%22showlayers%22%3Atrue%7D%7D';
+    // URL do Photopea em modo embedded
+    iframe.src = 'https://www.photopea.com/?embedded';
 
     let arquivoEnviado = false;
 
@@ -896,7 +895,6 @@ iframe.src = 'https://www.photopea.com/?embedded#%7B%22environment%22%3A%7B%22no
     window.addEventListener('message', photopeaHandler);
     window._photopeaHandler = photopeaHandler;
 
-    // Envia o arquivo assim que o iframe carrega
     iframe.onload = () => {
         setTimeout(() => {
             if (arquivoEnviado) return;
@@ -939,86 +937,8 @@ function editorFechar() {
     }
 }
 
-// ============================================================
-// EXPORTAR DO PHOTOPEA - CORRIGIDO
-// ============================================================
-function editorExportar(formato) {
-    const iframe = document.getElementById('editorIframe');
-    if (!iframe || !iframe.contentWindow) {
-        alert('Editor não está pronto.');
-        return;
-    }
-
-    // Remove aviso anterior
-    const avisoAntigo = document.getElementById('exportAviso');
-    if (avisoAntigo) avisoAntigo.remove();
-
-    // Aviso visual
-    const aviso = document.createElement('div');
-    aviso.id = 'exportAviso';
-    aviso.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 999999;
-        background: #D4AF37;
-        color: #0A1C3A;
-        padding: 15px 20px;
-        border-radius: 12px;
-        font-weight: 700;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        font-family: Inter, sans-serif;
-        font-size: 0.9rem;
-        max-width: 320px;
-    `;
-    aviso.innerHTML = `📥 Exportando ${formato.toUpperCase()}...<br><small style="font-weight:400;">Aguarde alguns segundos</small>`;
-    document.body.appendChild(aviso);
-
-    // ⭐ MÉTODO CORRETO: Photopea aceita scripts via postMessage
-    // O comando precisa ser enviado como STRING (não como objeto JSON)
-    // E precisa terminar com ponto e vírgula.
-    let script = '';
-    if (formato === 'png') {
-        script = 'app.activeDocument.saveToOE("png");';
-    } else if (formato === 'jpg') {
-        script = 'app.activeDocument.saveToOE("jpg");';
-    } else if (formato === 'pdf') {
-        // PDF precisa de um script especial no Photopea
-        script = `
-            var doc = app.activeDocument;
-            var opts = new ExportOptionsSaveForWeb();
-            opts.format = SaveDocumentType.PDF;
-            doc.exportDocument(new File("/tmp/file.pdf"), ExportType.SAVEFORWEB, opts);
-        `.trim();
-    }
-
-    try {
-        // Envia via postMessage como string pura
-        iframe.contentWindow.postMessage(script, '*');
-        console.log('✅ Comando enviado:', script);
-    } catch (err) {
-        console.error('❌ Erro:', err);
-        aviso.innerHTML = `❌ Erro: ${err.message}`;
-        setTimeout(() => aviso.remove(), 4000);
-        return;
-    }
-
-    // Se em 6 segundos não baixar, avisa
-    setTimeout(() => {
-        const avisoEl = document.getElementById('exportAviso');
-        if (avisoEl) {
-            avisoEl.innerHTML = `
-                ⚠️ <strong>Demorando?</strong><br>
-                <small style="font-weight:400;">
-                    Se não baixar em 10s, tente o menu <strong>Arquivo → Exportar como</strong> dentro do editor.
-                </small>
-            `;
-            setTimeout(() => {
-                if (avisoEl.parentElement) avisoEl.remove();
-            }, 10000);
-        }
-    }, 6000);
-}
+// ⚠️ Função editorExportar() REMOVIDA
+// O usuário exporta agora pelo menu do próprio Photopea: Arquivo → Exportar como
 
 // ============================================================
 // PREVIEW MODAL (Downloads)

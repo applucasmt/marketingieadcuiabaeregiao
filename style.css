@@ -1,6 +1,6 @@
 /* ============================================================
- * MARKETING IEAD — CSS RESPONSIVO COMPLETO v42
- * Otimizado para Desktop, Tablet e Mobile
+ * MARKETING IEAD — CSS RESPONSIVO COMPLETO v43
+ * Capas 100% visíveis (object-fit: contain)
  * ============================================================ */
 
 /* ============================================================
@@ -19,7 +19,6 @@
     --transicao: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     --transicao-rapida: all 0.3s ease;
 
-    /* Mobile-first spacing */
     --container-padding: 20px;
     --section-padding: 50px;
 }
@@ -148,7 +147,7 @@ button { font-family: inherit; }
 .site-wrapper.visible { opacity: 1; }
 
 /* ============================================================
-   HEADER - MOBILE FIRST
+   HEADER
    ============================================================ */
 .glass-header {
     position: sticky;
@@ -311,7 +310,7 @@ button { font-family: inherit; }
 }
 
 /* ============================================================
-   CARROSSEL - MOBILE FIRST
+   CARROSSEL
    ============================================================ */
 .carousel-section {
     background: linear-gradient(180deg, #0F2247 0%, #0A1C3A 100%);
@@ -530,7 +529,11 @@ button { font-family: inherit; }
     flex-shrink: 0;
 }
 
-.slide-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.slide-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
 
 .slide-thumb-icon {
     background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(26, 58, 107, 0.5));
@@ -687,7 +690,7 @@ button { font-family: inherit; }
     box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15);
 }
 
-/* CATEGORIAS - Scroll Horizontal no Mobile */
+/* CATEGORIAS */
 .categorias-tabs {
     display: flex;
     gap: 8px;
@@ -785,7 +788,7 @@ button { font-family: inherit; }
 
 .card-thumb {
     width: 100%;
-    height: 170px;
+    height: 200px;
     background: linear-gradient(135deg, #0A1C3A, #1A3A6B);
     display: flex;
     align-items: center;
@@ -794,11 +797,14 @@ button { font-family: inherit; }
     position: relative;
 }
 
+/* ⭐ IMAGENS 100% VISÍVEIS (SEM CORTES) */
 .card-thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     transition: transform 0.5s ease;
+    padding: 10px;
 }
 
 .tag-novo-card {
@@ -817,6 +823,7 @@ button { font-family: inherit; }
     align-items: center;
     gap: 4px;
     box-shadow: 0 4px 15px rgba(212, 175, 55, 0.5);
+    z-index: 2;
 }
 
 .tag-novo-card i, .tag-novo-card span { color: #0A1C3A; }
@@ -843,7 +850,12 @@ button { font-family: inherit; }
 }
 
 .thumb-video { width: 100%; height: 100%; position: relative; background: #000; }
-.thumb-video img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
+.thumb-video img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0.6;
+}
 
 .play-overlay {
     position: absolute;
@@ -1140,9 +1152,10 @@ button { font-family: inherit; }
     box-shadow: 0 20px 45px rgba(212, 175, 55, 0.25);
 }
 
+/* ⭐ THUMB DO CREATIVE - TAMBÉM 100% VISÍVEL */
 .creative-card-thumb {
     width: 100%;
-    height: 180px;
+    height: 220px;
     background: linear-gradient(135deg, #1A3A6B, #0A1C3A);
     display: flex;
     align-items: center;
@@ -1154,8 +1167,10 @@ button { font-family: inherit; }
 .creative-card-thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     transition: transform 0.5s ease;
+    padding: 8px;
 }
 
 .creative-card-thumb .psd-icon {
@@ -1177,6 +1192,7 @@ button { font-family: inherit; }
     text-transform: uppercase;
     letter-spacing: 1px;
     box-shadow: 0 4px 15px rgba(212, 175, 55, 0.5);
+    z-index: 2;
 }
 
 .creative-card-body { padding: 18px; }
@@ -1614,6 +1630,7 @@ button { font-family: inherit; }
     border-radius: 8px;
     margin: 0 auto 10px;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    object-fit: contain;
 }
 
 .modal-envio-capa-remove {
@@ -2050,6 +2067,7 @@ button { font-family: inherit; }
     height: 100%;
     border: none;
     display: block;
+    min-height: 500px;
 }
 
 .editor-modal-footer {
@@ -2061,6 +2079,7 @@ button { font-family: inherit; }
     color: rgba(255, 255, 255, 0.6);
     font-size: 0.72rem;
     border-top: 1px solid rgba(212, 175, 55, 0.25);
+    flex-wrap: wrap;
 }
 
 .editor-modal-footer strong { color: #D4AF37; }
@@ -2567,7 +2586,7 @@ footer {
         gap: 22px;
     }
 
-    .creative-card-thumb { height: 200px; }
+    .creative-card-thumb { height: 240px; }
     .creative-enviar-btn { padding: 18px 30px; font-size: 0.95rem; }
 
     .modal-envio {
@@ -2683,7 +2702,7 @@ footer {
         gap: 25px;
     }
 
-    .card-thumb { height: 180px; }
+    .card-thumb { height: 220px; }
     .card-body { padding: 22px 22px 15px; }
     .card-body h3 { font-size: 1.05rem; }
     .card .btn-download { margin: 0 22px 22px; font-size: 0.9rem; }
@@ -2698,7 +2717,7 @@ footer {
         gap: 25px;
     }
 
-    .creative-card-thumb { height: 200px; }
+    .creative-card-thumb { height: 260px; }
     .creative-card-body { padding: 22px; }
     .creative-card-body h3 { font-size: 1.1rem; }
 
@@ -2742,7 +2761,7 @@ footer {
     .creative-tab { font-size: 0.7rem; padding: 9px 14px; }
     .creative-tab i { font-size: 0.8rem; }
 
-    .creative-card-thumb { height: 150px; }
+    .creative-card-thumb { height: 180px; }
 
     .modal-envio-header h2 { font-size: 1.1rem; }
     .modal-envio-icon { width: 55px; height: 55px; font-size: 1.4rem; }
@@ -2754,6 +2773,8 @@ footer {
     .editor-btn { padding: 7px 10px; font-size: 0.7rem; }
 
     .about-content h2, .contact-content h2 { font-size: 1.4rem; }
+
+    .card-thumb { height: 170px; }
 }
 
 /* ============================================================
@@ -2768,7 +2789,6 @@ footer {
     }
 }
 
-/* Scroll suave em iOS */
 @supports (-webkit-overflow-scrolling: touch) {
     .header-nav,
     .categorias-tabs {
@@ -2776,34 +2796,8 @@ footer {
     }
 }
 
-/* Previne zoom em inputs no iOS */
 @media screen and (max-width: 767px) {
     input, select, textarea {
         font-size: 16px !important;
-    }
-}
-
-/* ============================================================
-   EDITOR PHOTOPEA - AJUSTES MOBILE
-   ============================================================ */
-.editor-modal-body iframe {
-    min-height: 500px;
-}
-
-@media (max-width: 768px) {
-    .editor-modal-header {
-        padding: 10px 12px;
-    }
-
-    .editor-modal-actions > span {
-        display: none;
-    }
-
-    .editor-modal-body iframe {
-        min-height: calc(100vh - 120px);
-    }
-
-    .editor-modal-footer {
-        display: none;
     }
 }

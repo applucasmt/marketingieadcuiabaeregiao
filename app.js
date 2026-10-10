@@ -887,7 +887,16 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor Photopea...';
 
-    iframe.src = 'https://www.photopea.com/?embedded';
+    // URL do Photopea com embedded + noads (remove anúncios)
+const photopeaConfig = {
+    environment: {
+        showtools: true,
+        noads: true,
+        showlayers: true
+    }
+};
+const configEncoded = encodeURIComponent(JSON.stringify(photopeaConfig));
+iframe.src = `https://www.photopea.com/?embedded#${configEncoded}`;
 
     let arquivoEnviado = false;
 

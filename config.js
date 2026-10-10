@@ -25,18 +25,18 @@ const CONFIG = {
     VERSAO: "20.0"
 };
 
-/* ============================================================
- * UTILITÁRIOS COMPARTILHADOS
- * ============================================================ */
+// ============================================================
+// UTILITÁRIOS COMPARTILHADOS
+// ============================================================
 
-async function apiGet(acao, params = {}) {
-    if (!CONFIG.API_URL || CONFIG.API_URL.includes("COLE_AQUI")) {
+window.apiGet = async function(acao, params = {}) {
+    if (!window.CONFIG.API_URL || window.CONFIG.API_URL.includes("COLE_AQUI")) {
         console.warn("⚠️ API_URL não configurada em config.js");
         return null;
     }
 
     try {
-        const url = new URL(CONFIG.API_URL);
+        const url = new URL(window.CONFIG.API_URL);
         url.searchParams.set('acao', acao);
         Object.entries(params).forEach(([k, v]) => {
             if (v !== undefined && v !== null) url.searchParams.set(k, v);
@@ -54,16 +54,16 @@ async function apiGet(acao, params = {}) {
         console.error(`Erro em apiGet(${acao}):`, err);
         return null;
     }
-}
+};
 
-async function apiPost(dados) {
-    if (!CONFIG.API_URL || CONFIG.API_URL.includes("COLE_AQUI")) {
+window.apiPost = async function(dados) {
+    if (!window.CONFIG.API_URL || window.CONFIG.API_URL.includes("COLE_AQUI")) {
         console.warn("⚠️ API_URL não configurada em config.js");
         return { status: "erro", mensagem: "API não configurada" };
     }
 
     try {
-        const response = await fetch(CONFIG.API_URL, {
+        const response = await fetch(window.CONFIG.API_URL, {
             method: 'POST',
             mode: 'cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -76,35 +76,38 @@ async function apiPost(dados) {
         console.error("Erro em apiPost:", err);
         return { status: "erro", mensagem: err.message };
     }
-}
+};
 
-function fileToBase64(file) {
+window.fileToBase64 = function(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
-}
+};
 
-function escapeHTML(texto) {
-    if (!texto) return '';
+window.escapeHTML = function(texto) {
+    if (texto === null || texto === undefined) return '';
     const div = document.createElement('div');
-    div.textContent = texto;
+    div.textContent = String(texto);
     return div.innerHTML;
-}
+};
 
-function aplicarCores(config = {}) {
+window.aplicarCores = function(config = {}) {
+    // Não aplica cores no painel admin
     if (document.body.classList.contains('cms-body')) return;
     if (document.querySelector('.cms-sidebar')) return;
 
     const cores = {
-        primaria: config.Cor_Primaria || CONFIG.CORES_PADRAO.primaria,
-        secundaria: config.Cor_Secundaria || CONFIG.CORES_PADRAO.secundaria,
-        destaque: config.Cor_Destaque || CONFIG.CORES_PADRAO.destaque
+        primaria: config.Cor_Primaria || window.CONFIG.CORES_PADRAO.primaria,
+        secundaria: config.Cor_Secundaria || window.CONFIG.CORES_PADRAO.secundaria,
+        destaque: config.Cor_Destaque || window.CONFIG.CORES_PADRAO.destaque
     };
 
     document.documentElement.style.setProperty('--azul-escuro', cores.primaria);
     document.documentElement.style.setProperty('--azul-medio', cores.secundaria);
     document.documentElement.style.setProperty('--dourado', cores.destaque);
-}
+};
+
+console.log("✅ config.js carregado com sucesso");

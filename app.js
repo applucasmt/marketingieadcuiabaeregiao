@@ -1,6 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v67
- * - Upload Fatiado (Chunked Upload) com 3MB por fatia
+ * SITE PÚBLICO - Marketing IEAD v70
+ * - Upload Direto para o Drive via Iframe (evita CORS e limite 50MB)
  * ============================================================ */
 
 let estadoSite = {
@@ -782,7 +782,7 @@ function inicializarBuscaCreative() {
 }
 
 // ============================================================
-// MODAL DE ENVIO
+// MODAL DE ENVIO (IFRAME METHOD)
 // ============================================================
 function inicializarModalEnvio() {
     const inputPSD = document.getElementById('modalInputPSD');
@@ -850,7 +850,6 @@ function selecionarPSDModal(file) {
         alert('Por favor, envie apenas arquivos .psd');
         return;
     }
-    // ⭐ Limite dinâmico de 5 GB lendo do config
     const limiteGB = (window.CONFIG.LIMITE_CREATIVE_MB / 1024).toFixed(0);
     if (file.size > window.CONFIG.LIMITE_CREATIVE_MB * 1024 * 1024) {
         alert(`Arquivo muito grande (máx ${limiteGB} GB)`);
@@ -927,7 +926,7 @@ async function enviarPSDModal() {
     btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
     try {
-        // 1. Inicia a sessão de upload fatiado (Chunked Upload)
+        // 1. Pede ao Apps Script um link temporário para upload
         const initReq = await window.apiPost({
             acao: 'iniciar_upload_fatiado',
             nomeArquivo: file.name,
@@ -940,14 +939,12 @@ async function enviarPSDModal() {
         }
 
         const { fileId, uploadUrl } = initReq;
-        
-        // ⭐ Fatias de 3MB para não estourar o limite de 50MB do Apps Script
-        const chunkSize = 3 * 1024 * 1024; 
+        const chunkSize = 5 * 1024 * 1024; // 5MB por fatia
         const totalChunks = Math.ceil(file.size / chunkSize);
         
         let offset = 0;
 
-        // 2. Envia cada fatia para o Apps Script
+        // 2. Envia cada fatia via iframe oculto (contorna CORS)
         for (let i = 0; i < totalChunks; i++) {
             const start = i * chunkSize;
             const end = Math.min(start + chunkSize, file.size);

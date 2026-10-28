@@ -1,8 +1,8 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v49
- * - Dropdown de categorias (substitui as abas antigas)
+ * SITE PÚBLICO - Marketing IEAD v50
+ * - Dropdown de categorias
  * - Photopea abre direto no editor (sem tela inicial e sem ads)
- * - Mobile-friendly
+ * - Atalho Ctrl+B para exportar (PNG/JPG/PDF)
  * ============================================================ */
 
 let estadoSite = {
@@ -1057,7 +1057,7 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor...';
 
-    // ⭐ AQUI ESTÁ A CORREÇÃO: URL com hashtag para abrir direto no editor
+    // ⭐ URL com hashtag para abrir direto no editor
     iframe.src = 'https://www.photopea.com/#embedded';
 
     let arquivoEnviado = false;
@@ -1102,6 +1102,42 @@ async function abrirEditorComArquivo(arquivo) {
     }, 5000);
 
     setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
+}
+
+// ⭐ NOVO: Listener global para atalho Ctrl+B (Exportar)
+document.addEventListener('keydown', (e) => {
+    const editorModal = document.getElementById('editorModal');
+    if (!editorModal || !editorModal.classList.contains('active')) return;
+
+    // Ctrl+B (Windows/Linux) ou Cmd+B (Mac)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault(); // Impede o comportamento padrão do navegador
+        const iframe = document.getElementById('editorIframe');
+        if (iframe && iframe.contentWindow) {
+            // Envia o comando para o Photopea abrir o diálogo de exportação
+            iframe.contentWindow.postMessage('app.export();', '*');
+
+            // Feedback visual (toast)
+            const toast = document.createElement('div');
+            toast.style.cssText = `position:fixed; bottom:80px; left:50%; transform:translateX(-50%); z-index:999999; background:#D4AF37; color:#0A1C3A; padding:14px 24px; border-radius:12px; font-weight:800; box-shadow:0 8px 30px rgba(0,0,0,0.4); font-family:Inter, sans-serif; font-size:0.9rem; display:flex; align-items:center; gap:8px; animation: toastIn 0.3s ease;`;
+            toast.innerHTML = `<i class="fas fa-download"></i> Exportando... Escolha o formato (PNG, JPG ou PDF).`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    }
+});
+
+// Animação do toast (injetada dinamicamente)
+if (!document.getElementById('toastAnimation')) {
+    const style = document.createElement('style');
+    style.id = 'toastAnimation';
+    style.textContent = `
+        @keyframes toastIn {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 function editorFechar() {

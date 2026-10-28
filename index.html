@@ -52,7 +52,7 @@
     <!-- ============================================ -->
     <!-- CSS E FONTES -->
     <!-- ============================================ -->
-    <link rel="stylesheet" href="style.css?v=49">
+    <link rel="stylesheet" href="style.css?v=50">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -373,7 +373,8 @@
                         <i class="fas fa-file-upload"></i>
                         <div class="modal-envio-upload-text">
                             <strong>Clique para escolher o PSD</strong>
-                            <span>ou arraste o arquivo aqui • até 50 MB</span>
+                            <!-- ⭐ LIMITE ALTERADO AQUI PARA 5 GB -->
+                            <span>ou arraste o arquivo aqui • até 5 GB</span>
                         </div>
                         <div class="modal-envio-upload-status" id="modalPSDStatus"></div>
                     </div>
@@ -559,11 +560,11 @@
         <div class="editor-modal-footer">
             <i class="fas fa-info-circle" style="color:#D4AF37;"></i>
             <span>Editor powered by <strong>IEAD Nova Aliança</strong> em parceria com <strong>Photopea</strong>.</span>
-            <span><kbd>Ctrl</kbd> + <kbd>B</kbd> para exportar (PNG, JPG ou PDF)</span>
+            <span style="margin-left: auto; color: #D4AF37; font-weight: 700;">Ctrl + B para exportar (PNG, JPG ou PDF)</span>
         </div>
     </div>
 
-    <script src="config.js?v=49"></script>
-    <script src="app.js?v=49"></script>
+    <script src="config.js?v=50"></script>
+    <script src="app.js?v=50"></script>
 </body>
 </html>

@@ -931,7 +931,8 @@ async function enviarPSDModal() {
             acao: 'iniciar_upload_fatiado',
             nomeArquivo: file.name,
             tipoMime: file.type || 'image/vnd.adobe.photoshop',
-            tamanhoTotal: file.size
+            tamanhoTotal: file.size,
+            pastaDestino: 'IEAD Creative'
         });
 
         if (!initReq || initReq.status !== 'ok') {
@@ -939,7 +940,7 @@ async function enviarPSDModal() {
         }
 
         const { fileId, uploadUrl } = initReq;
-        const chunkSize = 5 * 1024 * 1024; // 5MB por fatia
+        const chunkSize = 4 * 1024 * 1024; // 4MB por fatia (múltiplo de 256KB, exigido pelo Drive)
         const totalChunks = Math.ceil(file.size / chunkSize);
         
         let offset = 0;

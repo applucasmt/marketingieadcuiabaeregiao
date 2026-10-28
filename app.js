@@ -931,7 +931,8 @@ async function enviarPSDModal() {
             acao: 'iniciar_upload_fatiado',
             nomeArquivo: file.name,
             tipoMime: file.type || 'image/vnd.adobe.photoshop',
-            tamanhoTotal: file.size
+            tamanhoTotal: file.size,
+            pastaDestino: 'IEAD Creative'
         });
 
         if (!initReq || initReq.status !== 'ok') {
@@ -939,7 +940,7 @@ async function enviarPSDModal() {
         }
 
         const { fileId, uploadUrl } = initReq;
-        const chunkSize = 5 * 1024 * 1024; // 5MB por fatia
+        const chunkSize = 4 * 1024 * 1024; // 4MB por fatia (múltiplo de 256KB, exigido pelo Drive)
         const totalChunks = Math.ceil(file.size / chunkSize);
         
         let offset = 0;
@@ -1052,7 +1053,7 @@ async function abrirEditorComArquivo(arquivo) {
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen; downloads');
+    iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen');
 
     const oldLoading = document.getElementById('editorLoading');
     if (oldLoading) oldLoading.remove();
@@ -1084,23 +1085,62 @@ async function abrirEditorComArquivo(arquivo) {
         return;
     }
 
-    statusEl().textContent = 'Baixando arquivo...';
-
-    const resp = await window.apiGet('baixar_psd', { fileId: fileId });
-
-    if (!resp || resp.status !== 'ok') {
-        loadingDiv.innerHTML = `<p style="color:#FF6B6B; font-size:0.85rem;">❌ ${resp?.mensagem || 'Erro ao baixar arquivo'}</p>
+    const fecharComErro = (msg) => {
+        loadingDiv.innerHTML = `<p style="color:#FF6B6B; font-size:0.85rem;">❌ ${msg}</p>
             <button onclick="editorFechar()" style="margin-top:12px;padding:10px 18px;background:#D4AF37;color:#0A1C3A;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;">Fechar</button>`;
+    };
+
+    // 1. Descobre o tamanho do arquivo
+    statusEl().textContent = 'Verificando arquivo...';
+    const info = await window.apiGet('baixar_psd_info', { fileId: fileId });
+    if (!info || info.status !== 'ok') {
+        fecharComErro(info?.mensagem || 'Erro ao consultar o arquivo');
         return;
     }
 
-    statusEl().textContent = `Preparando (${resp.tamanhoMB} MB)...`;
+    const total = Number(info.tamanho);
+    if (!total) { fecharComErro('Arquivo vazio ou inacessível'); return; }
 
-    const binaryString = atob(resp.base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+    // 2. Baixa em fatias de 6MB e monta tudo num único buffer
+    const sliceSize = 6 * 1024 * 1024;
+    const bytes = new Uint8Array(total);
+    const tamanhoMB = (total / (1024 * 1024)).toFixed(1);
+    let baixado = 0;
+
+    try {
+        for (let offset = 0; offset < total; offset += sliceSize) {
+            const pct = Math.round((offset / total) * 100);
+            statusEl().textContent = `Baixando ${tamanhoMB} MB... ${pct}%`;
+
+            let fatia = null;
+            for (let tentativa = 1; tentativa <= 3; tentativa++) {
+                fatia = await window.apiGet('baixar_psd_fatia', {
+                    fileId: fileId,
+                    offset: offset,
+                    length: Math.min(sliceSize, total - offset)
+                });
+                if (fatia && fatia.status === 'ok') break;
+                if (tentativa < 3) await new Promise(r => setTimeout(r, 1200 * tentativa));
+            }
+            if (!fatia || fatia.status !== 'ok') {
+                throw new Error(fatia?.mensagem || 'Falha ao baixar parte do arquivo');
+            }
+
+            const bin = atob(fatia.base64);
+            for (let i = 0; i < bin.length; i++) bytes[offset + i] = bin.charCodeAt(i);
+            baixado += bin.length;
+        }
+    } catch (err) {
+        fecharComErro(err.message);
+        return;
     }
+
+    if (baixado !== total) {
+        fecharComErro(`Download incompleto (${baixado} de ${total} bytes)`);
+        return;
+    }
+
+    statusEl().textContent = `Preparando (${tamanhoMB} MB)...`;
     const arrayBuffer = bytes.buffer;
 
     statusEl().textContent = 'Abrindo editor...';

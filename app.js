@@ -1,6 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v65
- * - Upload Fatiado (Chunked Upload) via API V3 do Drive
+ * SITE PÚBLICO - Marketing IEAD v67
+ * - Upload Fatiado (Chunked Upload) com 3MB por fatia
  * ============================================================ */
 
 let estadoSite = {
@@ -940,7 +940,9 @@ async function enviarPSDModal() {
         }
 
         const { fileId, uploadUrl } = initReq;
-        const chunkSize = 10 * 1024 * 1024; // 10MB por fatia
+        
+        // ⭐ Fatias de 3MB para não estourar o limite de 50MB do Apps Script
+        const chunkSize = 3 * 1024 * 1024; 
         const totalChunks = Math.ceil(file.size / chunkSize);
         
         let offset = 0;

@@ -1,6 +1,7 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v53
- * - Atalho Ctrl+B envia comando direto pro Photopea
+ * SITE PÚBLICO - Marketing IEAD v54
+ * - Photopea limpo (sem anúncios)
+ * - Ctrl+B funcional (injetado direto no editor)
  * ============================================================ */
 
 let estadoSite = {
@@ -1074,9 +1075,24 @@ async function abrirEditorComArquivo(arquivo) {
     iframe.onload = () => {
         // ⭐ Envia comando para fechar a tela de boas-vindas e ocultar anúncios
         try {
+            // Esconde os anúncios (Support Photopea)
             iframe.contentWindow.postMessage('app.hideAds();', '*');
+            
+            // Garante que o menu (Arquivo, Editar, etc) esteja visível
             iframe.contentWindow.postMessage('app.showMenu();', '*');
-        } catch (e) {}
+            
+            // ⭐ INJETA O ATALHO CTRL+B DIRETO NO PHOTOPEA
+            const scriptAtalho = `
+                document.addEventListener('keydown', function(e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                        e.preventDefault();
+                        app.showExport();
+                    }
+                });
+            `;
+            iframe.contentWindow.postMessage(scriptAtalho, '*');
+
+        } catch (e) { console.error("Erro ao injetar comandos:", e); }
 
         setTimeout(() => {
             if (arquivoEnviado) return;
@@ -1105,35 +1121,9 @@ async function abrirEditorComArquivo(arquivo) {
     setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
 }
 
-// ⭐ ATALHO CTRL+B - SIMULA ALT+CTRL+SHIFT+S (EXPORTAR COMO)
-document.addEventListener('keydown', (e) => {
-    const editorModal = document.getElementById('editorModal');
-    if (!editorModal || !editorModal.classList.contains('active')) return;
+// ⭐ COMO INJETAMOS O CTRL+B DIRETO NO IFRAME, NÃO PRECISAMOS MAIS DO LISTENER NA PÁGINA PRINCIPAL.
 
-    // Verifica se é Ctrl+B
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
-        e.preventDefault();
-        const iframe = document.getElementById('editorIframe');
-        
-        if (iframe && iframe.contentWindow) {
-            // ⭐ O pulo do gato: usar o próprio manipulador do Photopea para disparar o atalho
-            // "app.echoToOE" envia comandos, e o Photopea entende que deve rodar isso no script
-            iframe.contentWindow.postMessage('app.echoToOE("app.showExport();");', '*');
-            
-            // Fallback: tentar abrir o menu via comando nativo
-            iframe.contentWindow.postMessage('app.showExport();', '*');
-
-            // Feedback visual
-            const toast = document.createElement('div');
-            toast.style.cssText = `position:fixed; bottom:80px; left:50%; transform:translateX(-50%); z-index:999999; background:#D4AF37; color:#0A1C3A; padding:14px 24px; border-radius:12px; font-weight:800; box-shadow:0 8px 30px rgba(0,0,0,0.4); font-family:Inter, sans-serif; font-size:0.9rem; display:flex; align-items:center; gap:8px; animation: toastIn 0.3s ease;`;
-            toast.innerHTML = `<i class="fas fa-download"></i> Abrindo opções de exportação...`;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-    }
-});
-
-// Animação do toast
+// Animação do toast (Mantida para outros avisos, caso necessário)
 if (!document.getElementById('toastAnimation')) {
     const style = document.createElement('style');
     style.id = 'toastAnimation';

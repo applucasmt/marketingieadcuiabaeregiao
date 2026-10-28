@@ -1106,6 +1106,42 @@ function creativeAbrirEditorPublico(fileId) {
     else alert('Arquivo não encontrado.');
 }
 
+// Plano B: baixa um arquivo em fatias de 3 MB pelo Apps Script (usado quando baixar o arquivo inteiro falha)
+async function baixarParteEmFatias(fileId, aoProgredir) {
+    const info = await window.apiGet('baixar_psd_info', { fileId: fileId });
+    if (!info || info.status !== 'ok') throw new Error(info?.mensagem || 'Não foi possível consultar a parte');
+
+    const total = Number(info.tamanho);
+    if (!total) throw new Error('Parte vazia ou inacessível');
+
+    const fatiaTam = 3 * 1024 * 1024;
+    const saida = new Uint8Array(total);
+
+    for (let offset = 0; offset < total; offset += fatiaTam) {
+        aoProgredir(Math.round((offset / total) * 100));
+
+        let fatia = null;
+        for (let tentativa = 1; tentativa <= 4; tentativa++) {
+            try {
+                fatia = await window.apiGet('baixar_psd_fatia', {
+                    fileId: fileId,
+                    offset: offset,
+                    length: Math.min(fatiaTam, total - offset)
+                });
+            } catch (e) {
+                fatia = { status: 'erro', mensagem: e.message };
+            }
+            if (fatia && fatia.status === 'ok') break;
+            if (tentativa < 4) await new Promise(r => setTimeout(r, 1500 * tentativa));
+        }
+        if (!fatia || fatia.status !== 'ok') throw new Error(fatia?.mensagem || 'Falha ao baixar fatia');
+
+        const bin = atob(fatia.base64);
+        for (let k = 0; k < bin.length; k++) saida[offset + k] = bin.charCodeAt(k);
+    }
+    return saida;
+}
+
 async function abrirEditorComArquivo(arquivo) {
     const modal = document.getElementById('editorModal');
     const iframe = document.getElementById('editorIframe');
@@ -1157,37 +1193,61 @@ async function abrirEditorComArquivo(arquivo) {
     const blocos = [];
     let totalBytes = 0;
 
-    for (let i = 0; i < idsPartes.length; i++) {
-        statusEl().textContent = idsPartes.length > 1
-            ? `Baixando parte ${i + 1} de ${idsPartes.length}...`
-            : 'Baixando arquivo...';
+    const ehLimite = (m) => /grande|excede|máximo|maximo/i.test(m || '');
 
+    for (let i = 0; i < idsPartes.length; i++) {
+        const rotulo = idsPartes.length > 1 ? `parte ${i + 1} de ${idsPartes.length}` : 'arquivo';
+        statusEl().textContent = `Baixando ${rotulo}...`;
+
+        let u8 = null;
+        let erroMsg = '';
+
+        // Tentativa 1: a parte inteira de uma vez
         let resp = null;
-        for (let tentativa = 1; tentativa <= 3; tentativa++) {
+        for (let tentativa = 1; tentativa <= 2; tentativa++) {
             try {
                 resp = await window.apiGet('baixar_psd', { fileId: idsPartes[i] });
             } catch (e) {
                 resp = { status: 'erro', mensagem: e.message };
             }
             if (resp && resp.status === 'ok') break;
-            if (/grande|excede|máximo/i.test(resp?.mensagem || '')) break; // não adianta repetir
-            if (tentativa < 3) await new Promise(r => setTimeout(r, 1500 * tentativa));
+            if (ehLimite(resp?.mensagem)) break; // não adianta repetir
+            if (tentativa < 2) await new Promise(r => setTimeout(r, 1500));
         }
 
-        if (!resp || resp.status !== 'ok') {
-            const msg = resp?.mensagem || 'Erro ao baixar arquivo';
-            fecharComErro(/grande|excede|máximo/i.test(msg)
-                ? 'Este PSD foi enviado antes do suporte a arquivos grandes e passa do limite de leitura. Exclua-o e envie novamente.'
-                : msg);
+        if (resp && resp.status === 'ok') {
+            const bin = atob(resp.base64);
+            u8 = new Uint8Array(bin.length);
+            for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+            resp.base64 = null;
+        } else {
+            erroMsg = resp?.mensagem || 'Erro ao baixar arquivo';
+            console.warn(`Download inteiro falhou (${rotulo}):`, erroMsg);
+
+            // Tentativa 2: só para arquivos divididos (cada parte é pequena), baixa em fatias
+            if (idsPartes.length > 1) {
+                try {
+                    u8 = await baixarParteEmFatias(idsPartes[i], (pct) => {
+                        statusEl().textContent = `Baixando ${rotulo} (${pct}%)...`;
+                    });
+                } catch (e) {
+                    erroMsg = e.message;
+                    console.error(`Download em fatias falhou (${rotulo}):`, e);
+                }
+            }
+        }
+
+        if (!u8) {
+            if (idsPartes.length === 1 && ehLimite(erroMsg)) {
+                fecharComErro('Este PSD está salvo como arquivo único e passa do limite de leitura (45 MB), então foi enviado antes da divisão em partes. Exclua-o e envie novamente. Se você já reenviou, abra o card mais novo.');
+            } else {
+                fecharComErro(`Falha na ${rotulo}: ${erroMsg}`);
+            }
             return;
         }
 
-        const bin = atob(resp.base64);
-        const u8 = new Uint8Array(bin.length);
-        for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
         blocos.push(u8);
         totalBytes += u8.length;
-        resp.base64 = null;
     }
 
     statusEl().textContent = `Preparando (${(totalBytes / (1024 * 1024)).toFixed(1)} MB)...`;

@@ -5,7 +5,12 @@
 
 window.CONFIG = {
     API_URL: "https://script.google.com/macros/s/AKfycbziXZvHTiX2qQI2VQrHf19fUc3ihOnirfOlCMa1_D-O0z4e8BMKArYpaXFX0YIv0ka8XA/exec",
-    SENHA_ADMIN: "IEAD2026",
+    
+    SENHA_ADMIN: [
+        "IEAD2026",
+        "6596743352",
+        "65 9674-3352"
+    ],
 
     CORES_PADRAO: {
         primaria: "#0A1C3A",
@@ -21,9 +26,9 @@ window.CONFIG = {
         rodape: "© 2026 IEAD Cuiabá e Região. Todos os direitos reservados."
     },
 
-    LIMITE_UPLOAD_MB: 50,      // Limite do Apps Script
-    LIMITE_CREATIVE_MB: 2048,  // 2 GB (via upload direto)
-    VERSAO: "32.0"
+    LIMITE_UPLOAD_MB: 50,      // Limite do Apps Script para uploads Base64
+    LIMITE_CREATIVE_MB: 5120,  // 5 GB (5120 MB) - Upload Direto via API do Google
+    VERSAO: "60.0"
 };
 
 // ============================================================
@@ -58,12 +63,6 @@ window.apiGet = async function(acao, params = {}) {
     }
 };
 
-/**
- * POST para o Apps Script - CORRIGIDO para evitar erro 404
- * 
- * ⚠️ IMPORTANTE: O Apps Script redireciona POST para uma URL googleusercontent.com
- * que só aceita Content-Type: text/plain. Se enviar application/json, dá erro.
- */
 window.apiPost = async function(dados) {
     if (!window.CONFIG || !window.CONFIG.API_URL || window.CONFIG.API_URL.includes("COLE_AQUI")) {
         console.warn("⚠️ API_URL não configurada em config.js");

@@ -1,7 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v62
- * - Upload Fatiado (Chunked Upload) para até 5GB via Apps Script
- * - Resolve erro de CORS
+ * SITE PÚBLICO - Marketing IEAD v65
+ * - Upload Fatiado (Chunked Upload) via API V3 do Drive
  * ============================================================ */
 
 let estadoSite = {
@@ -946,7 +945,7 @@ async function enviarPSDModal() {
         
         let offset = 0;
 
-        // 2. Envia cada fatia para o Apps Script, que repassa pro Google Drive
+        // 2. Envia cada fatia para o Apps Script
         for (let i = 0; i < totalChunks; i++) {
             const start = i * chunkSize;
             const end = Math.min(start + chunkSize, file.size);
@@ -957,7 +956,6 @@ async function enviarPSDModal() {
             barEl.style.width = pct + '%';
             pctEl.textContent = pct + '%';
 
-            // Converte a fatia para Base64
             const chunkBase64 = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result.split(',')[1]);
@@ -965,7 +963,6 @@ async function enviarPSDModal() {
                 reader.readAsDataURL(chunk);
             });
 
-            // Envia para o Apps Script
             const chunkReq = await window.apiPost({
                 acao: 'enviar_fatia_upload',
                 fileId: fileId,
@@ -987,17 +984,15 @@ async function enviarPSDModal() {
         pctEl.textContent = '90%';
         statusEl.textContent = '⏳ Processando capa e salvando dados...';
 
-        // 3. Converte a capa para base64 para enviar de uma vez (é pequena)
         const capaBase64 = await window.fileToBase64(estadoSite.criativoCapa);
 
-        // 4. Confirma no Apps Script que o upload foi concluído, para registrar na planilha
         const result = await window.apiPost({
             acao: 'confirmar_upload_direto',
             fileId: fileId,
             nomeArquivo: file.name,
             nome: titulo,
             descricao: descricao,
-            tamanho: (file.size / (1024 * 1024)).toFixed(2), // MB
+            tamanho: (file.size / (1024 * 1024)).toFixed(2),
             capaBase64: capaBase64.split(',')[1],
             capaTipoMime: estadoSite.criativoCapa.type,
             usuarioId: estadoSite.usuario.id,
@@ -1058,7 +1053,6 @@ async function abrirEditorComArquivo(arquivo) {
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    // ⭐ Permite downloads e pop-ups no iframe
     iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen; downloads');
 
     const oldLoading = document.getElementById('editorLoading');
@@ -1112,7 +1106,6 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor...';
 
-    // ⭐ URL com #menu para forçar a barra de menus nativa
     iframe.src = 'https://www.photopea.com/#menu';
 
     let arquivoEnviado = false;
@@ -1127,29 +1120,22 @@ async function abrirEditorComArquivo(arquivo) {
 
     iframe.onload = () => {
         try {
-            // 1. Comandos para fechar a tela inicial
             iframe.contentWindow.postMessage('app.hideAds();', '*');
             iframe.contentWindow.postMessage('app.showMenu();', '*');
             
-            // 2. ⭐ INJETA CSS PARA ESCONDER OS ANÚNCIOS LATERAIS
             const cssInjection = `
                 const style = document.createElement('style');
                 style.innerHTML = \`
-                    /* Esconde os blocos de "Support Photopea" (Preços) */
                     #banner, #banner-container, div[id*="banner"], div[class*="banner"] { display: none !important; }
-                    
-                    /* Ajusta a área de trabalho para ocupar toda a tela */
                     body, html { overflow: hidden; }
                 \`;
                 document.head.appendChild(style);
             `;
             iframe.contentWindow.postMessage(cssInjection, '*');
 
-            // 3. Reforço via JS para garantir o menu
             setTimeout(() => { try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e){} }, 1000);
             setTimeout(() => { try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e){} }, 3000);
             
-            // 4. Injeta o Ctrl+B
             const scriptAtalho = `
                 document.addEventListener('keydown', function(e) {
                     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
@@ -1189,9 +1175,6 @@ async function abrirEditorComArquivo(arquivo) {
     setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
 }
 
-// ⭐ COMO INJETAMOS O CTRL+B DIRETO NO IFRAME, NÃO PRECISAMOS MAIS DO LISTENER NA PÁGINA PRINCIPAL.
-
-// Animação do toast (Mantida para outros avisos, caso necessário)
 if (!document.getElementById('toastAnimation')) {
     const style = document.createElement('style');
     style.id = 'toastAnimation';
@@ -1222,7 +1205,6 @@ function editorToggleMenu() {
     const iframe = document.getElementById('editorIframe');
     if (!iframe || !iframe.contentWindow) return;
     
-    // ⭐ Tenta novamente forçar a exibição
     iframe.contentWindow.postMessage('app.showMenu();', '*');
 
     const aviso = document.createElement('div');

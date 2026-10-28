@@ -1,8 +1,8 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v50
+ * SITE PÚBLICO - Marketing IEAD v51
  * - Dropdown de categorias
- * - Photopea abre direto no editor (sem tela inicial e sem ads)
- * - Atalho Ctrl+B para exportar (PNG/JPG/PDF)
+ * - Photopea abre direto no editor
+ * - Atalho Ctrl+B para exportar (Download forçado em PNG ou diálogo)
  * ============================================================ */
 
 let estadoSite = {
@@ -1006,6 +1006,9 @@ async function abrirEditorComArquivo(arquivo) {
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
+    // ⭐ Permite downloads e pop-ups no iframe
+    iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen; downloads');
+
     const oldLoading = document.getElementById('editorLoading');
     if (oldLoading) oldLoading.remove();
 
@@ -1104,30 +1107,34 @@ async function abrirEditorComArquivo(arquivo) {
     setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
 }
 
-// ⭐ NOVO: Listener global para atalho Ctrl+B (Exportar)
+// ⭐ ATALHO CTRL+B CORRIGIDO PARA FORÇAR DOWNLOAD
 document.addEventListener('keydown', (e) => {
     const editorModal = document.getElementById('editorModal');
     if (!editorModal || !editorModal.classList.contains('active')) return;
 
-    // Ctrl+B (Windows/Linux) ou Cmd+B (Mac)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
-        e.preventDefault(); // Impede o comportamento padrão do navegador
+        e.preventDefault();
         const iframe = document.getElementById('editorIframe');
         if (iframe && iframe.contentWindow) {
-            // Envia o comando para o Photopea abrir o diálogo de exportação
-            iframe.contentWindow.postMessage('app.export();', '*');
+            
+            // Comando que força o download direto em PNG (o formato mais seguro para iframes)
+            // Ele não abre pop-up, ele gera um link de download (blob) que o navegador baixa automaticamente.
+            const script = `
+                app.activeDocument.saveAs("png", true);
+            `;
+            iframe.contentWindow.postMessage(script, '*');
 
-            // Feedback visual (toast)
+            // Feedback visual
             const toast = document.createElement('div');
             toast.style.cssText = `position:fixed; bottom:80px; left:50%; transform:translateX(-50%); z-index:999999; background:#D4AF37; color:#0A1C3A; padding:14px 24px; border-radius:12px; font-weight:800; box-shadow:0 8px 30px rgba(0,0,0,0.4); font-family:Inter, sans-serif; font-size:0.9rem; display:flex; align-items:center; gap:8px; animation: toastIn 0.3s ease;`;
-            toast.innerHTML = `<i class="fas fa-download"></i> Exportando... Escolha o formato (PNG, JPG ou PDF).`;
+            toast.innerHTML = `<i class="fas fa-download"></i> Iniciando download do PNG...`;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
     }
 });
 
-// Animação do toast (injetada dinamicamente)
+// Animação do toast
 if (!document.getElementById('toastAnimation')) {
     const style = document.createElement('style');
     style.id = 'toastAnimation';

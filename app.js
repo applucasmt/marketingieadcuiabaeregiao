@@ -1,7 +1,7 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v56
- * - Força o menu superior do Photopea a aparecer
- * - Ctrl+B funcional via injeção de script
+ * SITE PÚBLICO - Marketing IEAD v57
+ * - Força a barra de menu via CSS + Comando do Photopea
+ * - Ctrl+B funcional
  * ============================================================ */
 
 let estadoSite = {
@@ -1073,25 +1073,30 @@ async function abrirEditorComArquivo(arquivo) {
     window._photopeaHandler = photopeaHandler;
 
     iframe.onload = () => {
-        // ⭐ Envia comando para fechar a tela de boas-vindas, ocultar anúncios
-        // e forçar o menu a aparecer (app.showMenu(true))
         try {
-            // Esconde os anúncios (Support Photopea)
+            // 1. Tenta fechar a tela inicial e anúncios
             iframe.contentWindow.postMessage('app.hideAds();', '*');
-            
-            // ⭐ O COMANDO CORRETO PARA EXIBIR O MENU É PASSANDO TRUE
-            iframe.contentWindow.postMessage('app.showMenu(true);', '*');
+            iframe.contentWindow.postMessage('app.showMenu();', '*');
 
-            // Se o menu demorar a renderizar (por causa do bloqueador), tentamos novamente
-            setTimeout(() => {
-                try { iframe.contentWindow.postMessage('app.showMenu(true);', '*'); } catch(e) {}
-            }, 1000);
+            // 2. ⭐ FORÇA O MENU VIA CSS INJETADO
+            // Se o bloqueador de anúncios atrapalhar a renderização, o CSS garante que a div do menu fique visível
+            const cssInjection = `
+                const style = document.createElement('style');
+                style.innerHTML = \`
+                    /* Força a barra de menu a aparecer */
+                    body > div:first-child > div:first-child { display: block !important; opacity: 1 !important; visibility: visible !important; height: 30px !important; }
+                    /* Esconde o aviso do AdBlock */
+                    body > div:first-child > div:nth-child(2) { display: none !important; }
+                \`;
+                document.head.appendChild(style);
+            `;
+            iframe.contentWindow.postMessage(cssInjection, '*');
 
-            setTimeout(() => {
-                try { iframe.contentWindow.postMessage('app.showMenu(true);', '*'); } catch(e) {}
-            }, 3000);
+            // 3. Reforço via JS para garantir o menu
+            setTimeout(() => { try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e){} }, 1000);
+            setTimeout(() => { try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e){} }, 3000);
             
-            // ⭐ INJETA O ATALHO CTRL+B DIRETO NO PHOTOPEA
+            // 4. Injeta o Ctrl+B
             const scriptAtalho = `
                 document.addEventListener('keydown', function(e) {
                     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
@@ -1165,7 +1170,7 @@ function editorToggleMenu() {
     if (!iframe || !iframe.contentWindow) return;
     
     // ⭐ Tenta novamente forçar a exibição
-    iframe.contentWindow.postMessage('app.showMenu(true);', '*');
+    iframe.contentWindow.postMessage('app.showMenu();', '*');
 
     const aviso = document.createElement('div');
     aviso.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:999999; background:#D4AF37; color:#0A1C3A; padding:15px 20px; border-radius:12px; font-weight:700; box-shadow:0 8px 25px rgba(0,0,0,0.3); font-family:Inter, sans-serif; font-size:0.85rem; max-width:280px;`;

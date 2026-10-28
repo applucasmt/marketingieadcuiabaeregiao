@@ -1,6 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v55
- * - Força o menu e remove anúncios (tenta várias vezes)
+ * SITE PÚBLICO - Marketing IEAD v56
+ * - Força o menu superior do Photopea a aparecer
  * - Ctrl+B funcional via injeção de script
  * ============================================================ */
 
@@ -1073,22 +1073,22 @@ async function abrirEditorComArquivo(arquivo) {
     window._photopeaHandler = photopeaHandler;
 
     iframe.onload = () => {
-        // ⭐ Envia comando para fechar a tela de boas-vindas e ocultar anúncios
-        // e forçar o menu a aparecer repetidamente (pois o Photopea pode demorar a carregar o menu)
+        // ⭐ Envia comando para fechar a tela de boas-vindas, ocultar anúncios
+        // e forçar o menu a aparecer (app.showMenu(true))
         try {
             // Esconde os anúncios (Support Photopea)
             iframe.contentWindow.postMessage('app.hideAds();', '*');
             
-            // Garante que o menu (Arquivo, Editar, etc) esteja visível
-            iframe.contentWindow.postMessage('app.showMenu();', '*');
+            // ⭐ O COMANDO CORRETO PARA EXIBIR O MENU É PASSANDO TRUE
+            iframe.contentWindow.postMessage('app.showMenu(true);', '*');
 
             // Se o menu demorar a renderizar (por causa do bloqueador), tentamos novamente
             setTimeout(() => {
-                try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e) {}
+                try { iframe.contentWindow.postMessage('app.showMenu(true);', '*'); } catch(e) {}
             }, 1000);
 
             setTimeout(() => {
-                try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e) {}
+                try { iframe.contentWindow.postMessage('app.showMenu(true);', '*'); } catch(e) {}
             }, 3000);
             
             // ⭐ INJETA O ATALHO CTRL+B DIRETO NO PHOTOPEA
@@ -1163,7 +1163,9 @@ function editorFechar() {
 function editorToggleMenu() {
     const iframe = document.getElementById('editorIframe');
     if (!iframe || !iframe.contentWindow) return;
-    iframe.contentWindow.postMessage('app.showMenu();', '*');
+    
+    // ⭐ Tenta novamente forçar a exibição
+    iframe.contentWindow.postMessage('app.showMenu(true);', '*');
 
     const aviso = document.createElement('div');
     aviso.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:999999; background:#D4AF37; color:#0A1C3A; padding:15px 20px; border-radius:12px; font-weight:700; box-shadow:0 8px 25px rgba(0,0,0,0.3); font-family:Inter, sans-serif; font-size:0.85rem; max-width:280px;`;

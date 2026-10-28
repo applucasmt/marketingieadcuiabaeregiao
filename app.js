@@ -1,8 +1,8 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v51
+ * SITE PÚBLICO - Marketing IEAD v52
  * - Dropdown de categorias
  * - Photopea abre direto no editor
- * - Atalho Ctrl+B para exportar (Download forçado em PNG ou diálogo)
+ * - Atalho Ctrl+B simula "Exportar como" (Alt+Ctrl+Shift+S)
  * ============================================================ */
 
 let estadoSite = {
@@ -1107,7 +1107,7 @@ async function abrirEditorComArquivo(arquivo) {
     setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
 }
 
-// ⭐ ATALHO CTRL+B CORRIGIDO PARA FORÇAR DOWNLOAD
+// ⭐ ATALHO CTRL+B - SIMULA ALT+CTRL+SHIFT+S (EXPORTAR COMO)
 document.addEventListener('keydown', (e) => {
     const editorModal = document.getElementById('editorModal');
     if (!editorModal || !editorModal.classList.contains('active')) return;
@@ -1117,17 +1117,13 @@ document.addEventListener('keydown', (e) => {
         const iframe = document.getElementById('editorIframe');
         if (iframe && iframe.contentWindow) {
             
-            // Comando que força o download direto em PNG (o formato mais seguro para iframes)
-            // Ele não abre pop-up, ele gera um link de download (blob) que o navegador baixa automaticamente.
-            const script = `
-                app.activeDocument.saveAs("png", true);
-            `;
-            iframe.contentWindow.postMessage(script, '*');
+            // Envia o comando para abrir a janela de exportação do Photopea
+            iframe.contentWindow.postMessage('app.export();', '*');
 
             // Feedback visual
             const toast = document.createElement('div');
             toast.style.cssText = `position:fixed; bottom:80px; left:50%; transform:translateX(-50%); z-index:999999; background:#D4AF37; color:#0A1C3A; padding:14px 24px; border-radius:12px; font-weight:800; box-shadow:0 8px 30px rgba(0,0,0,0.4); font-family:Inter, sans-serif; font-size:0.9rem; display:flex; align-items:center; gap:8px; animation: toastIn 0.3s ease;`;
-            toast.innerHTML = `<i class="fas fa-download"></i> Iniciando download do PNG...`;
+            toast.innerHTML = `<i class="fas fa-download"></i> Abrindo opções de exportação...`;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }

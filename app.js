@@ -1,8 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v52
- * - Dropdown de categorias
- * - Photopea abre direto no editor
- * - Atalho Ctrl+B simula "Exportar como" (Alt+Ctrl+Shift+S)
+ * SITE PÚBLICO - Marketing IEAD v53
+ * - Atalho Ctrl+B envia comando direto pro Photopea
  * ============================================================ */
 
 let estadoSite = {
@@ -1112,13 +1110,18 @@ document.addEventListener('keydown', (e) => {
     const editorModal = document.getElementById('editorModal');
     if (!editorModal || !editorModal.classList.contains('active')) return;
 
+    // Verifica se é Ctrl+B
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         const iframe = document.getElementById('editorIframe');
+        
         if (iframe && iframe.contentWindow) {
+            // ⭐ O pulo do gato: usar o próprio manipulador do Photopea para disparar o atalho
+            // "app.echoToOE" envia comandos, e o Photopea entende que deve rodar isso no script
+            iframe.contentWindow.postMessage('app.echoToOE("app.showExport();");', '*');
             
-            // Envia o comando para abrir a janela de exportação do Photopea
-            iframe.contentWindow.postMessage('app.export();', '*');
+            // Fallback: tentar abrir o menu via comando nativo
+            iframe.contentWindow.postMessage('app.showExport();', '*');
 
             // Feedback visual
             const toast = document.createElement('div');

@@ -1,7 +1,7 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v48
+ * SITE PÚBLICO - Marketing IEAD v49
  * - Dropdown de categorias (substitui as abas antigas)
- * - Photopea abre direto no editor
+ * - Photopea abre direto no editor (sem tela inicial e sem ads)
  * - Mobile-friendly
  * ============================================================ */
 
@@ -273,14 +273,12 @@ function renderizarCategorias() {
     const listaEl = document.getElementById('categoriasLista');
     if (!botao || !listaEl) return;
 
-    // Conta arquivos por categoria
     const contagem = {};
     estadoSite.arquivos.forEach(a => {
         const cat = paraString(a.categoria || 'Geral').trim();
         contagem[cat] = (contagem[cat] || 0) + 1;
     });
 
-    // Monta o mapa de categorias
     const categoriasMap = new Map();
     categoriasMap.set('todas', {
         nome: 'Todas as categorias',
@@ -309,12 +307,10 @@ function renderizarCategorias() {
         }
     });
 
-    // Atualiza o texto do botão com a categoria ativa
     const catAtiva = categoriasMap.get(estadoSite.categoriaAtiva) || categoriasMap.get('todas');
     if (nomeEl) nomeEl.textContent = catAtiva.nome;
     if (countEl) countEl.textContent = catAtiva.total;
 
-    // Popula a lista de categorias
     listaEl.innerHTML = Array.from(categoriasMap.values()).map(cat => {
         const isActive =
             estadoSite.categoriaAtiva === cat.nome ||
@@ -359,13 +355,11 @@ function selecionarCategoriaDropdown(nomeCategoria) {
     renderizarCategorias();
     renderizarArquivos();
 
-    // Fecha o dropdown
     const dropdown = document.getElementById('categoriasDropdown');
     const botao = document.getElementById('categoriasToggle');
     if (dropdown) dropdown.classList.remove('open');
     if (botao) botao.classList.remove('active');
 
-    // Limpa o filtro
     const filtro = document.getElementById('categoriasFiltro');
     if (filtro) {
         filtro.value = '';
@@ -386,7 +380,6 @@ function filtrarCategoriasDropdown() {
     });
 }
 
-// Fechar dropdown ao clicar fora
 document.addEventListener('click', (e) => {
     const wrapper = document.querySelector('.categorias-wrapper');
     const dropdown = document.getElementById('categoriasDropdown');
@@ -398,7 +391,6 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Mantém compatibilidade com função antiga (usada em outros lugares)
 function selecionarCategoria(nomeCategoria) {
     selecionarCategoriaDropdown(nomeCategoria);
 }
@@ -1065,7 +1057,8 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor...';
 
-    iframe.src = 'https://www.photopea.com/?embedded';
+    // ⭐ AQUI ESTÁ A CORREÇÃO: URL com hashtag para abrir direto no editor
+    iframe.src = 'https://www.photopea.com/#embedded';
 
     let arquivoEnviado = false;
 
@@ -1078,6 +1071,12 @@ async function abrirEditorComArquivo(arquivo) {
     window._photopeaHandler = photopeaHandler;
 
     iframe.onload = () => {
+        // ⭐ Envia comando para fechar a tela de boas-vindas e ocultar anúncios
+        try {
+            iframe.contentWindow.postMessage('app.hideAds();', '*');
+            iframe.contentWindow.postMessage('app.showMenu();', '*');
+        } catch (e) {}
+
         setTimeout(() => {
             if (arquivoEnviado) return;
             arquivoEnviado = true;

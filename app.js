@@ -1,6 +1,8 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v58
- * - Força a barra de menu do Photopea via URL e JS
+ * SITE PÚBLICO - Marketing IEAD v59
+ * - Photopea com barra de menu (#menu)
+ * - Anúncios removidos via injeção de CSS
+ * - Ctrl+B injetado no editor
  * ============================================================ */
 
 let estadoSite = {
@@ -1058,7 +1060,7 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor...';
 
-    // ⭐ Força a exibição do menu usando a flag #menu na URL
+    // ⭐ URL com #menu para forçar a barra de menus nativa
     iframe.src = 'https://www.photopea.com/#menu';
 
     let arquivoEnviado = false;
@@ -1073,15 +1075,29 @@ async function abrirEditorComArquivo(arquivo) {
 
     iframe.onload = () => {
         try {
-            // 1. Comandos básicos para limpar a interface
+            // 1. Comandos para fechar a tela inicial
             iframe.contentWindow.postMessage('app.hideAds();', '*');
-            
-            // 2. Força o menu via comando nativo (e repetimos para garantir)
             iframe.contentWindow.postMessage('app.showMenu();', '*');
+            
+            // 2. ⭐ INJETA CSS PARA ESCONDER OS ANÚNCIOS LATERAIS
+            const cssInjection = `
+                const style = document.createElement('style');
+                style.innerHTML = \`
+                    /* Esconde os blocos de "Support Photopea" (Preços) */
+                    #banner, #banner-container, div[id*="banner"], div[class*="banner"] { display: none !important; }
+                    
+                    /* Ajusta a área de trabalho para ocupar toda a tela */
+                    body, html { overflow: hidden; }
+                \`;
+                document.head.appendChild(style);
+            `;
+            iframe.contentWindow.postMessage(cssInjection, '*');
+
+            // 3. Reforço via JS para garantir o menu
             setTimeout(() => { try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e){} }, 1000);
             setTimeout(() => { try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e){} }, 3000);
             
-            // 3. Injeta o Ctrl+B
+            // 4. Injeta o Ctrl+B
             const scriptAtalho = `
                 document.addEventListener('keydown', function(e) {
                     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {

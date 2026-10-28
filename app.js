@@ -757,6 +757,25 @@ function renderizarCreative() {
     }).join('');
 }
 
+async function creativeExcluirMeu(id) {
+    if (!estadoSite.usuario) { abrirModalAuth(); return; }
+    if (!confirm('Excluir este PSD? Esta ação não pode ser desfeita.')) return;
+
+    const r = await window.apiPost({
+        acao: 'creative_remover',
+        id: id,
+        usuarioId: estadoSite.usuario.id
+    });
+
+    if (r && r.status === 'ok') {
+        await carregarDadosSite();
+        renderizarCreative();
+        renderizarCreativeMeus();
+    } else {
+        alert(r?.mensagem || 'Não foi possível excluir o arquivo.');
+    }
+}
+
 function renderizarCreativeMeus() {
     const grid = document.getElementById('creativeMeusGrid');
     if (!grid) return;
@@ -784,6 +803,7 @@ function renderizarCreativeMeus() {
                     <h3>${escapeHTML(paraString(c.nome))}</h3>
                     <p>${escapeHTML(paraString(c.descricao) || 'Seu arquivo')}</p>
                     <button class="creative-card-btn" onclick="creativeAbrirEditorPublico('${paraString(c.fileId)}')"><i class="fas fa-magic"></i> Abrir no Editor</button>
+                    <button class="creative-card-btn" style="margin-top:8px;background:transparent;border:1px solid #FF6B6B;color:#FF6B6B;" onclick="creativeExcluirMeu('${paraString(c.id)}')"><i class="fas fa-trash"></i> Excluir</button>
                 </div>
             </div>
         `;
@@ -1239,7 +1259,7 @@ async function abrirEditorComArquivo(arquivo) {
 
         if (!u8) {
             if (idsPartes.length === 1 && ehLimite(erroMsg)) {
-                fecharComErro('Este PSD está salvo como arquivo único e passa do limite de leitura (45 MB), então foi enviado antes da divisão em partes. Exclua-o e envie novamente. Se você já reenviou, abra o card mais novo.');
+                fecharComErro(`O card "${paraString(arquivo.nome)}" (ID …${String(idsPartes[0]).slice(-6)}) está salvo como arquivo único e passa do limite de leitura (45 MB), por isso foi enviado antes da divisão em partes. Exclua este card (botão Excluir em "Meus arquivos" ou apague a linha na aba Criativos) e envie o PSD novamente.`);
             } else {
                 fecharComErro(`Falha na ${rotulo}: ${erroMsg}`);
             }

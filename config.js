@@ -26,9 +26,9 @@ window.CONFIG = {
         rodape: "© 2026 IEAD Cuiabá e Região. Todos os direitos reservados."
     },
 
-    LIMITE_UPLOAD_MB: 50,      // Limite do Apps Script para uploads Base64
-    LIMITE_CREATIVE_MB: 5120,  // 5 GB (5120 MB) - Upload Direto via API do Google
-    VERSAO: "60.0"
+    LIMITE_UPLOAD_MB: 50,
+    LIMITE_CREATIVE_MB: 5120, // 5 GB
+    VERSAO: "65.0"
 };
 
 // ============================================================
@@ -36,10 +36,7 @@ window.CONFIG = {
 // ============================================================
 
 window.apiGet = async function(acao, params = {}) {
-    if (!window.CONFIG || !window.CONFIG.API_URL || window.CONFIG.API_URL.includes("COLE_AQUI")) {
-        console.warn("⚠️ API_URL não configurada em config.js");
-        return null;
-    }
+    if (!window.CONFIG || !window.CONFIG.API_URL) return null;
 
     try {
         const url = new URL(window.CONFIG.API_URL);
@@ -52,7 +49,7 @@ window.apiGet = async function(acao, params = {}) {
             method: 'GET',
             mode: 'cors',
             cache: 'no-cache',
-            redirect: 'follow'
+            headers: { 'Accept': 'application/json' }
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -64,20 +61,14 @@ window.apiGet = async function(acao, params = {}) {
 };
 
 window.apiPost = async function(dados) {
-    if (!window.CONFIG || !window.CONFIG.API_URL || window.CONFIG.API_URL.includes("COLE_AQUI")) {
-        console.warn("⚠️ API_URL não configurada em config.js");
-        return { status: "erro", mensagem: "API não configurada" };
-    }
+    if (!window.CONFIG || !window.CONFIG.API_URL) return { status: "erro", mensagem: "API não configurada" };
 
     try {
         const response = await fetch(window.CONFIG.API_URL, {
             method: 'POST',
             mode: 'cors',
-            headers: { 
-                'Content-Type': 'text/plain;charset=utf-8'
-            },
-            body: JSON.stringify(dados),
-            redirect: 'follow'
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(dados)
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -120,4 +111,3 @@ window.aplicarCores = function(config = {}) {
 };
 
 console.log("✅ config.js carregado com sucesso");
-console.log("CONFIG.API_URL:", window.CONFIG.API_URL);

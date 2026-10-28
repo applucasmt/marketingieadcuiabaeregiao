@@ -1,1079 +1,1642 @@
-/**
- * ============================================================
- *  CMS MARKETING IEAD CUIABÁ E REGIÃO
- *  Versão: 46.0 (Upload e download fatiados + autor garantido)
- * ============================================================
- *  ⚠️ IMPORTANTE: Ative o serviço "Drive API" no painel de Serviços do Apps Script.
- * ============================================================
- */
+/* ============================================================
+ * SITE PÚBLICO - Marketing IEAD v70
+ * - Upload Direto para o Drive via Iframe (evita CORS e limite 50MB)
+ * ============================================================ */
 
-const ABA_ARQUIVOS = "Arquivos";
-const ABA_CONFIG = "Configuracoes";
-const ABA_LOGS = "Logs";
-const ABA_CATEGORIAS = "Categorias";
-const ABA_CARROSSEL = "Carrossel";
-const ABA_MENUS = "Menus";
-const ABA_CRIATIVOS = "Criativos";
-const ABA_USUARIOS = "Usuarios";
-
-const PASTA_DRIVE = "Marketing IEAD - Arquivos";
-
-const CAB_ARQUIVOS = ["ID", "Nome", "Tipo", "Link", "Descricao", "Categoria", "Data_Adicao", "Ativo", "File_ID", "Tamanho", "Preview_URL"];
-const CAB_CONFIG = ["Chave", "Valor", "Descricao"];
-const CAB_LOGS = ["Data_Hora", "Usuario", "Acao", "Detalhes"];
-const CAB_CATEGORIAS = ["ID", "Nome", "Icone", "Ordem"];
-const CAB_CARROSSEL = ["ID", "Titulo", "Descricao", "Badge", "Link_Botao", "Texto_Botao", "Ordem", "Ativo"];
-const CAB_MENUS = ["ID", "Nome", "Link", "Ordem", "Ativo", "Nova_Aba"];
-const CAB_CRIATIVOS = ["ID", "Nome", "Tipo", "Link", "Link_Download", "Descricao", "Data_Adicao", "Ativo", "File_ID", "Tamanho", "Preview_URL", "Usuario_ID", "Usuario_Nome", "Usuario_WhatsApp", "Usuario_Congregacao", "Usuario_Idade", "Usuario_Foto", "Usuario_Cidade"];
-const CAB_USUARIOS = ["ID", "Nome", "Email", "WhatsApp", "Congregacao", "Idade", "Cidade", "Foto_URL", "Foto_File_ID", "Senha_Hash", "Data_Cadastro", "Ativo"];
+let estadoSite = {
+    config: {},
+    arquivos: [],
+    carrossel: [],
+    menus: [],
+    categorias: [],
+    criativos: [],
+    slideAtual: 0,
+    carrosselInterval: null,
+    rotaAtual: 'inicio',
+    categoriaAtiva: 'todas',
+    buscaAtiva: '',
+    creativeAbaAtiva: 'templates',
+    creativeBusca: '',
+    creativeArquivoAtual: null,
+    usuario: null,
+    criativoPSD: null,
+    criativoCapa: null,
+    cadFotoBase64: null,
+    cadFotoTipoMime: null
+};
 
 // ============================================================
 // HELPERS
 // ============================================================
-function safeStr(valor) {
-    if (valor === null || valor === undefined) return "";
+function paraString(valor) {
+    if (valor === null || valor === undefined) return '';
     return String(valor);
 }
 
+function somenteDigitos(valor) {
+    return paraString(valor).replace(/\D/g, '');
+}
+
+function isMobile() {
+    return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) || window.innerWidth < 768;
+}
+
 // ============================================================
-// FUNÇÃO PARA FORÇAR PERMISSÃO DO GOOGLE
+// SPLASH
 // ============================================================
-function forcarAutorizacao() {
-    try {
-        DriveApp.getRootFolder();
-        UrlFetchApp.fetch("https://www.google.com");
-        Drive.Files.list({ pageSize: 1 });
-        Logger.log("✅ Permissões concedidas com sucesso!");
-        SpreadsheetApp.getUi().alert("✅ Permissões concedidas com sucesso! O sistema está pronto.");
-    } catch (e) {
-        Logger.log("❌ Erro de permissão: " + e.toString());
-        SpreadsheetApp.getUi().alert("⚠️ Ocorreu um erro, certifique-se de aceitar as permissões: " + e.toString());
+let splashFechado = false;
+
+function atualizarProgresso(percent) {
+    const circle = document.getElementById('splashCircle');
+    const txt = document.getElementById('splashPercent');
+    if (txt) txt.textContent = Math.round(percent) + '%';
+    if (circle) {
+        const perimetro = 565.48;
+        const offset = perimetro - (perimetro * percent / 100);
+        circle.style.strokeDashoffset = offset;
+    }
+}
+
+function esconderSplash() {
+    if (splashFechado) return;
+    splashFechado = true;
+
+    const splash = document.getElementById('splashScreen');
+    const wrapper = document.getElementById('siteWrapper');
+    if (splash) {
+        splash.classList.add('fade-out');
+        setTimeout(() => {
+            splash.style.display = 'none';
+            if (wrapper) wrapper.classList.add('visible');
+        }, 900);
     }
 }
 
 // ============================================================
-// API GET
+// INICIALIZAÇÃO
 // ============================================================
-function doGet(e) {
+function executarSeguro(nome, fn) {
     try {
-        setupPlanilha();
-        const p = e.parameter || {};
-        const acao = p.acao || "listar";
-        let resp;
-
-        switch (acao) {
-            case "listar": resp = listarArquivos(p.filtro, p.categoria); break;
-            case "configuracoes": resp = obterConfiguracoes(); break;
-            case "categorias": resp = listarCategorias(); break;
-            case "carrossel": resp = listarCarrossel(); break;
-            case "menus": resp = listarMenus(); break;
-            case "criativos": resp = listarCriativos(); break;
-            case "estatisticas": resp = obterEstatisticas(); break;
-            case "buscar": resp = buscarArquivos(p.termo); break;
-            case "tudo": resp = obterTudo(); break;
-            case "info_pasta": resp = obterInfoPasta(); break;
-            case "baixar_psd": resp = baixarPSDBase64(p.fileId); break;
-            case "baixar_psd_info": resp = baixarPSDInfo(p.fileId); break;
-            case "baixar_psd_fatia": resp = baixarPSDFatia(p.fileId, p.offset, p.length); break;
-            case "ping": resp = { status: "ok", ts: new Date().toISOString() }; break;
-            default: resp = { status: "erro", mensagem: "Ação desconhecida: " + acao };
-        }
-        return responderJSON(resp, p.callback);
+        fn();
     } catch (err) {
-        registrarLog("SISTEMA", "ERRO", err.toString());
-        return responderJSON({ status: "erro", mensagem: err.toString() }, e.parameter.callback);
+        console.error('❌ Falha em ' + nome + ':', err);
     }
 }
 
-// ============================================================
-// API POST
-// ============================================================
-function doPost(e) {
+let siteIniciado = false;
+
+async function iniciarSite() {
+    if (siteIniciado) return;
+    siteIniciado = true;
+
+    const timeoutSeguranca = setTimeout(() => {
+        atualizarProgresso(100);
+        esconderSplash();
+    }, 8000);
+
     try {
-        setupPlanilha();
-        const p = JSON.parse(e.postData.contents);
-        let resp;
+        atualizarProgresso(10);
+        await new Promise(r => setTimeout(r, 100));
+        atualizarProgresso(20);
 
-        switch (p.acao) {
-            case "upload": resp = uploadArquivo(p); break;
-            case "upload_logo": resp = uploadLogo(p); break;
-            case "remover": resp = removerArquivo(p.id); break;
-            case "atualizar_config": resp = atualizarConfiguracoes(p.dados); break;
-            case "carrossel_salvar": resp = salvarSlide(p.dados, p.id); break;
-            case "carrossel_remover": resp = removerSlide(p.id); break;
-            case "menu_salvar": resp = salvarMenu(p.dados, p.id); break;
-            case "menu_remover": resp = removerMenu(p.id); break;
-            case "categoria_salvar": resp = salvarCategoria(p.dados, p.id); break;
-            case "categoria_remover": resp = removerCategoria(p.id); break;
-            case "creative_upload": resp = creativeUpload(p); break;
-            
-            case "iniciar_upload_fatiado": resp = iniciarUploadFatiado(p); break;
-            case "enviar_fatia_upload": resp = enviarFatiaUpload(p); break;
-            case "confirmar_upload_direto": resp = confirmarUploadDireto(p); break;
-            
-            case "creative_remover": resp = creativeRemover(p.id); break;
-            case "cadastro": resp = cadastrarUsuario(p); break;
-            case "login": resp = loginUsuario(p); break;
-            default: resp = { status: "erro", mensagem: "Ação POST desconhecida: " + p.acao };
-        }
-        return responderJSON(resp);
+        await carregarDadosSite();
+        atualizarProgresso(55);
+
+        executarSeguro('aplicarConfiguracoes', aplicarConfiguracoes);
+        atualizarProgresso(70);
+
+        executarSeguro('renderizarCarrossel', renderizarCarrossel);
+        executarSeguro('renderizarCategorias', renderizarCategorias);
+        executarSeguro('renderizarArquivos', renderizarArquivos);
+        executarSeguro('renderizarContato', renderizarContato);
+        executarSeguro('renderizarCreative', renderizarCreative);
+        executarSeguro('renderizarCreativeMeus', renderizarCreativeMeus);
+        atualizarProgresso(85);
+
+        executarSeguro('inicializarBusca', inicializarBusca);
+        executarSeguro('inicializarBuscaCreative', inicializarBuscaCreative);
+        executarSeguro('inicializarModalEnvio', inicializarModalEnvio);
+        executarSeguro('inicializarAuth', inicializarAuth);
+        executarSeguro('inicializarCarrossel', inicializarCarrossel);
+        executarSeguro('inicializarPreview', inicializarPreview);
+        executarSeguro('inicializarRotas', inicializarRotas);
+        executarSeguro('inicializarResponsividade', inicializarResponsividade);
+
+        executarSeguro('carregarUsuarioLogado', carregarUsuarioLogado);
+        executarSeguro('atualizarInterfaceAuth', atualizarInterfaceAuth);
+
+        atualizarProgresso(100);
+        await new Promise(r => setTimeout(r, 400));
     } catch (err) {
-        registrarLog("SISTEMA", "ERRO_POST", err.toString());
-        return responderJSON({ status: "erro", mensagem: err.toString() });
+        console.error('❌ Erro na inicialização:', err);
+        atualizarProgresso(100);
+    } finally {
+        clearTimeout(timeoutSeguranca);
+        esconderSplash();
+    }
+}
+
+// Inicia mesmo que o script seja carregado depois do evento DOMContentLoaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciarSite);
+} else {
+    iniciarSite();
+}
+
+// Rede de segurança final: se algo impedir a inicialização, libera a tela após 12s
+setTimeout(() => {
+    if (!splashFechado) {
+        console.warn('⚠️ Splash liberada pela rede de segurança.');
+        atualizarProgresso(100);
+        esconderSplash();
+    }
+}, 12000);
+
+window.addEventListener('error', (e) => console.error('❌ Erro não tratado:', e.message, e.filename + ':' + e.lineno));
+window.addEventListener('unhandledrejection', (e) => console.error('❌ Promise rejeitada:', e.reason));
+
+// ============================================================
+// RESPONSIVIDADE
+// ============================================================
+function inicializarResponsividade() {
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            irParaSlide(estadoSite.slideAtual);
+        }, 250);
+    });
+
+    const setVH = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    setVH();
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', () => setTimeout(setVH, 100));
+}
+
+// ============================================================
+// ROTAS
+// ============================================================
+function inicializarRotas() {
+    window.addEventListener('hashchange', aplicarRota);
+    aplicarRota();
+}
+
+function aplicarRota() {
+    const hash = window.location.hash.replace('#', '') || 'inicio';
+    const rotasValidas = ['inicio', 'downloads', 'creative', 'sobre', 'contato'];
+    const rota = rotasValidas.includes(hash) ? hash : 'inicio';
+    estadoSite.rotaAtual = rota;
+
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const page = document.getElementById('page-' + rota);
+    if (page) page.classList.add('active');
+
+    document.querySelectorAll('.header-nav a').forEach(a => {
+        const href = a.getAttribute('href')?.replace('#', '');
+        a.classList.toggle('active', href === rota);
+    });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+// DADOS
+// ============================================================
+async function carregarDadosSite() {
+    try {
+        const dados = await apiGet('tudo');
+        if (dados && !dados.status) {
+            estadoSite.config = dados.config || {};
+            estadoSite.arquivos = dados.arquivos || [];
+            estadoSite.carrossel = dados.carrossel || [];
+            estadoSite.menus = dados.menus || [];
+            estadoSite.categorias = dados.categorias || [];
+            estadoSite.criativos = dados.criativos || [];
+        } else {
+            estadoSite.config = {
+                Titulo_Site: CONFIG.TEXTOS_PADRAO.titulo,
+                Subtitulo_Hero: CONFIG.TEXTOS_PADRAO.subtituloHero,
+                Descricao_Hero: CONFIG.TEXTOS_PADRAO.descricaoHero,
+                Texto_Botao_Hero: CONFIG.TEXTOS_PADRAO.textoBotaoHero,
+                Texto_Rodape: CONFIG.TEXTOS_PADRAO.rodape
+            };
+        }
+    } catch (err) {
+        estadoSite.config = {
+            Titulo_Site: CONFIG.TEXTOS_PADRAO.titulo,
+            Subtitulo_Hero: CONFIG.TEXTOS_PADRAO.subtituloHero,
+            Descricao_Hero: CONFIG.TEXTOS_PADRAO.descricaoHero,
+            Texto_Botao_Hero: CONFIG.TEXTOS_PADRAO.textoBotaoHero,
+            Texto_Rodape: CONFIG.TEXTOS_PADRAO.rodape
+        };
     }
 }
 
 // ============================================================
-// SETUP
+// CONFIGURAÇÕES
 // ============================================================
-function setupPlanilha() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+function aplicarConfiguracoes() {
+    const c = estadoSite.config;
 
-    let a = ss.getSheetByName(ABA_ARQUIVOS);
-    if (!a) {
-        a = ss.insertSheet(ABA_ARQUIVOS);
-        a.appendRow(CAB_ARQUIVOS);
-        formatarCabecalho(a, CAB_ARQUIVOS.length);
-        [60, 280, 90, 450, 350, 140, 130, 80, 250, 100, 300].forEach((w, i) => a.setColumnWidth(i + 1, w));
-        a.setFrozenRows(1);
-    }
+    if (c.Titulo_Site) document.title = paraString(c.Titulo_Site);
 
-    let c = ss.getSheetByName(ABA_CONFIG);
-    if (!c) {
-        c = ss.insertSheet(ABA_CONFIG);
-        c.appendRow(CAB_CONFIG);
-        formatarCabecalho(c, CAB_CONFIG.length);
-        const config = [
-            ["Titulo_Site", "Marketing IEAD Cuiabá e Região", "Título principal"],
-            ["Subtitulo_Hero", "Recursos Oficiais. Excelência em Comunicação.", "Subtítulo do hero"],
-            ["Descricao_Hero", "Acesse materiais institucionais, manuais de marca e conteúdos exclusivos.", "Descrição do hero"],
-            ["Texto_Botao_Hero", "Explorar Materiais", "Texto do botão do hero"],
-            ["Logo_URL", "", "URL da logo"],
-            ["Logo_File_ID", "", "ID do arquivo da logo no Drive"],
-            ["Cor_Primaria", "#0A1C3A", "Cor azul escuro"],
-            ["Cor_Secundaria", "#1A3A6B", "Cor azul médio"],
-            ["Cor_Destaque", "#D4AF37", "Cor dourada"],
-            ["Texto_Rodape", "© 2026 IEAD Cuiabá e Região. Todos os direitos reservados.", "Texto do rodapé"],
-            ["Email_Contato", "marketing@ieadcuiaba.com.br", "Email"],
-            ["Instagram", "@ieadcuiaba", "Instagram"],
-            ["Pasta_Drive_ID", "", "ID pasta principal"],
-            ["Pasta_Drive_URL", "", "URL pasta principal"],
-            ["Mostrar_Carrossel", "TRUE", "Exibir carrossel"],
-            ["Mostrar_Busca", "TRUE", "Exibir barra de busca"]
-        ];
-        c.getRange(2, 1, config.length, 3).setValues(config);
-        c.setColumnWidth(1, 220);
-        c.setColumnWidth(2, 500);
-        c.setColumnWidth(3, 400);
-        c.setFrozenRows(1);
-    }
-
-    let cat = ss.getSheetByName(ABA_CATEGORIAS);
-    if (!cat) {
-        cat = ss.insertSheet(ABA_CATEGORIAS);
-        cat.appendRow(CAB_CATEGORIAS);
-        formatarCabecalho(cat, CAB_CATEGORIAS.length);
-        cat.getRange(2, 1, 4, 4).setValues([
-            [1, "Logo IEAD", "fa-image", 1],
-            [2, "Manuais", "fa-book", 2],
-            [3, "Apresentações", "fa-file-powerpoint", 3],
-            [4, "Campanhas", "fa-bullhorn", 4]
-        ]);
-        cat.setColumnWidth(1, 60);
-        cat.setColumnWidth(2, 250);
-        cat.setColumnWidth(3, 200);
-        cat.setColumnWidth(4, 80);
-        cat.setFrozenRows(1);
-    }
-
-    let l = ss.getSheetByName(ABA_LOGS);
-    if (!l) {
-        l = ss.insertSheet(ABA_LOGS);
-        l.appendRow(CAB_LOGS);
-        formatarCabecalho(l, CAB_LOGS.length);
-        l.setFrozenRows(1);
-    }
-
-    let car = ss.getSheetByName(ABA_CARROSSEL);
-    if (!car) {
-        car = ss.insertSheet(ABA_CARROSSEL);
-        car.appendRow(CAB_CARROSSEL);
-        formatarCabecalho(car, CAB_CARROSSEL.length);
-        car.getRange(2, 1, 3, 8).setValues([
-            [1, "Bem-vindo ao Portal", "Acesse materiais exclusivos, manuais e apresentações.", "Novo", "#downloads", "Explorar", 1, true],
-            [2, "Manual de Identidade Visual 2026", "Garanta a padronização de todas as peças.", "Atualizado", "#downloads", "Baixar agora", 2, true],
-            [3, "Campanha de Missões", "Confira os materiais para download.", "Campanha", "#downloads", "Acessar", 3, true]
-        ]);
-        car.setFrozenRows(1);
-    }
-
-    let m = ss.getSheetByName(ABA_MENUS);
-    if (!m) {
-        m = ss.insertSheet(ABA_MENUS);
-        m.appendRow(CAB_MENUS);
-        formatarCabecalho(m, CAB_MENUS.length);
-        m.getRange(2, 1, 5, 6).setValues([
-            [1, "Início", "#inicio", 1, true, false],
-            [2, "Downloads", "#downloads", 2, true, false],
-            [3, "IEAD Creative", "#creative", 3, true, false],
-            [4, "Sobre", "#sobre", 4, true, false],
-            [5, "Contato", "#contato", 5, true, false]
-        ]);
-        m.setFrozenRows(1);
-    }
-
-    let cr = ss.getSheetByName(ABA_CRIATIVOS);
-    if (!cr) {
-        cr = ss.insertSheet(ABA_CRIATIVOS);
-        cr.appendRow(CAB_CRIATIVOS);
-        formatarCabecalho(cr, CAB_CRIATIVOS.length);
-        [60, 280, 90, 450, 450, 350, 130, 80, 250, 100, 300, 100, 200, 150, 200, 80, 300, 200].forEach((w, i) => cr.setColumnWidth(i + 1, w));
-        cr.setFrozenRows(1);
-    }
-
-    let u = ss.getSheetByName(ABA_USUARIOS);
-    if (!u) {
-        u = ss.insertSheet(ABA_USUARIOS);
-        u.appendRow(CAB_USUARIOS);
-        formatarCabecalho(u, CAB_USUARIOS.length);
-        [60, 250, 300, 150, 250, 80, 180, 400, 300, 300, 150, 80].forEach((w, i) => u.setColumnWidth(i + 1, w));
-        u.setFrozenRows(1);
-    }
-
-    ["Sheet1", "Página1", "Page1", "Planilha1"].forEach(nome => {
-        const s = ss.getSheetByName(nome);
-        if (s && s.getLastRow() === 0 && ss.getSheets().length > 8) {
-            try { ss.deleteSheet(s); } catch (e) {}
+    if (c.Logo_URL) {
+        const logoImg = document.getElementById('siteLogo');
+        if (logoImg) {
+            logoImg.src = paraString(c.Logo_URL);
+            logoImg.onerror = () => {
+                logoImg.src = "https://i.ibb.co/3Y5PMRwz/2600211b-5791-45a6-8ce0-1c8eb30344f6.jpg";
+            };
         }
+    }
+
+    if (c.Subtitulo_Hero) {
+        const sub = document.getElementById('siteSubtitulo');
+        if (sub) sub.textContent = paraString(c.Subtitulo_Hero).split('.')[0] || 'Cuiabá e Região';
+    }
+
+    const heroT = document.getElementById('heroTitulo');
+    if (heroT) heroT.textContent = paraString(c.Titulo_Site) || CONFIG.TEXTOS_PADRAO.titulo;
+
+    const heroD = document.getElementById('heroDescricao');
+    if (heroD) heroD.textContent = paraString(c.Descricao_Hero) || CONFIG.TEXTOS_PADRAO.descricaoHero;
+
+    const heroB = document.getElementById('heroBotao');
+    if (heroB) heroB.textContent = paraString(c.Texto_Botao_Hero) || CONFIG.TEXTOS_PADRAO.textoBotaoHero;
+
+    const rod = document.getElementById('siteRodape');
+    if (rod) rod.textContent = paraString(c.Texto_Rodape) || CONFIG.TEXTOS_PADRAO.rodape;
+
+    const socialDiv = document.getElementById('siteSocial');
+    if (socialDiv) {
+        let socialHTML = '';
+        if (c.Instagram) {
+            const insta = paraString(c.Instagram).replace('@', '');
+            socialHTML += `<a href="https://instagram.com/${insta}" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>`;
+        }
+        if (c.Email_Contato) {
+            socialHTML += `<a href="mailto:${paraString(c.Email_Contato)}"><i class="fas fa-envelope"></i></a>`;
+        }
+        socialDiv.innerHTML = socialHTML;
+    }
+
+    if (c.Mostrar_Carrossel === 'FALSE') {
+        const cs = document.getElementById('carouselSection');
+        if (cs) cs.style.display = 'none';
+    }
+    if (c.Mostrar_Busca === 'FALSE') {
+        const sw = document.getElementById('searchWrapper');
+        if (sw) sw.style.display = 'none';
+    }
+}
+
+// ============================================================
+// CATEGORIAS - DROPDOWN
+// ============================================================
+function renderizarCategorias() {
+    const botao = document.getElementById('categoriasToggle');
+    const nomeEl = document.getElementById('categoriaSelecionadaNome');
+    const countEl = document.getElementById('categoriaSelecionadaCount');
+    const listaEl = document.getElementById('categoriasLista');
+    if (!botao || !listaEl) return;
+
+    const contagem = {};
+    estadoSite.arquivos.forEach(a => {
+        const cat = paraString(a.categoria || 'Geral').trim();
+        contagem[cat] = (contagem[cat] || 0) + 1;
+    });
+
+    const categoriasMap = new Map();
+    categoriasMap.set('todas', {
+        nome: 'Todas as categorias',
+        icone: 'fa-th-large',
+        total: estadoSite.arquivos.length
+    });
+
+    estadoSite.categorias.forEach(c => {
+        const nome = paraString(c.nome).trim();
+        if (nome && !categoriasMap.has(nome)) {
+            categoriasMap.set(nome, {
+                nome: nome,
+                icone: c.icone || 'fa-folder',
+                total: contagem[nome] || 0
+            });
+        }
+    });
+
+    Object.keys(contagem).forEach(nome => {
+        if (!categoriasMap.has(nome)) {
+            categoriasMap.set(nome, {
+                nome: nome,
+                icone: 'fa-folder',
+                total: contagem[nome]
+            });
+        }
+    });
+
+    const catAtiva = categoriasMap.get(estadoSite.categoriaAtiva) || categoriasMap.get('todas');
+    if (nomeEl) nomeEl.textContent = catAtiva.nome;
+    if (countEl) countEl.textContent = catAtiva.total;
+
+    listaEl.innerHTML = Array.from(categoriasMap.values()).map(cat => {
+        const isActive =
+            estadoSite.categoriaAtiva === cat.nome ||
+            (estadoSite.categoriaAtiva === 'todas' && cat.nome === 'Todas as categorias');
+
+        return `
+            <button class="categoria-item ${isActive ? 'active' : ''}"
+                onclick="selecionarCategoriaDropdown('${cat.nome.replace(/'/g, "&#39;")}')"
+                data-nome="${cat.nome.toLowerCase()}">
+                <i class="fas ${cat.icone}"></i>
+                <span class="categoria-item-nome">${escapeHTML(cat.nome)}</span>
+                <span class="categoria-item-count">${cat.total}</span>
+            </button>
+        `;
+    }).join('');
+}
+
+function toggleCategoriasMenu() {
+    const dropdown = document.getElementById('categoriasDropdown');
+    const botao = document.getElementById('categoriasToggle');
+    if (!dropdown || !botao) return;
+
+    const aberto = dropdown.classList.contains('open');
+
+    if (aberto) {
+        dropdown.classList.remove('open');
+        botao.classList.remove('active');
+    } else {
+        dropdown.classList.add('open');
+        botao.classList.add('active');
+        setTimeout(() => {
+            const filtro = document.getElementById('categoriasFiltro');
+            if (filtro) filtro.focus();
+        }, 200);
+    }
+}
+
+function selecionarCategoriaDropdown(nomeCategoria) {
+    const nomeReal = nomeCategoria === 'Todas as categorias' ? 'todas' : nomeCategoria;
+
+    estadoSite.categoriaAtiva = nomeReal;
+    renderizarCategorias();
+    renderizarArquivos();
+
+    const dropdown = document.getElementById('categoriasDropdown');
+    const botao = document.getElementById('categoriasToggle');
+    if (dropdown) dropdown.classList.remove('open');
+    if (botao) botao.classList.remove('active');
+
+    const filtro = document.getElementById('categoriasFiltro');
+    if (filtro) {
+        filtro.value = '';
+        filtrarCategoriasDropdown();
+    }
+}
+
+function filtrarCategoriasDropdown() {
+    const filtro = document.getElementById('categoriasFiltro');
+    const lista = document.querySelectorAll('.categoria-item');
+    if (!filtro) return;
+
+    const termo = filtro.value.toLowerCase().trim();
+
+    lista.forEach(item => {
+        const nome = item.dataset.nome || '';
+        item.style.display = nome.includes(termo) ? 'flex' : 'none';
     });
 }
 
-function formatarCabecalho(aba, numCols) {
-    const r = aba.getRange(1, 1, 1, numCols);
-    r.setBackground("#0A1C3A");
-    r.setFontColor("#D4AF37");
-    r.setFontWeight("bold");
-    r.setFontSize(11);
-    r.setHorizontalAlignment("center");
-    r.setVerticalAlignment("middle");
-    r.setBorder(true, true, true, true, true, true, "#D4AF37", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
-}
+document.addEventListener('click', (e) => {
+    const wrapper = document.querySelector('.categorias-wrapper');
+    const dropdown = document.getElementById('categoriasDropdown');
+    const botao = document.getElementById('categoriasToggle');
 
-// ============================================================
-// UPLOAD FATIADO VIA DRIVE API V3 (sessão resumable correta)
-// ============================================================
-function lerHeader_(resp, nome) {
-    const h = resp.getAllHeaders() || {};
-    const alvo = nome.toLowerCase();
-    for (const k in h) {
-        if (k.toLowerCase() === alvo) {
-            return Array.isArray(h[k]) ? h[k][0] : h[k];
-        }
+    if (wrapper && !wrapper.contains(e.target)) {
+        if (dropdown) dropdown.classList.remove('open');
+        if (botao) botao.classList.remove('active');
     }
-    return null;
+});
+
+function selecionarCategoria(nomeCategoria) {
+    selecionarCategoriaDropdown(nomeCategoria);
 }
 
-function iniciarUploadFatiado(p) {
-    try {
-        const nomeArquivo = safeStr(p.nomeArquivo);
-        const tipoMime = safeStr(p.tipoMime) || "application/octet-stream";
-        const tamanhoTotal = parseInt(p.tamanhoTotal);
+// ============================================================
+// ARQUIVOS
+// ============================================================
+function renderizarArquivos() {
+    const grid = document.getElementById('downloadsGrid');
+    const info = document.getElementById('resultadoInfo');
+    if (!grid) return;
 
-        if (!nomeArquivo) return { status: "erro", mensagem: "Nome do arquivo ausente." };
-        if (tamanhoTotal > 5 * 1024 * 1024 * 1024) {
-            return { status: "erro", mensagem: "Arquivo excede o limite de 5GB." };
-        }
+    let arquivosFiltrados = estadoSite.arquivos.slice();
+    const catAtiva = paraString(estadoSite.categoriaAtiva || 'todas').trim();
 
-        const pasta = obterPastaPrincipal();
-        const nomeSub = safeStr(p.pastaDestino) || determinarSubpasta(nomeArquivo);
-        const subpasta = obterSubpasta(pasta, nomeSub);
-
-        // 1. Cria o arquivo vazio na pasta de destino
-        const arquivo = subpasta.createFile(Utilities.newBlob("", tipoMime, nomeArquivo));
-        const fileId = arquivo.getId();
-
-        // 2. Abre uma sessão de upload resumable (PATCH no arquivo existente)
-        const resp = UrlFetchApp.fetch(
-            "https://www.googleapis.com/upload/drive/v3/files/" + fileId + "?uploadType=resumable&supportsAllDrives=true",
-            {
-                method: "patch",
-                contentType: "application/json; charset=UTF-8",
-                headers: {
-                    "Authorization": "Bearer " + ScriptApp.getOAuthToken(),
-                    "X-Upload-Content-Type": tipoMime,
-                    "X-Upload-Content-Length": String(tamanhoTotal)
-                },
-                payload: JSON.stringify({ name: nomeArquivo, mimeType: tipoMime }),
-                muteHttpExceptions: true,
-                followRedirects: false
-            }
+    if (catAtiva && catAtiva.toLowerCase() !== 'todas') {
+        arquivosFiltrados = arquivosFiltrados.filter(a =>
+            paraString(a.categoria || 'Geral').trim() === catAtiva
         );
+    }
 
-        const code = resp.getResponseCode();
-        const sessionUri = lerHeader_(resp, "Location");
+    if (estadoSite.buscaAtiva) {
+        const t = estadoSite.buscaAtiva.toLowerCase();
+        arquivosFiltrados = arquivosFiltrados.filter(a =>
+            paraString(a.nome).toLowerCase().includes(t) ||
+            paraString(a.descricao).toLowerCase().includes(t) ||
+            paraString(a.tipo).toLowerCase().includes(t)
+        );
+    }
 
-        if (code !== 200 || !sessionUri) {
-            try { arquivo.setTrashed(true); } catch (e) {}
-            return { status: "erro", mensagem: "Drive não abriu a sessão de upload (" + code + "): " + resp.getContentText() };
+    if (info) {
+        if (arquivosFiltrados.length === 0) info.innerHTML = '';
+        else {
+            const catNome = catAtiva.toLowerCase() === 'todas' ? 'todas as categorias' : `"${catAtiva}"`;
+            info.innerHTML = `Mostrando <strong>${arquivosFiltrados.length}</strong> arquivo${arquivosFiltrados.length > 1 ? 's' : ''} em ${catNome}`;
         }
+    }
 
-        // uploadUrl agora é a URL de SESSÃO (com upload_id), a única aceita para enviar fatias
-        return { status: "ok", fileId: fileId, uploadUrl: sessionUri };
-    } catch (err) {
-        return { status: "erro", mensagem: err.toString() };
+    if (!arquivosFiltrados.length) {
+        const msg = catAtiva.toLowerCase() === 'todas'
+            ? 'Nenhum arquivo disponível.'
+            : `Nenhum arquivo na categoria "${catAtiva}".`;
+
+        grid.innerHTML = `
+            <div class="empty-categoria">
+                <i class="fas fa-folder-open"></i>
+                <h3>${msg}</h3>
+                <p>${catAtiva.toLowerCase() !== 'todas' ? 'Tente outra categoria.' : 'Os materiais serão adicionados em breve.'}</p>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = arquivosFiltrados.map(a => {
+        const indexOriginal = estadoSite.arquivos.indexOf(a);
+        const icone = obterIcone(a.tipo);
+        const isNovo = indexOriginal < 3;
+
+        return `
+            <div class="card" onclick="abrirPreview(${indexOriginal})">
+                <div class="card-thumb">
+                    ${gerarThumb(a)}
+                    ${isNovo ? '<span class="tag-novo-card"><i class="fas fa-star"></i> <span>Novo</span></span>' : ''}
+                </div>
+                <div class="card-body">
+                    <span class="card-tag"><i class="fas ${icone}"></i> <span>${escapeHTML(paraString(a.tipo))}</span></span>
+                    <h3>${escapeHTML(paraString(a.nome))}</h3>
+                    <p>${escapeHTML(paraString(a.descricao) || 'Clique para visualizar')}</p>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        ${a.categoria ? `<span class="badge-size" style="background:rgba(212,175,55,0.15); color:#0A1C3A;">${escapeHTML(paraString(a.categoria))}</span>` : ''}
+                        ${a.tamanho ? `<span class="badge-size">${escapeHTML(paraString(a.tamanho))}</span>` : ''}
+                    </div>
+                </div>
+                <button class="btn-download" onclick="event.stopPropagation(); abrirPreview(${indexOriginal})">
+                    <i class="fas fa-eye"></i> <span>Visualizar</span>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function gerarThumb(arquivo) {
+    const ext = paraString(arquivo.tipo).toUpperCase();
+    const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
+    const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
+    const isPdf = ext === 'PDF';
+    const isPsd = ext === 'PSD';
+
+    if (isImg && arquivo.preview) return `<img src="${paraString(arquivo.preview)}" alt="${escapeHTML(paraString(arquivo.nome))}" loading="lazy">`;
+    if (isVid && arquivo.preview) return `<div class="thumb-video"><img src="${paraString(arquivo.preview)}" alt=""><div class="play-overlay"><i class="fas fa-play"></i></div></div>`;
+    if (isPdf) return `<div class="thumb-fallback pdf"><i class="fas fa-file-pdf"></i><span>PDF</span></div>`;
+    if (isPsd) return `<div class="thumb-fallback" style="color:#D4AF37;"><i class="fas fa-file-alt"></i><span>PSD</span></div>`;
+    return `<div class="thumb-fallback"><i class="fas fa-file"></i></div>`;
+}
+
+function obterIcone(tipo) {
+    const t = paraString(tipo).toLowerCase();
+    if (t.includes('pdf')) return 'fa-file-pdf';
+    if (t.includes('png') || t.includes('jpg') || t.includes('jpeg') || t.includes('gif') || t.includes('webp')) return 'fa-file-image';
+    if (t.includes('ppt')) return 'fa-file-powerpoint';
+    if (t.includes('doc')) return 'fa-file-word';
+    if (t.includes('xls') || t.includes('csv')) return 'fa-file-excel';
+    if (t.includes('psd') || t.includes('ai')) return 'fa-file-alt';
+    if (t.includes('zip') || t.includes('rar')) return 'fa-file-archive';
+    if (t.includes('mp4') || t.includes('mov')) return 'fa-file-video';
+    if (t.includes('mp3') || t.includes('wav')) return 'fa-file-audio';
+    return 'fa-file';
+}
+
+// ============================================================
+// BUSCA
+// ============================================================
+function inicializarBusca() {
+    const input = document.getElementById('searchInput');
+    if (!input) return;
+    input.addEventListener('input', function () {
+        estadoSite.buscaAtiva = this.value.trim();
+        renderizarArquivos();
+    });
+}
+
+// ============================================================
+// CARROSSEL
+// ============================================================
+function renderizarCarrossel() {
+    const track = document.getElementById('carouselTrack');
+    const dotsContainer = document.getElementById('dotsContainer');
+    if (!track) return;
+
+    const slides = [];
+
+    estadoSite.carrossel.forEach(s => {
+        slides.push({
+            tipo: 'aviso',
+            titulo: paraString(s.titulo),
+            descricao: paraString(s.descricao),
+            badge: paraString(s.badge) || 'Aviso',
+            link: paraString(s.link),
+            textoBotao: paraString(s.textoBotao) || 'Saber mais',
+            arquivoIndex: null
+        });
+    });
+
+    estadoSite.arquivos.slice(0, 5).forEach((arq, index) => {
+        slides.push({
+            tipo: 'arquivo',
+            titulo: paraString(arq.nome),
+            descricao: paraString(arq.descricao) || `Novo material disponível: ${paraString(arq.tipo)}`,
+            badge: 'Novo',
+            arquivoIndex: index,
+            arquivo: arq
+        });
+    });
+
+    if (slides.length === 0) {
+        slides.push({
+            tipo: 'aviso',
+            titulo: 'Bem-vindo ao Portal',
+            descricao: 'Acesse materiais exclusivos.',
+            badge: 'Novo',
+            link: '#downloads',
+            textoBotao: 'Explorar'
+        });
+    }
+
+    track.innerHTML = slides.map((s, i) => {
+        const isArquivo = s.tipo === 'arquivo';
+        const badgeIcon = isArquivo ? 'fa-star' : 'fa-bullhorn';
+        const temPreviewImg = isArquivo && s.arquivo.preview && isImagem(s.arquivo.tipo);
+
+        return `
+            <div class="carousel-slide ${i === 0 ? 'active' : ''}">
+                <div class="slide-content">
+                    <span class="slide-badge ${isArquivo ? 'badge-novo' : ''}">
+                        <i class="fas ${badgeIcon}"></i><span>${escapeHTML(s.badge)}</span>
+                    </span>
+                    <h3>${escapeHTML(s.titulo)}</h3>
+                    <p>${escapeHTML(s.descricao)}</p>
+                    <div class="slide-actions">
+                        ${isArquivo
+                            ? `<button class="btn-slide btn-slide-primary" onclick="abrirPreview(${s.arquivoIndex})"><i class="fas fa-eye"></i> <span>Ver Arquivo</span></button>`
+                            : `<a href="${s.link || '#downloads'}" class="btn-slide btn-slide-primary"><i class="fas fa-arrow-right"></i> <span>${escapeHTML(s.textoBotao)}</span></a>`
+                        }
+                        <a href="#downloads" class="btn-slide btn-slide-ghost"><i class="fas fa-download"></i> <span>Downloads</span></a>
+                    </div>
+                </div>
+                ${temPreviewImg ? `<div class="slide-thumb"><img src="${paraString(s.arquivo.preview)}" alt="${escapeHTML(paraString(s.arquivo.nome))}" loading="lazy"></div>` : `<div class="slide-thumb slide-thumb-icon"><i class="fas ${obterIcone(s.arquivo?.tipo || 'file')}"></i></div>`}
+            </div>
+        `;
+    }).join('');
+
+    dotsContainer.innerHTML = slides.map((_, i) =>
+        `<span class="dot ${i === 0 ? 'active' : ''}" onclick="irParaSlide(${i})"></span>`
+    ).join('');
+}
+
+function isImagem(tipo) {
+    return ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(paraString(tipo).toUpperCase());
+}
+
+function inicializarCarrossel() {
+    const prev = document.getElementById('prevBtn');
+    const next = document.getElementById('nextBtn');
+    if (prev) prev.addEventListener('click', () => { irParaSlide(estadoSite.slideAtual - 1); reiniciarAutoPlay(); });
+    if (next) next.addEventListener('click', () => { irParaSlide(estadoSite.slideAtual + 1); reiniciarAutoPlay(); });
+
+    const container = document.querySelector('.carousel-container');
+    if (container) {
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        container.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        container.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) irParaSlide(estadoSite.slideAtual + 1);
+                else irParaSlide(estadoSite.slideAtual - 1);
+                reiniciarAutoPlay();
+            }
+        }
+    }
+
+    iniciarAutoPlay();
+}
+
+function irParaSlide(n) {
+    const slides = document.querySelectorAll('.carousel-slide');
+    const dots = document.querySelectorAll('.dot');
+    if (!slides.length) return;
+    slides.forEach(s => s.classList.remove('active'));
+    dots.forEach(d => d.classList.remove('active'));
+    estadoSite.slideAtual = (n + slides.length) % slides.length;
+    slides[estadoSite.slideAtual].classList.add('active');
+    dots[estadoSite.slideAtual].classList.add('active');
+}
+
+function iniciarAutoPlay() {
+    clearInterval(estadoSite.carrosselInterval);
+    estadoSite.carrosselInterval = setInterval(() => irParaSlide(estadoSite.slideAtual + 1), 7000);
+}
+
+function reiniciarAutoPlay() {
+    clearInterval(estadoSite.carrosselInterval);
+    iniciarAutoPlay();
+}
+
+// ============================================================
+// CONTATO
+// ============================================================
+function renderizarContato() {
+    const c = estadoSite.config;
+    const email = paraString(c.Email_Contato) || 'marketing@ieadcuiaba.com.br';
+    const insta = paraString(c.Instagram || '@ieadcuiaba').replace('@', '');
+
+    const eLink = document.getElementById('contatoEmail');
+    const eTxt = document.getElementById('contatoEmailTexto');
+    if (eLink) eLink.href = 'mailto:' + email;
+    if (eTxt) eTxt.textContent = email;
+
+    const iLink = document.getElementById('contatoInstagram');
+    const iTxt = document.getElementById('contatoInstagramTexto');
+    if (iLink) iLink.href = 'https://instagram.com/' + insta;
+    if (iTxt) iTxt.textContent = '@' + insta;
+
+    const wLink = document.getElementById('contatoWhatsapp');
+    if (wLink) wLink.href = 'https://wa.me/5565999999999';
+}
+
+// ============================================================
+// IEAD CREATIVE - LISTAGEM
+// ============================================================
+function renderizarCreative() {
+    const grid = document.getElementById('creativeGrid');
+    if (!grid) return;
+
+    const filtrados = estadoSite.criativos.filter(c => {
+        if (!estadoSite.creativeBusca) return true;
+        const t = estadoSite.creativeBusca.toLowerCase();
+        return paraString(c.nome).toLowerCase().includes(t) || paraString(c.descricao).toLowerCase().includes(t);
+    });
+
+    if (!filtrados.length) {
+        grid.innerHTML = `<div class="empty-categoria" style="grid-column:1/-1;"><i class="fas fa-magic"></i><h3>Nenhum template PSD disponível</h3><p>Os templates aparecerão aqui quando forem enviados.</p></div>`;
+        return;
+    }
+
+    grid.innerHTML = filtrados.map(c => {
+        const indexOriginal = estadoSite.criativos.indexOf(c);
+        const nomeAutor = paraString(c.usuarioNome);
+        const whatsapp = paraString(c.usuarioWhatsApp);
+        const fotoAutor = paraString(c.usuarioFoto) || gerarAvatarInicial(nomeAutor || 'Usuário');
+        const whatsappLink = whatsapp ? `https://wa.me/55${somenteDigitos(whatsapp)}` : '';
+        const idade = paraString(c.usuarioIdade);
+        const congregacao = paraString(c.usuarioCongregacao);
+        const cidade = paraString(c.usuarioCidade);
+
+        return `
+            <div class="creative-card" onclick="creativeAbrirEditor(${indexOriginal})">
+                <div class="creative-card-thumb">
+                    ${c.preview ? `<img src="${paraString(c.preview)}" alt="${escapeHTML(paraString(c.nome))}" loading="lazy">` : `<i class="fas fa-file-alt psd-icon"></i>`}
+                    <span class="creative-card-badge">PSD</span>
+                </div>
+                <div class="creative-card-body">
+                    <h3>${escapeHTML(paraString(c.nome))}</h3>
+                    <p>${escapeHTML(paraString(c.descricao) || 'Template editável disponível')}</p>
+
+                    ${nomeAutor ? `
+                        <div class="creative-autor">
+                            <img src="${fotoAutor}" class="creative-autor-foto" alt="Autor" onerror="this.src='${gerarAvatarInicial(nomeAutor)}'">
+                            <div class="creative-autor-info">
+                                <strong>${escapeHTML(nomeAutor)}</strong>
+                                <span>${idade ? idade + ' anos • ' : ''}${escapeHTML(congregacao)}${cidade ? ' • ' + escapeHTML(cidade) : ''}</span>
+                            </div>
+                            ${whatsappLink ? `
+                                <a href="${whatsappLink}" target="_blank" class="creative-whatsapp" onclick="event.stopPropagation();">
+                                    <i class="fab fa-whatsapp"></i>
+                                </a>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+
+                    <button class="creative-card-btn"><i class="fas fa-magic"></i> Abrir no Editor</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderizarCreativeMeus() {
+    const grid = document.getElementById('creativeMeusGrid');
+    if (!grid) return;
+
+    if (!estadoSite.usuario) {
+        grid.innerHTML = '<p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:30px;">Faça login para ver seus arquivos.</p>';
+        return;
+    }
+
+    const meus = estadoSite.criativos.filter(c => paraString(c.usuarioId) === paraString(estadoSite.usuario.id));
+
+    if (!meus.length) {
+        grid.innerHTML = `<p style="color:rgba(255,255,255,0.5); text-align:center; grid-column:1/-1; padding:30px;">Você ainda não enviou nenhum PSD.</p>`;
+        return;
+    }
+
+    grid.innerHTML = meus.map(c => {
+        return `
+            <div class="creative-card">
+                <div class="creative-card-thumb">
+                    ${c.preview ? `<img src="${paraString(c.preview)}" alt="${escapeHTML(paraString(c.nome))}" loading="lazy">` : `<i class="fas fa-file-alt psd-icon"></i>`}
+                    <span class="creative-card-badge" style="background:#28A745;">Enviado</span>
+                </div>
+                <div class="creative-card-body">
+                    <h3>${escapeHTML(paraString(c.nome))}</h3>
+                    <p>${escapeHTML(paraString(c.descricao) || 'Seu arquivo')}</p>
+                    <button class="creative-card-btn" onclick="creativeAbrirEditorPublico('${paraString(c.fileId)}')"><i class="fas fa-magic"></i> Abrir no Editor</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function creativeTrocarAba(aba) {
+    estadoSite.creativeAbaAtiva = aba;
+    document.querySelectorAll('.creative-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.creative-panel').forEach(p => p.classList.remove('active'));
+
+    if (aba === 'templates') {
+        document.querySelector('.creative-tab:nth-child(1)').classList.add('active');
+        document.getElementById('creativePanelTemplates').classList.add('active');
+    } else {
+        document.querySelector('.creative-tab:nth-child(2)').classList.add('active');
+        document.getElementById('creativePanelMeus').classList.add('active');
     }
 }
 
-function enviarFatiaUpload(p) {
-    try {
-        const uploadUrl = safeStr(p.uploadUrl);
-        if (!uploadUrl || uploadUrl.indexOf("upload_id=") === -1) {
-            return { status: "erro", mensagem: "URL de sessão inválida." };
+function inicializarBuscaCreative() {
+    const input = document.getElementById('creativeBusca');
+    if (!input) return;
+    input.addEventListener('input', function () {
+        estadoSite.creativeBusca = this.value.trim();
+        renderizarCreative();
+    });
+}
+
+// ============================================================
+// MODAL DE ENVIO (IFRAME METHOD)
+// ============================================================
+function inicializarModalEnvio() {
+    const inputPSD = document.getElementById('modalInputPSD');
+    const inputCapa = document.getElementById('modalInputCapa');
+    const areaPSD = document.getElementById('modalUploadPSD');
+    const areaCapa = document.getElementById('modalUploadCapa');
+
+    areaPSD?.addEventListener('click', () => inputPSD.click());
+    areaPSD?.addEventListener('dragover', e => { e.preventDefault(); areaPSD.classList.add('dragover'); });
+    areaPSD?.addEventListener('dragleave', () => areaPSD.classList.remove('dragover'));
+    areaPSD?.addEventListener('drop', e => {
+        e.preventDefault();
+        areaPSD.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            inputPSD.files = e.dataTransfer.files;
+            selecionarPSDModal(e.dataTransfer.files[0]);
         }
+    });
+    inputPSD?.addEventListener('change', () => {
+        if (inputPSD.files.length) selecionarPSDModal(inputPSD.files[0]);
+    });
 
-        const chunkBytes = Utilities.base64Decode(p.chunkBase64);
-        const offset = parseInt(p.offset);
-        const chunkLength = chunkBytes.length; // usa o tamanho real recebido
-        const totalSize = parseInt(p.totalSize);
+    areaCapa?.addEventListener('click', () => inputCapa.click());
+    areaCapa?.addEventListener('dragover', e => { e.preventDefault(); areaCapa.classList.add('dragover'); });
+    areaCapa?.addEventListener('dragleave', () => areaCapa.classList.remove('dragover'));
+    areaCapa?.addEventListener('drop', e => {
+        e.preventDefault();
+        areaCapa.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            inputCapa.files = e.dataTransfer.files;
+            selecionarCapaModal(e.dataTransfer.files[0]);
+        }
+    });
+    inputCapa?.addEventListener('change', () => {
+        if (inputCapa.files.length) selecionarCapaModal(inputCapa.files[0]);
+    });
+}
 
-        const response = UrlFetchApp.fetch(uploadUrl, {
-            method: "put",
-            contentType: "application/octet-stream",
-            headers: {
-                "Authorization": "Bearer " + ScriptApp.getOAuthToken(),
-                "Content-Range": "bytes " + offset + "-" + (offset + chunkLength - 1) + "/" + totalSize
-            },
-            payload: chunkBytes,
-            muteHttpExceptions: true,
-            followRedirects: false
+function abrirModalEnvio() {
+    if (!estadoSite.usuario) { abrirModalAuth(); return; }
+    document.getElementById('modalEnvio').classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    estadoSite.criativoPSD = null;
+    estadoSite.criativoCapa = null;
+    document.getElementById('modalInputPSD').value = '';
+    document.getElementById('modalInputCapa').value = '';
+    document.getElementById('modalPSDStatus').textContent = '';
+    document.getElementById('modalCapaPreview').style.display = 'none';
+    document.getElementById('modalUploadCapa').style.display = 'flex';
+    document.getElementById('modalTitulo').value = '';
+    document.getElementById('modalDescricao').value = '';
+    document.getElementById('modalEnvioProgress').style.display = 'none';
+    document.getElementById('modalEnvioSubmit').disabled = false;
+    document.getElementById('modalEnvioSubmit').innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Enviar PSD';
+}
+
+function fecharModalEnvio() {
+    document.getElementById('modalEnvio').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function selecionarPSDModal(file) {
+    if (!file.name.toLowerCase().endsWith('.psd')) {
+        alert('Por favor, envie apenas arquivos .psd');
+        return;
+    }
+    const limiteGB = (window.CONFIG.LIMITE_CREATIVE_MB / 1024).toFixed(0);
+    if (file.size > window.CONFIG.LIMITE_CREATIVE_MB * 1024 * 1024) {
+        alert(`Arquivo muito grande (máx ${limiteGB} GB)`);
+        return;
+    }
+
+    estadoSite.criativoPSD = file;
+
+    const statusEl = document.getElementById('modalPSDStatus');
+    statusEl.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; color:#28A745; font-weight:700; font-size:0.8rem; margin-top:8px;">
+            <i class="fas fa-check-circle"></i>
+            ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)
+        </div>
+    `;
+
+    const tituloInput = document.getElementById('modalTitulo');
+    if (tituloInput && !tituloInput.value) {
+        tituloInput.value = file.name.replace(/\.[^/.]+$/, '');
+    }
+}
+
+function selecionarCapaModal(file) {
+    if (!file.type.startsWith('image/')) {
+        alert('Envie uma imagem PNG ou JPG');
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Capa muito grande (máx 5 MB)');
+        return;
+    }
+
+    estadoSite.criativoCapa = file;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('modalCapaImg').src = e.target.result;
+        document.getElementById('modalCapaPreview').style.display = 'block';
+        document.getElementById('modalUploadCapa').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+function removerCapa() {
+    estadoSite.criativoCapa = null;
+    document.getElementById('modalInputCapa').value = '';
+    document.getElementById('modalCapaPreview').style.display = 'none';
+    document.getElementById('modalUploadCapa').style.display = 'flex';
+}
+
+async function enviarPSDModal() {
+    if (!estadoSite.usuario) { abrirModalAuth(); return; }
+    if (!estadoSite.criativoPSD) { alert('Selecione o arquivo PSD!'); return; }
+    if (!estadoSite.criativoCapa) { alert('⚠️ A capa do PSD é OBRIGATÓRIA!'); return; }
+
+    const titulo = document.getElementById('modalTitulo').value.trim();
+    if (!titulo) { alert('Digite um título para o template'); return; }
+
+    const descricao = document.getElementById('modalDescricao').value.trim();
+    const file = estadoSite.criativoPSD;
+
+    const progressDiv = document.getElementById('modalEnvioProgress');
+    const statusEl = document.getElementById('modalEnvioStatus');
+    const barEl = document.getElementById('modalEnvioBar');
+    const pctEl = document.getElementById('modalEnvioPercent');
+    const btnSubmit = document.getElementById('modalEnvioSubmit');
+
+    progressDiv.style.display = 'block';
+    barEl.style.width = '0%';
+    pctEl.textContent = '0%';
+    statusEl.textContent = '⏳ Preparando upload...';
+
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+    try {
+        // 1. Pede ao Apps Script um link temporário para upload
+        const initReq = await window.apiPost({
+            acao: 'iniciar_upload_fatiado',
+            nomeArquivo: file.name,
+            tipoMime: file.type || 'image/vnd.adobe.photoshop',
+            tamanhoTotal: file.size,
+            pastaDestino: 'IEAD Creative'
         });
 
-        const code = response.getResponseCode();
-        // 308 = fatia aceita, faltam mais | 200/201 = upload completo
-        if (code === 200 || code === 201 || code === 308) {
-            return { status: "ok", code: code, completo: code !== 308 };
-        }
-        return { status: "erro", mensagem: "Erro no Drive (" + code + "): " + response.getContentText() };
-    } catch (err) {
-        return { status: "erro", mensagem: err.toString() };
-    }
-}
-
-function confirmarUploadDireto(p) {
-    try {
-        const fileId = p.fileId;
-        if (!fileId) return { status: "erro", mensagem: "fileId ausente." };
-
-        const arquivo = DriveApp.getFileById(fileId);
-        arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        if (p.descricao) arquivo.setDescription(safeStr(p.descricao));
-
-        const linkVisualizar = arquivo.getUrl();
-        const linkDownload = "https://drive.google.com/uc?export=download&id=" + fileId;
-        const tamanhoMB = safeStr(p.tamanho) || (arquivo.getSize() / (1024 * 1024)).toFixed(2);
-        const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-        // ---------- Fluxo IEAD Creative (tem capa e usuário) ----------
-        if (p.capaBase64) {
-            if (!p.usuarioId) return { status: "erro", mensagem: "É necessário estar logado" };
-
-            const cad = buscarUsuarioPorId_(p.usuarioId) || {};
-            const autor = {
-                nome: safeStr(p.usuarioNome) || cad.nome || "",
-                whatsapp: safeStr(p.usuarioWhatsApp) || cad.whatsapp || "",
-                congregacao: safeStr(p.usuarioCongregacao) || cad.congregacao || "",
-                idade: safeStr(p.usuarioIdade) || cad.idade || "",
-                foto: safeStr(p.usuarioFoto) || cad.foto || "",
-                cidade: safeStr(p.usuarioCidade) || cad.cidade || ""
-            };
-
-            const subpasta = obterSubpasta(obterPastaPrincipal(), "IEAD Creative");
-
-            const capaBlob = Utilities.newBlob(
-                Utilities.base64Decode(p.capaBase64),
-                p.capaTipoMime || "image/png",
-                "capa_" + fileId + ".png"
-            );
-            const capaFile = subpasta.createFile(capaBlob);
-            capaFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-            const capaURL = "https://drive.google.com/thumbnail?id=" + capaFile.getId() + "&sz=w800";
-
-            const aba = ss.getSheetByName(ABA_CRIATIVOS);
-            const id = Math.max(aba.getLastRow(), 1);
-
-            aba.appendRow([
-                id,
-                safeStr(p.nome) || safeStr(p.nomeArquivo).replace(/\.[^/.]+$/, ""),
-                "PSD",
-                linkVisualizar,
-                linkDownload,
-                safeStr(p.descricao),
-                new Date(),
-                true,
-                fileId,
-                tamanhoMB + " MB",
-                capaURL,
-                safeStr(p.usuarioId),
-                autor.nome,
-                "'" + autor.whatsapp,
-                autor.congregacao,
-                "'" + autor.idade,
-                autor.foto,
-                autor.cidade
-            ]);
-
-            const ultimaLinha = aba.getLastRow();
-            aba.getRange(ultimaLinha, 14).setNumberFormat("@");
-            aba.getRange(ultimaLinha, 16).setNumberFormat("@");
-
-            registrarLog("SITE", "CREATIVE_UPLOAD", safeStr(p.nomeArquivo) + " por " + autor.nome);
-            return { status: "ok", mensagem: "PSD enviado!", id: id, fileId: fileId, preview: capaURL, link: linkDownload };
+        if (!initReq || initReq.status !== 'ok') {
+            throw new Error(initReq?.mensagem || 'Falha ao iniciar upload.');
         }
 
-        // ---------- Fluxo antigo (aba Arquivos) ----------
-        const preview = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w800";
-        const aba2 = ss.getSheetByName(ABA_ARQUIVOS);
-        const id2 = Math.max(aba2.getLastRow(), 1);
-        const ext = safeStr(p.nomeArquivo).split(".").pop().toUpperCase();
+        const { fileId, uploadUrl } = initReq;
+        const chunkSize = 4 * 1024 * 1024; // 4MB por fatia (múltiplo de 256KB, exigido pelo Drive)
+        const totalChunks = Math.ceil(file.size / chunkSize);
+        
+        let offset = 0;
 
-        aba2.appendRow([
-            id2, safeStr(p.nomeAmigavel) || safeStr(p.nomeArquivo).replace(/\.[^/.]+$/, ""), ext, linkDownload,
-            safeStr(p.descricao) || "Clique para baixar", safeStr(p.categoria) || "Geral",
-            new Date(), true, fileId, tamanhoMB + " MB", preview
-        ]);
+        // 2. Envia cada fatia via iframe oculto (contorna CORS)
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * chunkSize;
+            const end = Math.min(start + chunkSize, file.size);
+            const chunk = file.slice(start, end);
 
-        return { status: "ok", mensagem: "Upload registrado!", arquivo: { id: id2, link: linkDownload, preview: preview, fileId: fileId } };
-    } catch (err) {
-        return { status: "erro", mensagem: err.toString() };
-    }
-}
+            const pct = Math.round(((i) / totalChunks) * 100);
+            statusEl.textContent = `⏳ Enviando parte ${i + 1} de ${totalChunks} (${pct}%)...`;
+            barEl.style.width = pct + '%';
+            pctEl.textContent = pct + '%';
 
-// ============================================================
-// OUTRAS FUNÇÕES (Mantidas)
-// ============================================================
-function obterPastaPrincipal() {
-    const pastas = DriveApp.getFoldersByName(PASTA_DRIVE);
-    if (pastas.hasNext()) return pastas.next();
-    return DriveApp.createFolder(PASTA_DRIVE);
-}
-
-function obterSubpasta(pastaPai, nome) {
-    const subs = pastaPai.getFoldersByName(nome);
-    if (subs.hasNext()) return subs.next();
-    return pastaPai.createFolder(nome);
-}
-
-function determinarSubpasta(nomeArq) {
-    const ext = (safeStr(nomeArq).split(".").pop() || "").toUpperCase();
-    const mapa = {
-        PDF: "Documentos PDF", DOC: "Word", DOCX: "Word",
-        XLS: "Planilhas", XLSX: "Planilhas",
-        PPT: "Apresentações", PPTX: "Apresentações",
-        PNG: "Imagens", JPG: "Imagens", JPEG: "Imagens", GIF: "Imagens", SVG: "Imagens", WEBP: "Imagens",
-        MP4: "Vídeos", MOV: "Vídeos", AVI: "Vídeos", MKV: "Vídeos",
-        MP3: "Áudios", WAV: "Áudios",
-        ZIP: "Compactados", RAR: "Compactados",
-        PSD: "Editáveis", AI: "Editáveis"
-    };
-    return mapa[ext] || "Outros";
-}
-
-function obterInfoPasta() {
-    const pasta = obterPastaPrincipal();
-    const subpastas = pasta.getFolders();
-    const listaSubpastas = [];
-    while (subpastas.hasNext()) {
-        const sub = subpastas.next();
-        const arquivos = sub.getFiles();
-        let contador = 0;
-        while (arquivos.hasNext()) { arquivos.next(); contador++; }
-        listaSubpastas.push({ nome: sub.getName(), id: sub.getId(), url: sub.getUrl(), total_arquivos: contador });
-    }
-    return {
-        nome: pasta.getName(),
-        id: pasta.getId(),
-        url: pasta.getUrl(),
-        total_subpastas: listaSubpastas.length,
-        subpastas: listaSubpastas
-    };
-}
-
-// ============================================================
-// DOWNLOAD FATIADO (para abrir PSDs grandes no Photopea)
-// ============================================================
-function baixarPSDInfo(fileId) {
-    try {
-        if (!fileId) return { status: "erro", mensagem: "fileId é obrigatório" };
-        const f = DriveApp.getFileById(fileId);
-        return { status: "ok", nome: f.getName(), mimeType: f.getMimeType(), tamanho: f.getSize() };
-    } catch (err) {
-        return { status: "erro", mensagem: err.toString() };
-    }
-}
-
-function baixarPSDFatia(fileId, offset, length) {
-    if (!fileId) return { status: "erro", mensagem: "fileId é obrigatório" };
-    const ini = parseInt(offset) || 0;
-    const tam = Math.min(parseInt(length) || (3 * 1024 * 1024), 8 * 1024 * 1024);
-
-    // Tenta variações da URL e repete em caso de "Erro inesperado" (falha transitória do UrlFetchApp)
-    const urls = [
-        "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&supportsAllDrives=true",
-        "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media",
-        "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&acknowledgeAbuse=true"
-    ];
-    let ultimoErro = "";
-
-    for (let tentativa = 0; tentativa < 6; tentativa++) {
-        const url = urls[tentativa % urls.length];
-        try {
-            const resp = UrlFetchApp.fetch(url, {
-                headers: {
-                    "Authorization": "Bearer " + ScriptApp.getOAuthToken(),
-                    "Range": "bytes=" + ini + "-" + (ini + tam - 1)
-                },
-                muteHttpExceptions: true,
-                followRedirects: true
+            const chunkBase64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(chunk);
             });
 
-            const code = resp.getResponseCode();
-            if (code === 200 || code === 206) {
-                const bytes = resp.getContent();
-                // Se o Drive ignorou o Range e mandou o arquivo inteiro, recorta o pedaço certo
-                const pedaco = (code === 200 && bytes.length > tam) ? bytes.slice(ini, ini + tam) : bytes;
-                return { status: "ok", offset: ini, bytes: pedaco.length, base64: Utilities.base64Encode(pedaco) };
-            }
-            ultimoErro = "HTTP " + code + ": " + resp.getContentText().substring(0, 200);
-            if (code === 401 || code === 403 || code === 404) break; // não adianta repetir
-        } catch (err) {
-            ultimoErro = err.toString();
-        }
-        Utilities.sleep(700 * (tentativa + 1));
-    }
-    return { status: "erro", mensagem: "Falha ao ler o arquivo no Drive: " + ultimoErro };
-}
+            const chunkReq = await window.apiPost({
+                acao: 'enviar_fatia_upload',
+                fileId: fileId,
+                uploadUrl: uploadUrl,
+                chunkBase64: chunkBase64,
+                offset: offset,
+                chunkLength: chunk.size,
+                totalSize: file.size
+            });
 
-// Rode no editor do Apps Script (informe um fileId) para ver o erro real do Drive
-function diagnosticoDownload() {
-    const fileId = "COLE_AQUI_O_FILE_ID"; // ex.: 1_lAnjvIUwrfvkka4nfOOcZG0qGsy2YA9
-    const f = DriveApp.getFileById(fileId);
-    Logger.log("Nome: " + f.getName() + " | Tamanho: " + f.getSize() + " | Tipo: " + f.getMimeType());
-    try {
-        const r = UrlFetchApp.fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&supportsAllDrives=true", {
-            headers: { "Authorization": "Bearer " + ScriptApp.getOAuthToken(), "Range": "bytes=0-1023" },
-            muteHttpExceptions: true
+            if (!chunkReq || chunkReq.status !== 'ok') {
+                throw new Error(chunkReq?.mensagem || `Falha ao enviar parte ${i + 1}.`);
+            }
+
+            offset += chunk.size;
+        }
+
+        barEl.style.width = '90%';
+        pctEl.textContent = '90%';
+        statusEl.textContent = '⏳ Processando capa e salvando dados...';
+
+        const capaBase64 = await window.fileToBase64(estadoSite.criativoCapa);
+
+        const result = await window.apiPost({
+            acao: 'confirmar_upload_direto',
+            fileId: fileId,
+            nomeArquivo: file.name,
+            nome: titulo,
+            descricao: descricao,
+            tamanho: (file.size / (1024 * 1024)).toFixed(2),
+            capaBase64: capaBase64.split(',')[1],
+            capaTipoMime: estadoSite.criativoCapa.type,
+            usuarioId: estadoSite.usuario.id,
+            usuarioNome: estadoSite.usuario.nome,
+            usuarioWhatsApp: estadoSite.usuario.whatsapp,
+            usuarioCongregacao: estadoSite.usuario.congregacao,
+            usuarioIdade: estadoSite.usuario.idade,
+            usuarioFoto: estadoSite.usuario.foto || '',
+            usuarioCidade: estadoSite.usuario.cidade || ''
         });
-        Logger.log("HTTP " + r.getResponseCode() + " | bytes: " + r.getContent().length + " | headers: " + JSON.stringify(r.getAllHeaders()));
-        Logger.log(r.getResponseCode() >= 400 ? r.getContentText() : "OK");
-    } catch (e) {
-        Logger.log("EXCEÇÃO: " + e.toString());
+
+        barEl.style.width = '100%';
+        pctEl.textContent = '100%';
+
+        if (result && result.status === 'ok') {
+            statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:#28A745;"></i> PSD enviado com sucesso!';
+            statusEl.style.color = '#28A745';
+
+            setTimeout(async () => {
+                fecharModalEnvio();
+                await carregarDadosSite();
+                renderizarCreative();
+                renderizarCreativeMeus();
+            }, 1200);
+        } else {
+            throw new Error(result?.mensagem || 'Erro ao registrar os dados na planilha.');
+        }
+    } catch (err) {
+        console.error(err);
+        statusEl.textContent = `❌ Erro: ${err.message}`;
+        statusEl.style.color = '#FF3B30';
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Enviar PSD';
     }
 }
 
 // ============================================================
-// DADOS DO AUTOR (busca na aba Usuarios quando faltar algo)
+// PHOTOPEA - EDITOR
 // ============================================================
-function buscarUsuarioPorId_(usuarioId) {
-    try {
-        if (!usuarioId) return null;
-        const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_USUARIOS);
-        if (!aba) return null;
-        const dados = aba.getDataRange().getValues();
-        for (let i = 1; i < dados.length; i++) {
-            if (safeStr(dados[i][0]) === safeStr(usuarioId)) {
-                return {
-                    nome: safeStr(dados[i][1]),
-                    whatsapp: safeStr(dados[i][3]),
-                    congregacao: safeStr(dados[i][4]),
-                    idade: safeStr(dados[i][5]),
-                    cidade: safeStr(dados[i][6]),
-                    foto: safeStr(dados[i][7])
-                };
+function creativeAbrirEditor(index) {
+    const arquivo = estadoSite.criativos[index];
+    if (!arquivo) { alert('Arquivo não encontrado.'); return; }
+    abrirEditorComArquivo(arquivo);
+}
+
+function creativeAbrirEditorPublico(fileId) {
+    const arquivo = estadoSite.criativos.find(x => paraString(x.fileId) === paraString(fileId));
+    if (arquivo) abrirEditorComArquivo(arquivo);
+    else alert('Arquivo não encontrado.');
+}
+
+async function abrirEditorComArquivo(arquivo) {
+    const modal = document.getElementById('editorModal');
+    const iframe = document.getElementById('editorIframe');
+    const titulo = document.getElementById('editorTitulo');
+
+    titulo.textContent = `Editando: ${paraString(arquivo.nome)}`;
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    iframe.setAttribute('allow', 'clipboard-read; clipboard-write; fullscreen');
+
+    const oldLoading = document.getElementById('editorLoading');
+    if (oldLoading) oldLoading.remove();
+
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'editorLoading';
+    loadingDiv.style.cssText = `position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(10,28,58,0.95); color:#D4AF37; padding:25px 35px; border-radius:16px; font-family:Inter,sans-serif; font-weight:700; z-index:10; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.6); max-width: 90%; min-width: 220px;`;
+    loadingDiv.innerHTML = `
+        <div style="width:45px;height:45px;border:4px solid rgba(212,175,55,0.2);border-top-color:#D4AF37;border-radius:50%;margin:0 auto 15px;animation:spin 1s linear infinite;"></div>
+        <p style="margin-bottom:6px; font-size:0.95rem;">Carregando PSD...</p>
+        <p id="editorLoadingStatus" style="font-size:0.8rem;color:rgba(255,255,255,0.7);font-weight:400;">Preparando arquivo</p>
+    `;
+
+    const bodyParent = iframe.parentElement;
+    bodyParent.style.position = 'relative';
+    bodyParent.appendChild(loadingDiv);
+
+    if (!document.getElementById('spinAnimation')) {
+        const style = document.createElement('style');
+        style.id = 'spinAnimation';
+        style.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+        document.head.appendChild(style);
+    }
+
+    const statusEl = () => document.getElementById('editorLoadingStatus');
+    const fileId = arquivo.fileId || extrairFileId(arquivo.link);
+    if (!fileId) {
+        loadingDiv.innerHTML = '<p style="color:#FF6B6B;">❌ fileId não encontrado</p>';
+        return;
+    }
+
+    const fecharComErro = (msg) => {
+        loadingDiv.innerHTML = `<p style="color:#FF6B6B; font-size:0.85rem;">❌ ${msg}</p>
+            <button onclick="editorFechar()" style="margin-top:12px;padding:10px 18px;background:#D4AF37;color:#0A1C3A;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;">Fechar</button>`;
+    };
+
+    let arrayBuffer = null;
+
+    // A) Download direto do Drive pelo navegador (sem limite do Apps Script)
+    const driveKey = (window.CONFIG && window.CONFIG.DRIVE_API_KEY) || window.DRIVE_API_KEY || '';
+    if (driveKey) {
+        try {
+            statusEl().textContent = 'Baixando direto do Drive...';
+            const r = await fetch(
+                `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true&key=${encodeURIComponent(driveKey)}`
+            );
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+
+            const totalHeader = Number(r.headers.get('Content-Length')) || 0;
+            const reader = r.body.getReader();
+            let buf = totalHeader ? new Uint8Array(totalHeader) : null;
+            const partes = [];
+            let recebido = 0;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (buf && recebido + value.length <= buf.length) buf.set(value, recebido);
+                else { if (buf) { partes.push(buf.slice(0, recebido)); buf = null; } partes.push(value); }
+                recebido += value.length;
+                const mb = (recebido / (1024 * 1024)).toFixed(1);
+                statusEl().textContent = totalHeader
+                    ? `Baixando ${mb} de ${(totalHeader / (1024 * 1024)).toFixed(1)} MB (${Math.round(recebido / totalHeader * 100)}%)`
+                    : `Baixando ${mb} MB...`;
             }
+
+            if (buf) {
+                arrayBuffer = buf.buffer;
+            } else {
+                const todo = new Uint8Array(recebido);
+                let pos = 0;
+                for (const p of partes) { todo.set(p, pos); pos += p.length; }
+                arrayBuffer = todo.buffer;
+            }
+            if (!recebido) arrayBuffer = null;
+        } catch (err) {
+            console.warn('Download direto falhou, tentando via Apps Script:', err);
+            arrayBuffer = null;
         }
-    } catch (e) {}
+    }
+
+    // B) Plano B: download em fatias pelo Apps Script (só funciona para arquivos menores)
+    if (!arrayBuffer) {
+        // 1. Descobre o tamanho do arquivo
+        statusEl().textContent = 'Verificando arquivo...';
+        const info = await window.apiGet('baixar_psd_info', { fileId: fileId });
+        if (!info || info.status !== 'ok') {
+            fecharComErro(info?.mensagem || 'Erro ao consultar o arquivo');
+            return;
+        }
+
+        const total = Number(info.tamanho);
+        if (!total) { fecharComErro('Arquivo vazio ou inacessível'); return; }
+
+        // 2. Baixa em fatias de 6MB e monta tudo num único buffer
+        const sliceSize = 3 * 1024 * 1024;
+        const bytes = new Uint8Array(total);
+        const tamanhoMB = (total / (1024 * 1024)).toFixed(1);
+        let baixado = 0;
+
+        try {
+            for (let offset = 0; offset < total; offset += sliceSize) {
+                const pct = Math.round((offset / total) * 100);
+                statusEl().textContent = `Baixando ${tamanhoMB} MB... ${pct}%`;
+
+                let fatia = null;
+                for (let tentativa = 1; tentativa <= 4; tentativa++) {
+                    fatia = await window.apiGet('baixar_psd_fatia', {
+                        fileId: fileId,
+                        offset: offset,
+                        length: Math.min(sliceSize, total - offset)
+                    });
+                    if (fatia && fatia.status === 'ok') break;
+                    if (tentativa < 4) await new Promise(r => setTimeout(r, 1500 * tentativa));
+                }
+                if (!fatia || fatia.status !== 'ok') {
+                    throw new Error(fatia?.mensagem || 'Falha ao baixar parte do arquivo');
+                }
+
+                const bin = atob(fatia.base64);
+                for (let i = 0; i < bin.length; i++) bytes[offset + i] = bin.charCodeAt(i);
+                baixado += bin.length;
+            }
+        } catch (err) {
+            fecharComErro(err.message);
+            return;
+        }
+
+        if (baixado !== total) {
+            fecharComErro(`Download incompleto (${baixado} de ${total} bytes)`);
+            return;
+        }
+
+        statusEl().textContent = `Preparando (${tamanhoMB} MB)...`;
+        arrayBuffer = bytes.buffer;
+    }
+
+    statusEl().textContent = 'Abrindo editor...';
+
+    iframe.src = 'https://www.photopea.com/#menu';
+
+    let arquivoEnviado = false;
+
+    const photopeaHandler = (event) => {
+        if (event.source !== iframe.contentWindow) return;
+        try { console.log('📨 Photopea:', event.data); } catch (err) {}
+    };
+
+    window.addEventListener('message', photopeaHandler);
+    window._photopeaHandler = photopeaHandler;
+
+    iframe.onload = () => {
+        try {
+            iframe.contentWindow.postMessage('app.hideAds();', '*');
+            iframe.contentWindow.postMessage('app.showMenu();', '*');
+            
+            const cssInjection = `
+                const style = document.createElement('style');
+                style.innerHTML = \`
+                    #banner, #banner-container, div[id*="banner"], div[class*="banner"] { display: none !important; }
+                    body, html { overflow: hidden; }
+                \`;
+                document.head.appendChild(style);
+            `;
+            iframe.contentWindow.postMessage(cssInjection, '*');
+
+            setTimeout(() => { try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e){} }, 1000);
+            setTimeout(() => { try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e){} }, 3000);
+            
+            const scriptAtalho = `
+                document.addEventListener('keydown', function(e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                        e.preventDefault();
+                        app.showExport();
+                    }
+                });
+            `;
+            iframe.contentWindow.postMessage(scriptAtalho, '*');
+
+        } catch (e) { console.error("Erro ao injetar comandos:", e); }
+
+        setTimeout(() => {
+            if (arquivoEnviado) return;
+            arquivoEnviado = true;
+
+            statusEl().textContent = 'Enviando PSD...';
+
+            try {
+                iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
+                setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 1500);
+            } catch (err) {
+                loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
+            }
+        }, 800);
+    };
+
+    setTimeout(() => {
+        if (arquivoEnviado) return;
+        arquivoEnviado = true;
+        try {
+            iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
+            setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 1500);
+        } catch (err) {}
+    }, 5000);
+
+    setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
+}
+
+if (!document.getElementById('toastAnimation')) {
+    const style = document.createElement('style');
+    style.id = 'toastAnimation';
+    style.textContent = `
+        @keyframes toastIn {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function editorFechar() {
+    const modal = document.getElementById('editorModal');
+    const iframe = document.getElementById('editorIframe');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+    setTimeout(() => { iframe.src = 'about:blank'; }, 300);
+    const loading = document.getElementById('editorLoading');
+    if (loading) loading.remove();
+    if (window._photopeaHandler) {
+        window.removeEventListener('message', window._photopeaHandler);
+        window._photopeaHandler = null;
+    }
+}
+
+function editorToggleMenu() {
+    const iframe = document.getElementById('editorIframe');
+    if (!iframe || !iframe.contentWindow) return;
+    
+    iframe.contentWindow.postMessage('app.showMenu();', '*');
+
+    const aviso = document.createElement('div');
+    aviso.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:999999; background:#D4AF37; color:#0A1C3A; padding:15px 20px; border-radius:12px; font-weight:700; box-shadow:0 8px 25px rgba(0,0,0,0.3); font-family:Inter, sans-serif; font-size:0.85rem; max-width:280px;`;
+    aviso.innerHTML = `ℹ️ Use o menu <strong>Arquivo</strong> no topo do Photopea para exportar.`;
+    document.body.appendChild(aviso);
+    setTimeout(() => aviso.remove(), 4000);
+}
+
+// ============================================================
+// PREVIEW MODAL
+// ============================================================
+function inicializarPreview() {
+    if (!document.getElementById('previewModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'previewModal';
+        modal.className = 'preview-modal';
+        modal.innerHTML = `
+            <div class="preview-modal-overlay" onclick="fecharPreview()"></div>
+            <div class="preview-modal-content">
+                <button class="preview-close" onclick="fecharPreview()"><i class="fas fa-times"></i></button>
+                <div class="preview-modal-header">
+                    <div class="preview-title-area">
+                        <i class="fas fa-file preview-title-icon" id="previewTitleIcon"></i>
+                        <div><h3 id="previewTitulo">Nome do arquivo</h3><p id="previewMeta">Tipo • Tamanho</p></div>
+                    </div>
+                </div>
+                <div class="preview-modal-body" id="previewBody"></div>
+                <div class="preview-modal-footer">
+                    <button onclick="fecharPreview()" class="btn-secondary-preview"><i class="fas fa-arrow-left"></i> <span>Voltar</span></button>
+                    <a id="previewDownloadBtn" href="#" download target="_blank" rel="noopener noreferrer" class="btn-download-preview"><i class="fas fa-download"></i> <span>Baixar Arquivo</span></a>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { fecharPreview(); editorFechar(); fecharModalEnvio(); fecharModalAuth(); }
+    });
+}
+
+function abrirPreview(index) {
+    const arquivo = estadoSite.arquivos[index];
+    if (!arquivo) return;
+
+    const modal = document.getElementById('previewModal');
+    const body = document.getElementById('previewBody');
+    document.getElementById('previewTitulo').textContent = paraString(arquivo.nome);
+    document.getElementById('previewMeta').textContent = `${paraString(arquivo.tipo)}${arquivo.tamanho ? ' • ' + paraString(arquivo.tamanho) : ''}${arquivo.categoria ? ' • ' + paraString(arquivo.categoria) : ''}`;
+    document.getElementById('previewTitleIcon').className = `fas ${obterIcone(arquivo.tipo)} preview-title-icon`;
+    document.getElementById('previewDownloadBtn').href = paraString(arquivo.link);
+
+    const ext = paraString(arquivo.tipo).toUpperCase();
+    const isImg = ['PNG','JPG','JPEG','GIF','WEBP','SVG','BMP'].includes(ext);
+    const isVid = ['MP4','MOV','AVI','WEBM','MKV'].includes(ext);
+    const isPdf = ext === 'PDF';
+    const fileId = extrairFileId(arquivo.link);
+
+    if (isImg) {
+        const urlHD = fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600` : arquivo.link;
+        body.innerHTML = `<div class="preview-image-wrapper"><img src="${urlHD}" alt="${escapeHTML(paraString(arquivo.nome))}"></div>`;
+    } else if (isVid) {
+        const url = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : arquivo.link;
+        body.innerHTML = `<div class="preview-video-wrapper"><iframe src="${url}" allow="autoplay" allowfullscreen frameborder="0"></iframe></div>`;
+    } else if (isPdf) {
+        const url = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : arquivo.link;
+        body.innerHTML = `<div class="preview-pdf-wrapper"><iframe src="${url}" allowfullscreen frameborder="0"></iframe></div>`;
+    } else {
+        body.innerHTML = `<div class="preview-generic"><div class="preview-generic-icon"><i class="fas ${obterIcone(arquivo.tipo)}"></i></div><h4>${escapeHTML(paraString(arquivo.nome))}</h4><p>${escapeHTML(paraString(arquivo.descricao) || 'Sem pré-visualização.')}</p></div>`;
+    }
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharPreview() {
+    const modal = document.getElementById('previewModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+    setTimeout(() => {
+        const body = document.getElementById('previewBody');
+        if (body) body.innerHTML = '';
+    }, 300);
+}
+
+function extrairFileId(url) {
+    if (!url) return null;
+    const urlStr = paraString(url);
+    const m1 = urlStr.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (m1) return m1[1];
+    const m2 = urlStr.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m2) return m2[1];
     return null;
 }
 
-// Rode UMA vez no editor do Apps Script para preencher autores vazios em PSDs já enviados
-function corrigirAutoresCriativos() {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CRIATIVOS);
-    if (!aba) return;
-    const dados = aba.getDataRange().getValues();
-    let corrigidos = 0;
-    for (let i = 1; i < dados.length; i++) {
-        const uid = safeStr(dados[i][11]);
-        if (!uid || safeStr(dados[i][12])) continue; // sem ID ou já tem nome
-        const u = buscarUsuarioPorId_(uid);
-        if (!u) continue;
-        const r = i + 1;
-        aba.getRange(r, 13).setValue(u.nome);
-        aba.getRange(r, 14).setNumberFormat("@").setValue(u.whatsapp);
-        aba.getRange(r, 15).setValue(u.congregacao);
-        aba.getRange(r, 16).setNumberFormat("@").setValue(u.idade);
-        aba.getRange(r, 17).setValue(u.foto);
-        aba.getRange(r, 18).setValue(u.cidade);
-        corrigidos++;
-    }
-    Logger.log("Autores corrigidos: " + corrigidos);
-}
-
-function baixarPSDBase64(fileId) {
-    try {
-        if (!fileId) return { status: "erro", mensagem: "fileId é obrigatório" };
-        const file = DriveApp.getFileById(fileId);
-        const blob = file.getBlob();
-        const bytes = blob.getBytes();
-        const tamanhoMB = (bytes.length / (1024 * 1024)).toFixed(2);
-        
-        if (bytes.length > 45 * 1024 * 1024) {
-            return { status: "erro", mensagem: "Arquivo muito grande para edição (máx 45 MB)." };
-        }
-        return {
-            status: "ok",
-            fileName: file.getName(),
-            mimeType: file.getMimeType(),
-            tamanhoMB: tamanhoMB,
-            base64: Utilities.base64Encode(bytes)
-        };
-    } catch (err) {
-        return { status: "erro", mensagem: err.toString() };
-    }
-}
-
-function uploadArquivo(p) {
-    try {
-        if (!p.nomeArquivo || !p.dadosBase64) return { status: "erro", mensagem: "Dados incompletos" };
-        const tamanho = Math.ceil(p.dadosBase64.length * 3 / 4);
-        const tamanhoMB = (tamanho / (1024 * 1024)).toFixed(2);
-        if (tamanho > 50 * 1024 * 1024) return { status: "erro", mensagem: "Arquivo muito grande para este método (máx 50MB)." };
-
-        const pasta = obterPastaPrincipal();
-        const subpasta = obterSubpasta(pasta, determinarSubpasta(p.nomeArquivo));
-        const blob = Utilities.newBlob(Utilities.base64Decode(p.dadosBase64), p.tipoMime || "application/octet-stream", p.nomeArquivo);
-        const arquivo = subpasta.createFile(blob);
-        arquivo.setDescription(p.descricao || "Arquivo Marketing IEAD");
-        arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-        const fileId = arquivo.getId();
-        const link = "https://drive.google.com/uc?export=download&id=" + fileId;
-        const preview = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w800";
-
-        const ss = SpreadsheetApp.getActiveSpreadsheet();
-        const aba = ss.getSheetByName(ABA_ARQUIVOS);
-        const id = Math.max(aba.getLastRow(), 1);
-        const ext = safeStr(p.nomeArquivo).split(".").pop().toUpperCase();
-
-        aba.appendRow([
-            id, safeStr(p.nomeAmigavel) || safeStr(p.nomeArquivo).replace(/\.[^/.]+$/, ""), ext, link,
-            safeStr(p.descricao) || "Clique para baixar", safeStr(p.categoria) || "Geral",
-            new Date(), true, fileId, tamanhoMB + " MB", preview
-        ]);
-
-        return { status: "ok", mensagem: "Upload concluído!", arquivo: { id, link, preview, fileId } };
-    } catch (err) {
-        return { status: "erro", mensagem: err.toString() };
-    }
-}
-
-function uploadLogo(p) {
-    try {
-        if (!p.nomeArquivo || !p.dadosBase64) return { status: "erro", mensagem: "Dados incompletos" };
-        const pasta = obterPastaPrincipal();
-        const subLogo = obterSubpasta(pasta, "Logos Site");
-        const ss = SpreadsheetApp.getActiveSpreadsheet();
-        const abaConf = ss.getSheetByName(ABA_CONFIG);
-        const dados = abaConf.getDataRange().getValues();
-        for (let i = 1; i < dados.length; i++) {
-            if (dados[i][0] === "Logo_File_ID" && dados[i][1]) {
-                try { DriveApp.getFileById(dados[i][1]).setTrashed(true); } catch(e){}
+// ============================================================
+// AUTH
+// ============================================================
+function inicializarAuth() {
+    const inputFoto = document.getElementById('cadFotoInput');
+    inputFoto?.addEventListener('change', () => {
+        if (inputFoto.files.length) {
+            const file = inputFoto.files[0];
+            if (file.size > 3 * 1024 * 1024) {
+                alert('Foto muito grande (máx 3 MB)');
+                return;
             }
+            estadoSite.cadFotoTipoMime = file.type;
+
+            const reader = new FileReader();
+            reader.onload = e => {
+                estadoSite.cadFotoBase64 = e.target.result.split(',')[1];
+                const preview = document.getElementById('cadFotoPreview');
+                preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+                preview.style.border = '3px solid #D4AF37';
+            };
+            reader.readAsDataURL(file);
         }
-        const blob = Utilities.newBlob(Utilities.base64Decode(p.dadosBase64), p.tipoMime || "image/png", p.nomeArquivo);
-        const arquivo = subLogo.createFile(blob);
-        arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        const fileId = arquivo.getId();
-        const url = "https://drive.google.com/uc?export=view&id=" + fileId;
-        for (let i = 1; i < dados.length; i++) {
-            if (dados[i][0] === "Logo_URL") abaConf.getRange(i+1, 2).setValue(url);
-            if (dados[i][0] === "Logo_File_ID") abaConf.getRange(i+1, 2).setValue(fileId);
-        }
-        return { status: "ok", mensagem: "Logo atualizada!", url, fileId };
-    } catch (err) {
-        return { status: "erro", mensagem: err.toString() };
-    }
-}
-
-function creativeUpload(p) {
-    try {
-        if (!p.nomeArquivo || !p.dadosBase64) return { status: "erro", mensagem: "Dados incompletos" };
-        if (!p.capaBase64) return { status: "erro", mensagem: "A capa do PSD é obrigatória" };
-        if (!p.usuarioId || !p.usuarioNome) return { status: "erro", mensagem: "É necessário estar logado" };
-
-        const tamanho = Math.ceil(p.dadosBase64.length * 3 / 4);
-        const tamanhoMB = (tamanho / (1024 * 1024)).toFixed(2);
-        
-        if (tamanho > 50 * 1024 * 1024) return { status: "erro", mensagem: "PSD muito grande (máx 50MB)." };
-
-        const pasta = obterPastaPrincipal();
-        const subpasta = obterSubpasta(pasta, "IEAD Creative");
-
-        const blob = Utilities.newBlob(
-            Utilities.base64Decode(p.dadosBase64),
-            p.tipoMime || "image/vnd.adobe.photoshop",
-            p.nomeArquivo
-        );
-        const arquivo = subpasta.createFile(blob);
-        arquivo.setDescription(safeStr(p.descricao) || "Template PSD IEAD Creative");
-        arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-        const fileId = arquivo.getId();
-        const linkVisualizar = arquivo.getUrl();
-        const linkDownload = "https://drive.google.com/uc?export=download&id=" + fileId;
-
-        const capaBlob = Utilities.newBlob(
-            Utilities.base64Decode(p.capaBase64),
-            p.capaTipoMime || "image/png",
-            "capa_" + fileId + ".png"
-        );
-        const capaFile = subpasta.createFile(capaBlob);
-        capaFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        const capaURL = "https://drive.google.com/thumbnail?id=" + capaFile.getId() + "&sz=w800";
-
-        const ss = SpreadsheetApp.getActiveSpreadsheet();
-        const aba = ss.getSheetByName(ABA_CRIATIVOS);
-        const id = Math.max(aba.getLastRow(), 1);
-
-        aba.appendRow([
-            id,
-            safeStr(p.nome) || safeStr(p.nomeArquivo).replace(/\.[^/.]+$/, ""),
-            "PSD",
-            linkVisualizar,
-            linkDownload,
-            safeStr(p.descricao),
-            new Date(),
-            true,
-            fileId,
-            tamanhoMB + " MB",
-            capaURL,
-            safeStr(p.usuarioId),
-            safeStr(p.usuarioNome),
-            "'" + safeStr(p.usuarioWhatsApp),
-            safeStr(p.usuarioCongregacao),
-            "'" + safeStr(p.usuarioIdade),
-            safeStr(p.usuarioFoto),
-            safeStr(p.usuarioCidade)
-        ]);
-
-        const ultimaLinha = aba.getLastRow();
-        aba.getRange(ultimaLinha, 14).setNumberFormat('@'); 
-        aba.getRange(ultimaLinha, 16).setNumberFormat('@'); 
-
-        registrarLog("SITE", "CREATIVE_UPLOAD", safeStr(p.nomeArquivo) + " por " + safeStr(p.usuarioNome));
-        return { status: "ok", mensagem: "PSD enviado!", id, fileId, preview: capaURL, link: linkDownload };
-    } catch (err) {
-        return { status: "erro", mensagem: err.toString() };
-    }
-}
-
-function creativeRemover(id) {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CRIATIVOS);
-    if (!aba) return { status: "erro", mensagem: "Aba não encontrada" };
-    const dados = aba.getDataRange().getValues();
-    for (let i = 1; i < dados.length; i++) {
-        if (safeStr(dados[i][0]) === safeStr(id)) {
-            if (dados[i][8]) {
-                try { DriveApp.getFileById(dados[i][8]).setTrashed(true); } catch (e) {}
-            }
-            aba.deleteRow(i + 1);
-            return { status: "ok", mensagem: "Template removido" };
-        }
-    }
-    return { status: "erro", mensagem: "Não encontrado" };
-}
-
-function listarArquivos(filtro, categoria) {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_ARQUIVOS);
-    if (!aba) return [];
-    const dados = aba.getDataRange().getValues();
-    const out = [];
-    for (let i = 1; i < dados.length; i++) {
-        const l = dados[i];
-        if (!l[1] || !l[3]) continue;
-        if (l[7] !== true && l[7] !== "TRUE" && l[7] !== "") continue;
-        const nome = safeStr(l[1]);
-        const cat = safeStr(l[5]) || "Geral";
-        if (filtro && !nome.toLowerCase().includes(safeStr(filtro).toLowerCase())) continue;
-        if (categoria && cat.toLowerCase() !== safeStr(categoria).toLowerCase()) continue;
-        out.push({
-            id: l[0],
-            nome: nome,
-            tipo: safeStr(l[2]),
-            link: safeStr(l[3]),
-            descricao: safeStr(l[4]),
-            categoria: cat,
-            data: l[6] ? Utilities.formatDate(new Date(l[6]), Session.getScriptTimeZone(), "dd/MM/yyyy") : "",
-            fileId: safeStr(l[8]),
-            tamanho: safeStr(l[9]),
-            preview: safeStr(l[10])
-        });
-    }
-    return out.reverse();
-}
-
-function buscarArquivos(t) { return t ? listarArquivos(t) : listarArquivos(); }
-
-function obterConfiguracoes() {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CONFIG);
-    if (!aba) return {};
-    const dados = aba.getDataRange().getValues();
-    const cfg = {};
-    for (let i = 1; i < dados.length; i++) {
-        if (dados[i][0]) cfg[safeStr(dados[i][0])] = safeStr(dados[i][1]);
-    }
-    return cfg;
-}
-
-function listarCategorias() {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CATEGORIAS);
-    if (!aba) return [];
-    const dados = aba.getDataRange().getValues();
-    const out = [];
-    for (let i = 1; i < dados.length; i++) {
-        const l = dados[i];
-        if (!l[1]) continue;
-        out.push({ id: l[0], nome: safeStr(l[1]), icone: safeStr(l[2]) || 'fa-folder', ordem: l[3] || i });
-    }
-    return out.sort((a, b) => a.ordem - b.ordem);
-}
-
-function listarCarrossel() {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CARROSSEL);
-    if (!aba) return [];
-    const dados = aba.getDataRange().getValues();
-    const out = [];
-    for (let i = 1; i < dados.length; i++) {
-        const l = dados[i];
-        if (!l[1] || (l[7] !== true && l[7] !== "TRUE")) continue;
-        out.push({ id: l[0], titulo: safeStr(l[1]), descricao: safeStr(l[2]), badge: safeStr(l[3]), link: safeStr(l[4]), textoBotao: safeStr(l[5]), ordem: l[6] });
-    }
-    return out.sort((a, b) => a.ordem - b.ordem);
-}
-
-function listarMenus() {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_MENUS);
-    if (!aba) return [];
-    const dados = aba.getDataRange().getValues();
-    const out = [];
-    for (let i = 1; i < dados.length; i++) {
-        const l = dados[i];
-        if (!l[1] || (l[4] !== true && l[4] !== "TRUE")) continue;
-        out.push({ id: l[0], nome: safeStr(l[1]), link: safeStr(l[2]), ordem: l[3], novaAba: l[5] === true || l[5] === "TRUE" });
-    }
-    return out.sort((a, b) => a.ordem - b.ordem);
-}
-
-function listarCriativos() {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CRIATIVOS);
-    if (!aba) return [];
-    const dados = aba.getDataRange().getValues();
-    const out = [];
-    for (let i = 1; i < dados.length; i++) {
-        const l = dados[i];
-        if (!l[1] || !l[3]) continue;
-        if (l[7] !== true && l[7] !== "TRUE" && l[7] !== "") continue;
-        out.push({
-            id: safeStr(l[0]),
-            nome: safeStr(l[1]),
-            tipo: safeStr(l[2]) || "PSD",
-            link: safeStr(l[3]),
-            link_download: safeStr(l[4]) || safeStr(l[3]),
-            descricao: safeStr(l[5]),
-            data: l[6] ? Utilities.formatDate(new Date(l[6]), Session.getScriptTimeZone(), "dd/MM/yyyy") : "",
-            fileId: safeStr(l[8]),
-            tamanho: safeStr(l[9]),
-            preview: safeStr(l[10]),
-            usuarioId: safeStr(l[11]),
-            usuarioNome: safeStr(l[12]),
-            usuarioWhatsApp: safeStr(l[13]),
-            usuarioCongregacao: safeStr(l[14]),
-            usuarioIdade: safeStr(l[15]),
-            usuarioFoto: safeStr(l[16]),
-            usuarioCidade: safeStr(l[17])
-        });
-    }
-    return out.reverse();
-}
-
-function obterEstatisticas() {
-    const arqs = listarArquivos();
-    const cats = listarCategorias();
-    let totalMB = 0;
-    const porTipo = {};
-    arqs.forEach(a => {
-        porTipo[a.tipo] = (porTipo[a.tipo] || 0) + 1;
-        if (a.tamanho) { const m = safeStr(a.tamanho).match(/([\d.]+)/); if (m) totalMB += parseFloat(m[1]); }
     });
-    return { total_arquivos: arqs.length, total_categorias: cats.length, total_mb: totalMB.toFixed(2), por_tipo: porTipo };
 }
 
-function obterTudo() {
-    return {
-        config: obterConfiguracoes(),
-        arquivos: listarArquivos(),
-        categorias: listarCategorias(),
-        carrossel: listarCarrossel(),
-        menus: listarMenus(),
-        criativos: listarCriativos()
-    };
+function abrirModalAuth() {
+    document.getElementById('modalAuth').classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 
-function removerArquivo(id) {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_ARQUIVOS);
-    const dados = aba.getDataRange().getValues();
-    for (let i = 1; i < dados.length; i++) {
-        if (safeStr(dados[i][0]) === safeStr(id)) {
-            if (dados[i][8]) { try { DriveApp.getFileById(dados[i][8]).setTrashed(true); } catch(e){} }
-            aba.deleteRow(i + 1);
-            return { status: "ok", mensagem: "Removido" };
-        }
+function fecharModalAuth() {
+    document.getElementById('modalAuth').classList.remove('active');
+    document.body.style.overflow = '';
+    const loginErro = document.getElementById('loginErro');
+    const cadErro = document.getElementById('cadErro');
+    if (loginErro) loginErro.textContent = '';
+    if (cadErro) cadErro.textContent = '';
+}
+
+function trocarAbaAuth(aba) {
+    document.querySelectorAll('.modal-auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.modal-auth-panel').forEach(p => p.classList.remove('active'));
+
+    if (aba === 'login') {
+        document.querySelector('.modal-auth-tab:nth-child(1)').classList.add('active');
+        document.getElementById('panelLogin').classList.add('active');
+    } else {
+        document.querySelector('.modal-auth-tab:nth-child(2)').classList.add('active');
+        document.getElementById('panelCadastro').classList.add('active');
     }
-    return { status: "erro", mensagem: "Não encontrado" };
 }
 
-function atualizarConfiguracoes(dados) {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CONFIG);
-    const range = aba.getDataRange();
-    const valores = range.getValues();
-    Object.keys(dados).forEach(chave => {
-        let achou = false;
-        for (let i = 1; i < valores.length; i++) {
-            if (safeStr(valores[i][0]) === safeStr(chave)) {
-                aba.getRange(i + 1, 2).setValue(safeStr(dados[chave]));
-                achou = true;
-                break;
-            }
-        }
-        if (!achou) aba.appendRow([chave, safeStr(dados[chave]), ""]);
+async function fazerLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const senha = document.getElementById('loginSenha').value;
+    const erro = document.getElementById('loginErro');
+
+    if (!email || !senha) { erro.textContent = 'Preencha e-mail e senha'; return; }
+    erro.textContent = '⏳ Entrando...';
+
+    const result = await window.apiPost({ acao: 'login', email, senha });
+
+    if (result && result.status === 'ok') {
+        estadoSite.usuario = result.usuario;
+        salvarUsuarioLocal(result.usuario, result.token);
+        atualizarInterfaceAuth();
+        fecharModalAuth();
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginSenha').value = '';
+        renderizarCreativeMeus();
+    } else {
+        erro.textContent = result?.mensagem || 'Erro ao entrar';
+    }
+}
+
+async function fazerCadastro() {
+    const nome = document.getElementById('cadNome').value.trim();
+    const email = document.getElementById('cadEmail').value.trim();
+    const whatsapp = document.getElementById('cadWhatsapp').value.trim();
+    const congregacao = document.getElementById('cadCongregacao').value.trim();
+    const cidade = document.getElementById('cadCidade').value;
+    const idade = document.getElementById('cadIdade').value;
+    const senha = document.getElementById('cadSenha').value;
+    const erro = document.getElementById('cadErro');
+
+    if (!nome || !email || !whatsapp || !congregacao || !cidade || !idade || !senha) {
+        erro.textContent = 'Preencha todos os campos obrigatórios'; return;
+    }
+    if (senha.length < 6) {
+        erro.textContent = 'Senha deve ter no mínimo 6 caracteres'; return;
+    }
+
+    erro.textContent = '⏳ Criando conta...';
+
+    const result = await window.apiPost({
+        acao: 'cadastro',
+        nome, email, whatsapp, congregacao, cidade, idade, senha,
+        fotoBase64: estadoSite.cadFotoBase64 || null,
+        fotoTipoMime: estadoSite.cadFotoTipoMime || null
     });
-    return { status: "ok", mensagem: "Configurações salvas" };
-}
 
-function salvarSlide(dados, id) {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CARROSSEL);
-    const valores = aba.getDataRange().getValues();
-    if (id) {
-        for (let i = 1; i < valores.length; i++) {
-            if (safeStr(valores[i][0]) === safeStr(id)) {
-                aba.getRange(i + 1, 1, 1, 8).setValues([[id, safeStr(dados.titulo), safeStr(dados.descricao), safeStr(dados.badge), safeStr(dados.link), safeStr(dados.textoBotao), dados.ordem || i, true]]);
-                return { status: "ok", mensagem: "Slide atualizado", id };
-            }
+    if (result && result.status === 'ok') {
+        estadoSite.usuario = result.usuario;
+        salvarUsuarioLocal(result.usuario, result.token);
+        atualizarInterfaceAuth();
+        fecharModalAuth();
+
+        ['cadNome', 'cadEmail', 'cadWhatsapp', 'cadCongregacao', 'cadCidade', 'cadIdade', 'cadSenha'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        estadoSite.cadFotoBase64 = null;
+        estadoSite.cadFotoTipoMime = null;
+        const previewFoto = document.getElementById('cadFotoPreview');
+        if (previewFoto) {
+            previewFoto.innerHTML = '<i class="fas fa-camera"></i><span>Foto</span>';
+            previewFoto.style.border = '3px dashed #D4AF37';
         }
-        return { status: "erro", mensagem: "Slide não encontrado" };
+        renderizarCreativeMeus();
+    } else {
+        erro.textContent = result?.mensagem || 'Erro ao cadastrar';
     }
-    const novoId = Math.max(aba.getLastRow(), 1);
-    aba.appendRow([novoId, safeStr(dados.titulo), safeStr(dados.descricao), safeStr(dados.badge), safeStr(dados.link) || "#", safeStr(dados.textoBotao) || "Ver mais", dados.ordem || novoId, true]);
-    return { status: "ok", mensagem: "Slide criado", id: novoId };
 }
 
-function removerSlide(id) {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CARROSSEL);
-    const dados = aba.getDataRange().getValues();
-    for (let i = 1; i < dados.length; i++) {
-        if (safeStr(dados[i][0]) === safeStr(id)) { aba.deleteRow(i + 1); return { status: "ok", mensagem: "Slide removido" }; }
-    }
-    return { status: "erro", mensagem: "Não encontrado" };
-}
-
-function salvarMenu(dados, id) {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_MENUS);
-    const valores = aba.getDataRange().getValues();
-    if (id) {
-        for (let i = 1; i < valores.length; i++) {
-            if (safeStr(valores[i][0]) === safeStr(id)) {
-                aba.getRange(i + 1, 1, 1, 6).setValues([[id, safeStr(dados.nome), safeStr(dados.link), dados.ordem || i, true, dados.novaAba || false]]);
-                return { status: "ok", mensagem: "Menu atualizado", id };
-            }
-        }
-        return { status: "erro", mensagem: "Menu não encontrado" };
-    }
-    const novoId = Math.max(aba.getLastRow(), 1);
-    aba.appendRow([novoId, safeStr(dados.nome), safeStr(dados.link), dados.ordem || novoId, true, dados.novaAba || false]);
-    return { status: "ok", mensagem: "Menu criado", id: novoId };
-}
-
-function removerMenu(id) {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_MENUS);
-    const dados = aba.getDataRange().getValues();
-    for (let i = 1; i < dados.length; i++) {
-        if (safeStr(dados[i][0]) === safeStr(id)) { aba.deleteRow(i + 1); return { status: "ok", mensagem: "Menu removido" }; }
-    }
-    return { status: "erro", mensagem: "Não encontrado" };
-}
-
-function salvarCategoria(dados, id) {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CATEGORIAS);
-    const valores = aba.getDataRange().getValues();
-    if (id) {
-        for (let i = 1; i < valores.length; i++) {
-            if (safeStr(valores[i][0]) === safeStr(id)) {
-                aba.getRange(i + 1, 1, 1, 4).setValues([[id, safeStr(dados.nome), safeStr(dados.icone) || 'fa-folder', dados.ordem || i]]);
-                return { status: "ok", mensagem: "Categoria atualizada", id };
-            }
-        }
-        return { status: "erro", mensagem: "Categoria não encontrada" };
-    }
-    const novoId = Math.max(aba.getLastRow(), 1);
-    aba.appendRow([novoId, safeStr(dados.nome), safeStr(dados.icone) || 'fa-folder', dados.ordem || novoId]);
-    return { status: "ok", mensagem: "Categoria criada", id: novoId };
-}
-
-function removerCategoria(id) {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CATEGORIAS);
-    const dados = aba.getDataRange().getValues();
-    for (let i = 1; i < dados.length; i++) {
-        if (safeStr(dados[i][0]) === safeStr(id)) { aba.deleteRow(i + 1); return { status: "ok", mensagem: "Categoria removida" }; }
-    }
-    return { status: "erro", mensagem: "Categoria não encontrada" };
-}
-
-function registrarLog(usuario, acao, detalhes) {
+function salvarUsuarioLocal(usuario, token) {
     try {
-        const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_LOGS);
-        if (aba) {
-            aba.appendRow([new Date(), safeStr(usuario), safeStr(acao), safeStr(detalhes)]);
-            if (aba.getLastRow() > 1000) aba.deleteRows(2, 100);
+        localStorage.setItem('iead_usuario', JSON.stringify({ usuario, token, ts: Date.now() }));
+    } catch (e) {}
+}
+
+function carregarUsuarioLogado() {
+    try {
+        const dados = localStorage.getItem('iead_usuario');
+        if (dados) {
+            const parsed = JSON.parse(dados);
+            if (parsed.ts && (Date.now() - parsed.ts) < 30 * 24 * 60 * 60 * 1000) {
+                estadoSite.usuario = parsed.usuario;
+            } else {
+                localStorage.removeItem('iead_usuario');
+            }
         }
     } catch (e) {}
 }
 
-function responderJSON(dados, callback) {
-    const json = JSON.stringify(dados);
-    if (callback) {
-        return ContentService.createTextOutput(callback + "(" + json + ");").setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-    return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+function fazerLogout() {
+    if (!confirm('Deseja sair da sua conta?')) return;
+    estadoSite.usuario = null;
+    localStorage.removeItem('iead_usuario');
+    atualizarInterfaceAuth();
+    renderizarCreativeMeus();
 }
 
-function setupInicial() {
-    try {
-        setupPlanilha();
-        const pasta = obterPastaPrincipal();
-        const abaConf = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_CONFIG);
-        const dados = abaConf.getDataRange().getValues();
-        for (let i = 1; i < dados.length; i++) {
-            if (safeStr(dados[i][0]) === "Pasta_Drive_ID") abaConf.getRange(i+1, 2).setValue(pasta.getId());
-            if (safeStr(dados[i][0]) === "Pasta_Drive_URL") abaConf.getRange(i+1, 2).setValue(pasta.getUrl());
+function atualizarInterfaceAuth() {
+    const userBtnText = document.getElementById('userBtnText');
+    const userBtnFoto = document.getElementById('userBtnFoto');
+    const userBtnIcone = document.getElementById('userBtnIcone');
+    const creativeBloqueado = document.getElementById('creativeBloqueado');
+    const creativeAreaLogado = document.getElementById('creativeAreaLogado');
+
+    if (estadoSite.usuario) {
+        const nomeCompleto = paraString(estadoSite.usuario.nome);
+        if (userBtnText) userBtnText.textContent = nomeCompleto.split(' ')[0] || 'Usuário';
+
+        const urlFoto = paraString(estadoSite.usuario.foto) || gerarFotoPerfil(estadoSite.usuario.email, nomeCompleto);
+
+        if (userBtnFoto) {
+            userBtnFoto.src = urlFoto;
+            userBtnFoto.style.display = 'block';
+            userBtnFoto.onerror = () => {
+                userBtnFoto.src = gerarAvatarInicial(nomeCompleto);
+            };
         }
-        SpreadsheetApp.getUi().alert("✅ CMS Configurado!");
-    } catch (err) {
-        SpreadsheetApp.getUi().alert("❌ Erro: " + err.toString());
+        if (userBtnIcone) userBtnIcone.style.display = 'none';
+
+        if (creativeBloqueado) creativeBloqueado.style.display = 'none';
+        if (creativeAreaLogado) creativeAreaLogado.style.display = 'block';
+
+        const foto = document.getElementById('creativeUserFoto');
+        const nome = document.getElementById('creativeUserName');
+        const info = document.getElementById('creativeUserInfo');
+
+        if (foto) {
+            foto.src = urlFoto;
+            foto.onerror = () => { foto.src = gerarAvatarInicial(nomeCompleto); };
+        }
+        if (nome) nome.textContent = nomeCompleto;
+        if (info) {
+            const partes = [];
+            const idade = paraString(estadoSite.usuario.idade);
+            const congregacao = paraString(estadoSite.usuario.congregacao);
+            const cidade = paraString(estadoSite.usuario.cidade);
+            if (idade) partes.push(idade + ' anos');
+            if (congregacao) partes.push(congregacao);
+            if (cidade) partes.push(cidade);
+            info.textContent = partes.join(' • ');
+        }
+    } else {
+        if (userBtnText) userBtnText.textContent = 'Entrar';
+        if (userBtnFoto) userBtnFoto.style.display = 'none';
+        if (userBtnIcone) userBtnIcone.style.display = 'inline-block';
+
+        if (creativeBloqueado) creativeBloqueado.style.display = 'block';
+        if (creativeAreaLogado) creativeAreaLogado.style.display = 'none';
     }
 }
 
-function onOpen() {
-    SpreadsheetApp.getUi().createMenu("⚙️ Marketing IEAD")
-        .addItem("🚀 Setup Inicial", "setupInicial")
-        .addItem("🔐 Forçar Permissões", "forcarAutorizacao")
-        .addToUi();
+function gerarFotoPerfil(email, nome) {
+    const emailStr = paraString(email).trim();
+    if (emailStr && emailStr.includes('@')) {
+        return `https://unavatar.io/${encodeURIComponent(emailStr.toLowerCase())}?fallback=false`;
+    }
+    return gerarAvatarInicial(nome);
+}
+
+function gerarAvatarInicial(nome) {
+    const nomeStr = paraString(nome) || 'U';
+    const inicial = nomeStr.charAt(0).toUpperCase();
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(inicial)}&background=D4AF37&color=0A1C3A&size=200&bold=true&length=1`;
 }

@@ -3,6 +3,10 @@
  * - Upload Direto para o Drive via Iframe (evita CORS e limite 50MB)
  * ============================================================ */
 
+// ⚠️ Cole aqui a sua chave de API do Google (Drive API), restrita ao domínio do site.
+// Necessária para abrir PSDs grandes (acima de ~45 MB) no editor.
+const DRIVE_API_KEY_SITE = '';
+
 let estadoSite = {
     config: {},
     arquivos: [],
@@ -1125,7 +1129,8 @@ async function abrirEditorComArquivo(arquivo) {
     let arrayBuffer = null;
 
     // A) Download direto do Drive pelo navegador (sem limite do Apps Script)
-    const driveKey = (window.CONFIG && window.CONFIG.DRIVE_API_KEY) || window.DRIVE_API_KEY || '';
+    const driveKey = DRIVE_API_KEY_SITE || (window.CONFIG && window.CONFIG.DRIVE_API_KEY) || window.DRIVE_API_KEY || '';
+    let erroDireto = '';
     if (driveKey) {
         try {
             statusEl().textContent = 'Baixando direto do Drive...';
@@ -1162,6 +1167,7 @@ async function abrirEditorComArquivo(arquivo) {
             }
             if (!recebido) arrayBuffer = null;
         } catch (err) {
+            erroDireto = err.message || String(err);
             console.warn('Download direto falhou, tentando via Apps Script:', err);
             arrayBuffer = null;
         }
@@ -1179,6 +1185,14 @@ async function abrirEditorComArquivo(arquivo) {
 
         const total = Number(info.tamanho);
         if (!total) { fecharComErro('Arquivo vazio ou inacessível'); return; }
+
+        if (total > 45 * 1024 * 1024) {
+            const mbGrande = (total / (1024 * 1024)).toFixed(1);
+            fecharComErro(driveKey
+                ? `Não foi possível baixar este PSD de ${mbGrande} MB direto do Drive (${erroDireto || 'sem resposta'}). Confira se a chave de API está restrita ao domínio correto e se o arquivo está compartilhado como "qualquer pessoa com o link".`
+                : `Este PSD tem ${mbGrande} MB, acima do limite do Apps Script (~45 MB). Configure a chave DRIVE_API_KEY_SITE no início do app.js para abrir arquivos grandes.`);
+            return;
+        }
 
         // 2. Baixa em fatias de 6MB e monta tudo num único buffer
         const sliceSize = 3 * 1024 * 1024;
@@ -1210,7 +1224,7 @@ async function abrirEditorComArquivo(arquivo) {
                 baixado += bin.length;
             }
         } catch (err) {
-            fecharComErro(err.message);
+            fecharComErro(err.message + (erroDireto ? ' | Download direto: ' + erroDireto : ''));
             return;
         }
 

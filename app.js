@@ -1,7 +1,7 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v60
+ * SITE PÚBLICO - Marketing IEAD v61
  * - Upload direto para o Drive (suporta até 5GB)
- * - Photopea com menu via CSS
+ * - Requisição do token via GET
  * ============================================================ */
 
 let estadoSite = {
@@ -927,9 +927,8 @@ async function enviarPSDModal() {
     btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
     try {
-        // 1. Pede ao Google Apps Script um token/link de upload direto pro Drive
-        const initReq = await window.apiPost({
-            acao: 'gerar_token_upload',
+        // 1. Pede ao Google Apps Script um token/link de upload direto pro Drive (VIA GET)
+        const initReq = await window.apiGet('gerar_token_upload', {
             nomeArquivo: estadoSite.criativoPSD.name,
             tipoMime: estadoSite.criativoPSD.type || 'image/vnd.adobe.photoshop',
             tamanho: estadoSite.criativoPSD.size

@@ -1102,7 +1102,7 @@ async function abrirEditorComArquivo(arquivo) {
     if (!total) { fecharComErro('Arquivo vazio ou inacessível'); return; }
 
     // 2. Baixa em fatias de 6MB e monta tudo num único buffer
-    const sliceSize = 6 * 1024 * 1024;
+    const sliceSize = 3 * 1024 * 1024;
     const bytes = new Uint8Array(total);
     const tamanhoMB = (total / (1024 * 1024)).toFixed(1);
     let baixado = 0;
@@ -1113,14 +1113,14 @@ async function abrirEditorComArquivo(arquivo) {
             statusEl().textContent = `Baixando ${tamanhoMB} MB... ${pct}%`;
 
             let fatia = null;
-            for (let tentativa = 1; tentativa <= 3; tentativa++) {
+            for (let tentativa = 1; tentativa <= 4; tentativa++) {
                 fatia = await window.apiGet('baixar_psd_fatia', {
                     fileId: fileId,
                     offset: offset,
                     length: Math.min(sliceSize, total - offset)
                 });
                 if (fatia && fatia.status === 'ok') break;
-                if (tentativa < 3) await new Promise(r => setTimeout(r, 1200 * tentativa));
+                if (tentativa < 4) await new Promise(r => setTimeout(r, 1500 * tentativa));
             }
             if (!fatia || fatia.status !== 'ok') {
                 throw new Error(fatia?.mensagem || 'Falha ao baixar parte do arquivo');

@@ -1,7 +1,7 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v54
- * - Photopea limpo (sem anúncios)
- * - Ctrl+B funcional (injetado direto no editor)
+ * SITE PÚBLICO - Marketing IEAD v55
+ * - Força o menu e remove anúncios (tenta várias vezes)
+ * - Ctrl+B funcional via injeção de script
  * ============================================================ */
 
 let estadoSite = {
@@ -1074,12 +1074,22 @@ async function abrirEditorComArquivo(arquivo) {
 
     iframe.onload = () => {
         // ⭐ Envia comando para fechar a tela de boas-vindas e ocultar anúncios
+        // e forçar o menu a aparecer repetidamente (pois o Photopea pode demorar a carregar o menu)
         try {
             // Esconde os anúncios (Support Photopea)
             iframe.contentWindow.postMessage('app.hideAds();', '*');
             
             // Garante que o menu (Arquivo, Editar, etc) esteja visível
             iframe.contentWindow.postMessage('app.showMenu();', '*');
+
+            // Se o menu demorar a renderizar (por causa do bloqueador), tentamos novamente
+            setTimeout(() => {
+                try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e) {}
+            }, 1000);
+
+            setTimeout(() => {
+                try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e) {}
+            }, 3000);
             
             // ⭐ INJETA O ATALHO CTRL+B DIRETO NO PHOTOPEA
             const scriptAtalho = `

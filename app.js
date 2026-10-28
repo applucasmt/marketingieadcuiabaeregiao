@@ -3,10 +3,6 @@
  * - Upload Direto para o Drive via Iframe (evita CORS e limite 50MB)
  * ============================================================ */
 
-// ⚠️ Cole aqui a sua chave de API do Google (Drive API), restrita ao domínio do site.
-// Necessária para abrir PSDs grandes (acima de ~45 MB) no editor.
-const DRIVE_API_KEY_SITE = '';
-
 let estadoSite = {
     config: {},
     arquivos: [],
@@ -962,59 +958,89 @@ async function enviarPSDModal() {
     btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
     try {
-        // 1. Pede ao Apps Script um link temporário para upload
-        const initReq = await window.apiPost({
-            acao: 'iniciar_upload_fatiado',
-            nomeArquivo: file.name,
-            tipoMime: file.type || 'image/vnd.adobe.photoshop',
-            tamanhoTotal: file.size,
-            pastaDestino: 'IEAD Creative'
-        });
+        // PSDs grandes são divididos em partes de 16 MB (cada parte fica abaixo do limite de leitura do Apps Script)
+        const chunkSize = 4 * 1024 * 1024;            // fatia de envio (múltiplo de 256KB, exigido pelo Drive)
+        const LIMITE_PARTE_UNICA = 40 * 1024 * 1024;  // até 40 MB: arquivo único
+        const tamanhoParte = 16 * 1024 * 1024;        // acima disso: partes de 16 MB
+        const dividir = file.size > LIMITE_PARTE_UNICA;
+        const totalPartes = dividir ? Math.ceil(file.size / tamanhoParte) : 1;
+        const idsPartes = [];
+        let enviadoTotal = 0;
 
-        if (!initReq || initReq.status !== 'ok') {
-            throw new Error(initReq?.mensagem || 'Falha ao iniciar upload.');
-        }
+        for (let p = 0; p < totalPartes; p++) {
+            const inicioParte = dividir ? p * tamanhoParte : 0;
+            const fimParte = dividir ? Math.min(inicioParte + tamanhoParte, file.size) : file.size;
+            const tamParte = fimParte - inicioParte;
+            const nomeParte = dividir ? `${file.name}.parte${String(p + 1).padStart(3, '0')}` : file.name;
 
-        const { fileId, uploadUrl } = initReq;
-        const chunkSize = 4 * 1024 * 1024; // 4MB por fatia (múltiplo de 256KB, exigido pelo Drive)
-        const totalChunks = Math.ceil(file.size / chunkSize);
-        
-        let offset = 0;
-
-        // 2. Envia cada fatia via iframe oculto (contorna CORS)
-        for (let i = 0; i < totalChunks; i++) {
-            const start = i * chunkSize;
-            const end = Math.min(start + chunkSize, file.size);
-            const chunk = file.slice(start, end);
-
-            const pct = Math.round(((i) / totalChunks) * 100);
-            statusEl.textContent = `⏳ Enviando parte ${i + 1} de ${totalChunks} (${pct}%)...`;
-            barEl.style.width = pct + '%';
-            pctEl.textContent = pct + '%';
-
-            const chunkBase64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(chunk);
+            // 1. Abre a sessão de upload desta parte
+            const initReq = await window.apiPost({
+                acao: 'iniciar_upload_fatiado',
+                nomeArquivo: nomeParte,
+                tipoMime: dividir ? 'application/octet-stream' : (file.type || 'image/vnd.adobe.photoshop'),
+                tamanhoTotal: tamParte,
+                pastaDestino: dividir ? 'IEAD Creative Partes' : 'IEAD Creative'
             });
 
-            const chunkReq = await window.apiPost({
-                acao: 'enviar_fatia_upload',
-                fileId: fileId,
-                uploadUrl: uploadUrl,
-                chunkBase64: chunkBase64,
-                offset: offset,
-                chunkLength: chunk.size,
-                totalSize: file.size
-            });
-
-            if (!chunkReq || chunkReq.status !== 'ok') {
-                throw new Error(chunkReq?.mensagem || `Falha ao enviar parte ${i + 1}.`);
+            if (!initReq || initReq.status !== 'ok') {
+                throw new Error(initReq?.mensagem || 'Falha ao iniciar upload.');
             }
 
-            offset += chunk.size;
+            const { fileId, uploadUrl } = initReq;
+            idsPartes.push(fileId);
+
+            // 2. Envia a parte em fatias de 4 MB
+            const fatiasNaParte = Math.ceil(tamParte / chunkSize);
+            let offsetParte = 0;
+
+            for (let i = 0; i < fatiasNaParte; i++) {
+                const start = inicioParte + i * chunkSize;
+                const end = Math.min(start + chunkSize, fimParte);
+                const chunk = file.slice(start, end);
+
+                const pct = Math.round((enviadoTotal / file.size) * 90);
+                statusEl.textContent = dividir
+                    ? `⏳ Enviando parte ${p + 1} de ${totalPartes} (${pct}%)...`
+                    : `⏳ Enviando arquivo (${pct}%)...`;
+                barEl.style.width = pct + '%';
+                pctEl.textContent = pct + '%';
+
+                const chunkBase64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(chunk);
+                });
+
+                let chunkReq = null;
+                for (let tentativa = 1; tentativa <= 3; tentativa++) {
+                    try {
+                        chunkReq = await window.apiPost({
+                            acao: 'enviar_fatia_upload',
+                            fileId: fileId,
+                            uploadUrl: uploadUrl,
+                            chunkBase64: chunkBase64,
+                            offset: offsetParte,
+                            chunkLength: chunk.size,
+                            totalSize: tamParte
+                        });
+                    } catch (e) {
+                        chunkReq = { status: 'erro', mensagem: e.message };
+                    }
+                    if (chunkReq && chunkReq.status === 'ok') break;
+                    if (tentativa < 3) await new Promise(r => setTimeout(r, 1500 * tentativa));
+                }
+
+                if (!chunkReq || chunkReq.status !== 'ok') {
+                    throw new Error(chunkReq?.mensagem || `Falha ao enviar parte ${p + 1}.`);
+                }
+
+                offsetParte += chunk.size;
+                enviadoTotal += chunk.size;
+            }
         }
+
+        const fileIdFinal = idsPartes.join(',');
 
         barEl.style.width = '90%';
         pctEl.textContent = '90%';
@@ -1024,7 +1050,7 @@ async function enviarPSDModal() {
 
         const result = await window.apiPost({
             acao: 'confirmar_upload_direto',
-            fileId: fileId,
+            fileId: fileIdFinal,
             nomeArquivo: file.name,
             nome: titulo,
             descricao: descricao,
@@ -1126,116 +1152,49 @@ async function abrirEditorComArquivo(arquivo) {
             <button onclick="editorFechar()" style="margin-top:12px;padding:10px 18px;background:#D4AF37;color:#0A1C3A;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;">Fechar</button>`;
     };
 
-    let arrayBuffer = null;
+    // Baixa cada parte (PSDs grandes são guardados divididos) e junta tudo num único arquivo
+    const idsPartes = String(fileId).split(',').map(s => s.trim()).filter(Boolean);
+    const blocos = [];
+    let totalBytes = 0;
 
-    // A) Download direto do Drive pelo navegador (sem limite do Apps Script)
-    const driveKey = DRIVE_API_KEY_SITE || (window.CONFIG && window.CONFIG.DRIVE_API_KEY) || window.DRIVE_API_KEY || '';
-    let erroDireto = '';
-    if (driveKey) {
-        try {
-            statusEl().textContent = 'Baixando direto do Drive...';
-            const r = await fetch(
-                `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true&key=${encodeURIComponent(driveKey)}`
-            );
-            if (!r.ok) throw new Error('HTTP ' + r.status);
+    for (let i = 0; i < idsPartes.length; i++) {
+        statusEl().textContent = idsPartes.length > 1
+            ? `Baixando parte ${i + 1} de ${idsPartes.length}...`
+            : 'Baixando arquivo...';
 
-            const totalHeader = Number(r.headers.get('Content-Length')) || 0;
-            const reader = r.body.getReader();
-            let buf = totalHeader ? new Uint8Array(totalHeader) : null;
-            const partes = [];
-            let recebido = 0;
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                if (buf && recebido + value.length <= buf.length) buf.set(value, recebido);
-                else { if (buf) { partes.push(buf.slice(0, recebido)); buf = null; } partes.push(value); }
-                recebido += value.length;
-                const mb = (recebido / (1024 * 1024)).toFixed(1);
-                statusEl().textContent = totalHeader
-                    ? `Baixando ${mb} de ${(totalHeader / (1024 * 1024)).toFixed(1)} MB (${Math.round(recebido / totalHeader * 100)}%)`
-                    : `Baixando ${mb} MB...`;
+        let resp = null;
+        for (let tentativa = 1; tentativa <= 3; tentativa++) {
+            try {
+                resp = await window.apiGet('baixar_psd', { fileId: idsPartes[i] });
+            } catch (e) {
+                resp = { status: 'erro', mensagem: e.message };
             }
-
-            if (buf) {
-                arrayBuffer = buf.buffer;
-            } else {
-                const todo = new Uint8Array(recebido);
-                let pos = 0;
-                for (const p of partes) { todo.set(p, pos); pos += p.length; }
-                arrayBuffer = todo.buffer;
-            }
-            if (!recebido) arrayBuffer = null;
-        } catch (err) {
-            erroDireto = err.message || String(err);
-            console.warn('Download direto falhou, tentando via Apps Script:', err);
-            arrayBuffer = null;
+            if (resp && resp.status === 'ok') break;
+            if (/grande|excede|máximo/i.test(resp?.mensagem || '')) break; // não adianta repetir
+            if (tentativa < 3) await new Promise(r => setTimeout(r, 1500 * tentativa));
         }
+
+        if (!resp || resp.status !== 'ok') {
+            const msg = resp?.mensagem || 'Erro ao baixar arquivo';
+            fecharComErro(/grande|excede|máximo/i.test(msg)
+                ? 'Este PSD foi enviado antes do suporte a arquivos grandes e passa do limite de leitura. Exclua-o e envie novamente.'
+                : msg);
+            return;
+        }
+
+        const bin = atob(resp.base64);
+        const u8 = new Uint8Array(bin.length);
+        for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+        blocos.push(u8);
+        totalBytes += u8.length;
+        resp.base64 = null;
     }
 
-    // B) Plano B: download em fatias pelo Apps Script (só funciona para arquivos menores)
-    if (!arrayBuffer) {
-        // 1. Descobre o tamanho do arquivo
-        statusEl().textContent = 'Verificando arquivo...';
-        const info = await window.apiGet('baixar_psd_info', { fileId: fileId });
-        if (!info || info.status !== 'ok') {
-            fecharComErro(info?.mensagem || 'Erro ao consultar o arquivo');
-            return;
-        }
-
-        const total = Number(info.tamanho);
-        if (!total) { fecharComErro('Arquivo vazio ou inacessível'); return; }
-
-        if (total > 45 * 1024 * 1024) {
-            const mbGrande = (total / (1024 * 1024)).toFixed(1);
-            fecharComErro(driveKey
-                ? `Não foi possível baixar este PSD de ${mbGrande} MB direto do Drive (${erroDireto || 'sem resposta'}). Confira se a chave de API está restrita ao domínio correto e se o arquivo está compartilhado como "qualquer pessoa com o link".`
-                : `Este PSD tem ${mbGrande} MB, acima do limite do Apps Script (~45 MB). Configure a chave DRIVE_API_KEY_SITE no início do app.js para abrir arquivos grandes.`);
-            return;
-        }
-
-        // 2. Baixa em fatias de 6MB e monta tudo num único buffer
-        const sliceSize = 3 * 1024 * 1024;
-        const bytes = new Uint8Array(total);
-        const tamanhoMB = (total / (1024 * 1024)).toFixed(1);
-        let baixado = 0;
-
-        try {
-            for (let offset = 0; offset < total; offset += sliceSize) {
-                const pct = Math.round((offset / total) * 100);
-                statusEl().textContent = `Baixando ${tamanhoMB} MB... ${pct}%`;
-
-                let fatia = null;
-                for (let tentativa = 1; tentativa <= 4; tentativa++) {
-                    fatia = await window.apiGet('baixar_psd_fatia', {
-                        fileId: fileId,
-                        offset: offset,
-                        length: Math.min(sliceSize, total - offset)
-                    });
-                    if (fatia && fatia.status === 'ok') break;
-                    if (tentativa < 4) await new Promise(r => setTimeout(r, 1500 * tentativa));
-                }
-                if (!fatia || fatia.status !== 'ok') {
-                    throw new Error(fatia?.mensagem || 'Falha ao baixar parte do arquivo');
-                }
-
-                const bin = atob(fatia.base64);
-                for (let i = 0; i < bin.length; i++) bytes[offset + i] = bin.charCodeAt(i);
-                baixado += bin.length;
-            }
-        } catch (err) {
-            fecharComErro(err.message + (erroDireto ? ' | Download direto: ' + erroDireto : ''));
-            return;
-        }
-
-        if (baixado !== total) {
-            fecharComErro(`Download incompleto (${baixado} de ${total} bytes)`);
-            return;
-        }
-
-        statusEl().textContent = `Preparando (${tamanhoMB} MB)...`;
-        arrayBuffer = bytes.buffer;
-    }
+    statusEl().textContent = `Preparando (${(totalBytes / (1024 * 1024)).toFixed(1)} MB)...`;
+    const todo = new Uint8Array(totalBytes);
+    let posicao = 0;
+    for (const b of blocos) { todo.set(b, posicao); posicao += b.length; }
+    const arrayBuffer = todo.buffer;
 
     statusEl().textContent = 'Abrindo editor...';
 

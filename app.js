@@ -1,8 +1,7 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v59
- * - Photopea com barra de menu (#menu)
- * - Anúncios removidos via injeção de CSS
- * - Ctrl+B injetado no editor
+ * SITE PÚBLICO - Marketing IEAD v60
+ * - Upload direto para o Drive (suporta até 5GB)
+ * - Photopea com menu via CSS
  * ============================================================ */
 
 let estadoSite = {
@@ -852,8 +851,10 @@ function selecionarPSDModal(file) {
         alert('Por favor, envie apenas arquivos .psd');
         return;
     }
-    if (file.size > 50 * 1024 * 1024) {
-        alert('Arquivo muito grande (máx 50 MB)');
+    // ⭐ Limite dinâmico de 5 GB lendo do config
+    const limiteGB = (window.CONFIG.LIMITE_CREATIVE_MB / 1024).toFixed(0);
+    if (file.size > window.CONFIG.LIMITE_CREATIVE_MB * 1024 * 1024) {
+        alert(`Arquivo muito grande (máx ${limiteGB} GB)`);
         return;
     }
 
@@ -920,31 +921,58 @@ async function enviarPSDModal() {
     progressDiv.style.display = 'block';
     barEl.style.width = '5%';
     pctEl.textContent = '5%';
-    statusEl.textContent = '⏳ Convertendo arquivos...';
+    statusEl.textContent = '⏳ Preparando upload...';
 
     btnSubmit.disabled = true;
     btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
     try {
-        const psdBase64 = await window.fileToBase64(estadoSite.criativoPSD);
-        barEl.style.width = '30%';
-        pctEl.textContent = '30%';
-        statusEl.textContent = '⏳ Convertendo capa...';
-
-        const capaBase64 = await window.fileToBase64(estadoSite.criativoCapa);
-        barEl.style.width = '50%';
-        pctEl.textContent = '50%';
-        statusEl.textContent = '⏳ Enviando para o Drive...';
-
-        const result = await window.apiPost({
-            acao: 'creative_upload',
+        // 1. Pede ao Google Apps Script um token/link de upload direto pro Drive
+        const initReq = await window.apiPost({
+            acao: 'gerar_token_upload',
             nomeArquivo: estadoSite.criativoPSD.name,
             tipoMime: estadoSite.criativoPSD.type || 'image/vnd.adobe.photoshop',
-            dadosBase64: psdBase64.split(',')[1],
-            capaBase64: capaBase64.split(',')[1],
-            capaTipoMime: estadoSite.criativoCapa.type,
+            tamanho: estadoSite.criativoPSD.size
+        });
+
+        if (!initReq || initReq.status !== 'ok') {
+            throw new Error(initReq?.mensagem || 'Falha ao preparar upload no servidor.');
+        }
+
+        const { fileId, uploadUrl } = initReq;
+
+        statusEl.textContent = '⏳ Enviando PSD direto para o Google Drive... (Não feche a aba)';
+
+        // 2. Faz o upload direto para o Google Drive usando o link gerado
+        const uploadReq = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': estadoSite.criativoPSD.type || 'image/vnd.adobe.photoshop'
+            },
+            body: estadoSite.criativoPSD
+        });
+
+        if (!uploadReq.ok) {
+            throw new Error('Falha ao enviar arquivo para o Google Drive.');
+        }
+
+        barEl.style.width = '70%';
+        pctEl.textContent = '70%';
+        statusEl.textContent = '⏳ Processando capa e salvando dados...';
+
+        // 3. Converte a capa para base64 para enviar de uma vez (é pequena)
+        const capaBase64 = await window.fileToBase64(estadoSite.criativoCapa);
+
+        // 4. Confirma no Apps Script que o upload foi concluído, para registrar na planilha
+        const result = await window.apiPost({
+            acao: 'confirmar_upload_direto',
+            fileId: fileId,
+            nomeArquivo: estadoSite.criativoPSD.name,
             nome: titulo,
             descricao: descricao,
+            tamanho: (estadoSite.criativoPSD.size / (1024 * 1024)).toFixed(2), // MB
+            capaBase64: capaBase64.split(',')[1],
+            capaTipoMime: estadoSite.criativoCapa.type,
             usuarioId: estadoSite.usuario.id,
             usuarioNome: estadoSite.usuario.nome,
             usuarioWhatsApp: estadoSite.usuario.whatsapp,
@@ -968,10 +996,7 @@ async function enviarPSDModal() {
                 renderizarCreativeMeus();
             }, 1200);
         } else {
-            statusEl.textContent = `❌ ${result?.mensagem || 'Erro ao enviar'}`;
-            statusEl.style.color = '#FF3B30';
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Enviar PSD';
+            throw new Error(result?.mensagem || 'Erro ao registrar os dados na planilha.');
         }
     } catch (err) {
         console.error(err);

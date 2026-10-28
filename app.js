@@ -1,7 +1,7 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v61
- * - Upload direto para o Drive (suporta até 5GB)
- * - Requisição do token via GET
+ * SITE PÚBLICO - Marketing IEAD v62
+ * - Upload Fatiado (Chunked Upload) para até 5GB via Apps Script
+ * - Resolve erro de CORS
  * ============================================================ */
 
 let estadoSite = {
@@ -911,6 +911,7 @@ async function enviarPSDModal() {
     if (!titulo) { alert('Digite um título para o template'); return; }
 
     const descricao = document.getElementById('modalDescricao').value.trim();
+    const file = estadoSite.criativoPSD;
 
     const progressDiv = document.getElementById('modalEnvioProgress');
     const statusEl = document.getElementById('modalEnvioStatus');
@@ -919,44 +920,71 @@ async function enviarPSDModal() {
     const btnSubmit = document.getElementById('modalEnvioSubmit');
 
     progressDiv.style.display = 'block';
-    barEl.style.width = '5%';
-    pctEl.textContent = '5%';
+    barEl.style.width = '0%';
+    pctEl.textContent = '0%';
     statusEl.textContent = '⏳ Preparando upload...';
 
     btnSubmit.disabled = true;
     btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
     try {
-        // 1. Pede ao Google Apps Script um token/link de upload direto pro Drive (VIA GET)
-        const initReq = await window.apiGet('gerar_token_upload', {
-            nomeArquivo: estadoSite.criativoPSD.name,
-            tipoMime: estadoSite.criativoPSD.type || 'image/vnd.adobe.photoshop',
-            tamanho: estadoSite.criativoPSD.size
+        // 1. Inicia a sessão de upload fatiado (Chunked Upload)
+        const initReq = await window.apiPost({
+            acao: 'iniciar_upload_fatiado',
+            nomeArquivo: file.name,
+            tipoMime: file.type || 'image/vnd.adobe.photoshop',
+            tamanhoTotal: file.size
         });
 
         if (!initReq || initReq.status !== 'ok') {
-            throw new Error(initReq?.mensagem || 'Falha ao preparar upload no servidor.');
+            throw new Error(initReq?.mensagem || 'Falha ao iniciar upload.');
         }
 
         const { fileId, uploadUrl } = initReq;
+        const chunkSize = 10 * 1024 * 1024; // 10MB por fatia
+        const totalChunks = Math.ceil(file.size / chunkSize);
+        
+        let offset = 0;
 
-        statusEl.textContent = '⏳ Enviando PSD direto para o Google Drive... (Não feche a aba)';
+        // 2. Envia cada fatia para o Apps Script, que repassa pro Google Drive
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * chunkSize;
+            const end = Math.min(start + chunkSize, file.size);
+            const chunk = file.slice(start, end);
 
-        // 2. Faz o upload direto para o Google Drive usando o link gerado
-        const uploadReq = await fetch(uploadUrl, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': estadoSite.criativoPSD.type || 'image/vnd.adobe.photoshop'
-            },
-            body: estadoSite.criativoPSD
-        });
+            const pct = Math.round(((i) / totalChunks) * 100);
+            statusEl.textContent = `⏳ Enviando parte ${i + 1} de ${totalChunks} (${pct}%)...`;
+            barEl.style.width = pct + '%';
+            pctEl.textContent = pct + '%';
 
-        if (!uploadReq.ok) {
-            throw new Error('Falha ao enviar arquivo para o Google Drive.');
+            // Converte a fatia para Base64
+            const chunkBase64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(chunk);
+            });
+
+            // Envia para o Apps Script
+            const chunkReq = await window.apiPost({
+                acao: 'enviar_fatia_upload',
+                fileId: fileId,
+                uploadUrl: uploadUrl,
+                chunkBase64: chunkBase64,
+                offset: offset,
+                chunkLength: chunk.size,
+                totalSize: file.size
+            });
+
+            if (!chunkReq || chunkReq.status !== 'ok') {
+                throw new Error(chunkReq?.mensagem || `Falha ao enviar parte ${i + 1}.`);
+            }
+
+            offset += chunk.size;
         }
 
-        barEl.style.width = '70%';
-        pctEl.textContent = '70%';
+        barEl.style.width = '90%';
+        pctEl.textContent = '90%';
         statusEl.textContent = '⏳ Processando capa e salvando dados...';
 
         // 3. Converte a capa para base64 para enviar de uma vez (é pequena)
@@ -966,10 +994,10 @@ async function enviarPSDModal() {
         const result = await window.apiPost({
             acao: 'confirmar_upload_direto',
             fileId: fileId,
-            nomeArquivo: estadoSite.criativoPSD.name,
+            nomeArquivo: file.name,
             nome: titulo,
             descricao: descricao,
-            tamanho: (estadoSite.criativoPSD.size / (1024 * 1024)).toFixed(2), // MB
+            tamanho: (file.size / (1024 * 1024)).toFixed(2), // MB
             capaBase64: capaBase64.split(',')[1],
             capaTipoMime: estadoSite.criativoCapa.type,
             usuarioId: estadoSite.usuario.id,

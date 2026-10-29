@@ -1,4 +1,4 @@
-console.log('🔹 app.js: início da leitura (v52)');
+console.log('🔹 app.js: início da leitura (v53)');
 /* ============================================================
  * SITE PÚBLICO - Marketing IEAD v70
  * - Upload Direto para o Drive via Iframe (evita CORS e limite 50MB)
@@ -1163,40 +1163,6 @@ async function baixarParteEmFatias(fileId, aoProgredir) {
     return saida;
 }
 
-// Faixa à direita do Photopea ocupada pelos anúncios (px). O iframe fica essa largura maior e o excesso é cortado.
-const LARGURA_FAIXA_ANUNCIOS = 380;
-
-function aplicarCorteAnuncios() {
-  try {
-    const iframe = document.getElementById('editorIframe');
-    if (!iframe || !iframe.parentElement) return;
-
-    const pai = iframe.parentElement;
-    pai.style.overflow = 'hidden';
-
-    iframe.style.transform = '';
-
-    // Em telas estreitas o Photopea já esconde os anúncios; cortar aqui esconderia a interface de verdade
-    if (window.innerWidth < 1100) {
-        iframe.style.removeProperty('width');
-        return;
-    }
-
-    iframe.style.setProperty('max-width', 'none', 'important');
-    iframe.style.setProperty('flex', '0 0 auto', 'important');
-    iframe.style.setProperty('width', `calc(100% + ${LARGURA_FAIXA_ANUNCIOS}px)`, 'important');
-
-    // Dependendo do layout do modal, o iframe alargado fica centralizado ou preso à direita.
-    // Mede onde ele ficou e empurra de volta para a borda esquerda: o excesso é cortado só na direita.
-    const rPai = pai.getBoundingClientRect();
-    const rIframe = iframe.getBoundingClientRect();
-    const desvio = Math.round(rPai.left - rIframe.left);
-    if (desvio !== 0) iframe.style.transform = `translateX(${desvio}px)`;
-  } catch (err) {
-    console.warn('Corte da faixa de anúncios não aplicado:', err);
-  }
-}
-
 async function abrirEditorComArquivo(arquivo) {
     const modal = document.getElementById('editorModal');
     const iframe = document.getElementById('editorIframe');
@@ -1315,22 +1281,25 @@ async function abrirEditorComArquivo(arquivo) {
 
     // Photopea configurado pelo hash JSON oficial (sem scripts/CSS injetados, que quebravam a renderização)
     const configPhotopea = { environment: { intro: false } };
-    aplicarCorteAnuncios();
-    window.addEventListener('resize', aplicarCorteAnuncios);
-    setTimeout(aplicarCorteAnuncios, 300);
-    setTimeout(aplicarCorteAnuncios, 1500);
     iframe.src = 'https://www.photopea.com#' + encodeURI(JSON.stringify(configPhotopea));
 
     let arquivoEnviado = false;
-    let etapa = 0; // 0 = aguardando Photopea ficar pronto | 1 = PSD enviado | 2 = PSD aberto
+    let donesPendentes = 0; // respostas "done" ainda esperadas: 1 do hideAds + 1 da abertura do PSD
+
+    const esconderAnuncios = () => {
+        try { iframe.contentWindow.postMessage('app.hideAds();', '*'); } catch (e) {}
+    };
 
     const enviarArquivo = () => {
         if (arquivoEnviado) return;
         arquivoEnviado = true;
-        etapa = 1;
+        donesPendentes = 2;
         statusEl().textContent = 'Enviando PSD...';
         try {
+            esconderAnuncios();                                  // cedo, antes do layout dos anúncios se formar
             iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
+            setTimeout(esconderAnuncios, 2500);                  // reforço
+            setTimeout(esconderAnuncios, 6000);
             setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 6000);
         } catch (err) {
             loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
@@ -1343,11 +1312,11 @@ async function abrirEditorComArquivo(arquivo) {
 
         if (event.data !== 'done') return;
 
-        if (etapa === 0) {
-            enviarArquivo();                                   // 1º "done": Photopea pronto para receber
-        } else if (etapa === 1) {
-            etapa = 2;                                         // 2º "done": PSD aberto
-            if (loadingDiv.parentElement) loadingDiv.remove();
+        if (!arquivoEnviado) {
+            enviarArquivo();                                     // 1º "done": Photopea pronto para receber
+        } else if (donesPendentes > 0) {
+            donesPendentes--;
+            if (donesPendentes === 0 && loadingDiv.parentElement) loadingDiv.remove(); // PSD aberto
         }
     };
 
@@ -1383,13 +1352,6 @@ function editorFechar() {
     if (window._photopeaHandler) {
         window.removeEventListener('message', window._photopeaHandler);
         window._photopeaHandler = null;
-    }
-    window.removeEventListener('resize', aplicarCorteAnuncios);
-    if (iframe) {
-        iframe.style.removeProperty('width');
-        iframe.style.removeProperty('flex');
-        iframe.style.removeProperty('max-width');
-        iframe.style.transform = '';
     }
 }
 
@@ -1720,4 +1682,4 @@ function gerarAvatarInicial(nome) {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(inicial)}&background=D4AF37&color=0A1C3A&size=200&bold=true&length=1`;
 }
 
-console.log('✅ app.js: lido até o fim (v52)');
+console.log('✅ app.js: lido até o fim (v53)');

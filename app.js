@@ -1,5 +1,5 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v75
+ * SITE PÚBLICO - Marketing IEAD v76
  * - Junção de Partes no Servidor (Resolve Photopea)
  * ============================================================ */
 

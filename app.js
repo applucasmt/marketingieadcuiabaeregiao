@@ -1,7 +1,7 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v71
- * - Upload Direto para o Drive (Fatias de 4MB)
- * - Ajuste no envio do PSD para o Photopea
+ * SITE PÚBLICO - Marketing IEAD v74
+ * - Abertura direta de PSD no Photopea via URL (Suporta 5GB)
+ * - Correção do envio de arquivos grandes
  * ============================================================ */
 
 let estadoSite = {
@@ -977,6 +977,7 @@ async function enviarPSDModal() {
     btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
     try {
+        // PSDs grandes são divididos em partes de 16 MB (cada parte fica abaixo do limite de leitura do Apps Script)
         const chunkSize = 4 * 1024 * 1024;            // fatia de envio (múltiplo de 256KB, exigido pelo Drive)
         const LIMITE_PARTE_UNICA = 40 * 1024 * 1024;  // até 40 MB: arquivo único
         const tamanhoParte = 16 * 1024 * 1024;        // acima disso: partes de 16 MB
@@ -991,6 +992,7 @@ async function enviarPSDModal() {
             const tamParte = fimParte - inicioParte;
             const nomeParte = dividir ? `${file.name}.parte${String(p + 1).padStart(3, '0')}` : file.name;
 
+            // 1. Abre a sessão de upload desta parte
             const initReq = await window.apiPost({
                 acao: 'iniciar_upload_fatiado',
                 nomeArquivo: nomeParte,
@@ -1006,6 +1008,7 @@ async function enviarPSDModal() {
             const { fileId, uploadUrl } = initReq;
             idsPartes.push(fileId);
 
+            // 2. Envia a parte em fatias de 4 MB
             const fatiasNaParte = Math.ceil(tamParte / chunkSize);
             let offsetParte = 0;
 
@@ -1122,41 +1125,6 @@ function creativeAbrirEditorPublico(fileId) {
     else alert('Arquivo não encontrado.');
 }
 
-async function baixarParteEmFatias(fileId, aoProgredir) {
-    const info = await window.apiGet('baixar_psd_info', { fileId: fileId });
-    if (!info || info.status !== 'ok') throw new Error(info?.mensagem || 'Não foi possível consultar a parte');
-
-    const total = Number(info.tamanho);
-    if (!total) throw new Error('Parte vazia ou inacessível');
-
-    const fatiaTam = 3 * 1024 * 1024;
-    const saida = new Uint8Array(total);
-
-    for (let offset = 0; offset < total; offset += fatiaTam) {
-        aoProgredir(Math.round((offset / total) * 100));
-
-        let fatia = null;
-        for (let tentativa = 1; tentativa <= 4; tentativa++) {
-            try {
-                fatia = await window.apiGet('baixar_psd_fatia', {
-                    fileId: fileId,
-                    offset: offset,
-                    length: Math.min(fatiaTam, total - offset)
-                });
-            } catch (e) {
-                fatia = { status: 'erro', mensagem: e.message };
-            }
-            if (fatia && fatia.status === 'ok') break;
-            if (tentativa < 4) await new Promise(r => setTimeout(r, 1500 * tentativa));
-        }
-        if (!fatia || fatia.status !== 'ok') throw new Error(fatia?.mensagem || 'Falha ao baixar fatia');
-
-        const bin = atob(fatia.base64);
-        for (let k = 0; k < bin.length; k++) saida[offset + k] = bin.charCodeAt(k);
-    }
-    return saida;
-}
-
 async function abrirEditorComArquivo(arquivo) {
     const modal = document.getElementById('editorModal');
     const iframe = document.getElementById('editorIframe');
@@ -1176,8 +1144,8 @@ async function abrirEditorComArquivo(arquivo) {
     loadingDiv.style.cssText = `position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(10,28,58,0.95); color:#D4AF37; padding:25px 35px; border-radius:16px; font-family:Inter,sans-serif; font-weight:700; z-index:10; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.6); max-width: 90%; min-width: 220px;`;
     loadingDiv.innerHTML = `
         <div style="width:45px;height:45px;border:4px solid rgba(212,175,55,0.2);border-top-color:#D4AF37;border-radius:50%;margin:0 auto 15px;animation:spin 1s linear infinite;"></div>
-        <p style="margin-bottom:6px; font-size:0.95rem;">Carregando PSD...</p>
-        <p id="editorLoadingStatus" style="font-size:0.8rem;color:rgba(255,255,255,0.7);font-weight:400;">Preparando arquivo</p>
+        <p style="margin-bottom:6px; font-size:0.95rem;">Carregando editor...</p>
+        <p id="editorLoadingStatus" style="font-size:0.8rem;color:rgba(255,255,255,0.7);font-weight:400;">Conectando ao Photopea</p>
     `;
 
     const bodyParent = iframe.parentElement;
@@ -1191,86 +1159,17 @@ async function abrirEditorComArquivo(arquivo) {
         document.head.appendChild(style);
     }
 
-    const statusEl = () => document.getElementById('editorLoadingStatus');
     const fileId = arquivo.fileId || extrairFileId(arquivo.link);
     if (!fileId) {
         loadingDiv.innerHTML = '<p style="color:#FF6B6B;">❌ fileId não encontrado</p>';
         return;
     }
 
-    const fecharComErro = (msg) => {
-        loadingDiv.innerHTML = `<p style="color:#FF6B6B; font-size:0.85rem;">❌ ${msg}</p>
-            <button onclick="editorFechar()" style="margin-top:12px;padding:10px 18px;background:#D4AF37;color:#0A1C3A;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;">Fechar</button>`;
-    };
-
-    const idsPartes = String(fileId).split(',').map(s => s.trim()).filter(Boolean);
-    const blocos = [];
-    let totalBytes = 0;
-
-    const ehLimite = (m) => /grande|excede|máximo|maximo/i.test(m || '');
-
-    for (let i = 0; i < idsPartes.length; i++) {
-        const rotulo = idsPartes.length > 1 ? `parte ${i + 1} de ${idsPartes.length}` : 'arquivo';
-        statusEl().textContent = `Baixando ${rotulo}...`;
-
-        let u8 = null;
-        let erroMsg = '';
-
-        let resp = null;
-        for (let tentativa = 1; tentativa <= 2; tentativa++) {
-            try {
-                resp = await window.apiGet('baixar_psd', { fileId: idsPartes[i] });
-            } catch (e) {
-                resp = { status: 'erro', mensagem: e.message };
-            }
-            if (resp && resp.status === 'ok') break;
-            if (ehLimite(resp?.mensagem)) break;
-            if (tentativa < 2) await new Promise(r => setTimeout(r, 1500));
-        }
-
-        if (resp && resp.status === 'ok') {
-            const bin = atob(resp.base64);
-            u8 = new Uint8Array(bin.length);
-            for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
-            resp.base64 = null;
-        } else {
-            erroMsg = resp?.mensagem || 'Erro ao baixar arquivo';
-            console.warn(`Download inteiro falhou (${rotulo}):`, erroMsg);
-
-            if (idsPartes.length > 1) {
-                try {
-                    u8 = await baixarParteEmFatias(idsPartes[i], (pct) => {
-                        statusEl().textContent = `Baixando ${rotulo} (${pct}%)...`;
-                    });
-                } catch (e) {
-                    erroMsg = e.message;
-                    console.error(`Download em fatias falhou (${rotulo}):`, e);
-                }
-            }
-        }
-
-        if (!u8) {
-            if (idsPartes.length === 1 && ehLimite(erroMsg)) {
-                fecharComErro(`O card "${paraString(arquivo.nome)}" (ID …${String(idsPartes[0]).slice(-6)}) está salvo como arquivo único e passa do limite de leitura (45 MB), por isso foi enviado antes da divisão em partes. Exclua este card (botão Excluir em "Meus arquivos" ou apague a linha na aba Criativos) e envie o PSD novamente.`);
-            } else {
-                fecharComErro(`Falha na ${rotulo}: ${erroMsg}`);
-            }
-            return;
-        }
-
-        blocos.push(u8);
-        totalBytes += u8.length;
-    }
-
-    statusEl().textContent = `Preparando (${(totalBytes / (1024 * 1024)).toFixed(1)} MB)...`;
-    const todo = new Uint8Array(totalBytes);
-    let posicao = 0;
-    for (const b of blocos) { todo.set(b, posicao); posicao += b.length; }
-    const arrayBuffer = todo.buffer;
-
-    statusEl().textContent = 'Abrindo editor...';
-
-    iframe.src = 'https://www.photopea.com/#menu';
+    // ⭐ Passa a URL de download DIRETO para o Photopea
+    // O próprio Photopea baixa o arquivo, sem passar pela memória do site
+    const urlDownload = "https://drive.google.com/uc?export=download&id=" + fileId;
+    
+    iframe.src = 'https://www.photopea.com/#{"files":["' + urlDownload + '"],"environment":{"showtools":true,"menu":true}}';
 
     let arquivoEnviado = false;
 
@@ -1284,6 +1183,7 @@ async function abrirEditorComArquivo(arquivo) {
 
     iframe.onload = () => {
         try {
+            // Apenas limpa e ajusta a interface, o arquivo já está sendo baixado pelo Photopea
             iframe.contentWindow.postMessage('app.hideAds();', '*');
             iframe.contentWindow.postMessage('app.showMenu();', '*');
             
@@ -1312,34 +1212,11 @@ async function abrirEditorComArquivo(arquivo) {
 
         } catch (e) { console.error("Erro ao injetar comandos:", e); }
 
-        setTimeout(() => {
-            if (arquivoEnviado) return;
-            arquivoEnviado = true;
-
-            statusEl().textContent = 'Enviando PSD...';
-
-            try {
-                // ⭐ GARANTE QUE O ARRAY BUFFER ESTÁ INTACTO ANTES DE ENVIAR
-                const bytes = new Uint8Array(arrayBuffer);
-                console.log('📤 Enviando PSD para o Photopea. Tamanho:', bytes.length, 'bytes. Início:', bytes.slice(0, 10));
-                
-                iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-                setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 1500);
-            } catch (err) {
-                loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
-            }
-        }, 800);
+        // Remove a tela de loading após um tempo, o Photopea lida com o download
+        setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 3000);
     };
 
-    setTimeout(() => {
-        if (arquivoEnviado) return;
-        arquivoEnviado = true;
-        try {
-            iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-            setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 1500);
-        } catch (err) {}
-    }, 5000);
-
+    // Remove o loading após 15 segundos de segurança
     setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
 }
 

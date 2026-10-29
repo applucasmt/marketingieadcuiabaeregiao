@@ -1162,6 +1162,25 @@ async function baixarParteEmFatias(fileId, aoProgredir) {
     return saida;
 }
 
+// Faixa à direita do Photopea ocupada pelos anúncios (px). O iframe fica essa largura maior e o excesso é cortado.
+const LARGURA_FAIXA_ANUNCIOS = 380;
+
+function aplicarCorteAnuncios() {
+    const iframe = document.getElementById('editorIframe');
+    if (!iframe || !iframe.parentElement) return;
+
+    const pai = iframe.parentElement;
+    pai.style.overflow = 'hidden';
+    iframe.style.maxWidth = 'none';
+
+    // Em telas estreitas o Photopea já esconde os anúncios; cortar aqui esconderia a interface de verdade
+    if (window.innerWidth >= 1100) {
+        iframe.style.width = `calc(100% + ${LARGURA_FAIXA_ANUNCIOS}px)`;
+    } else {
+        iframe.style.width = '';
+    }
+}
+
 async function abrirEditorComArquivo(arquivo) {
     const modal = document.getElementById('editorModal');
     const iframe = document.getElementById('editorIframe');
@@ -1280,14 +1299,12 @@ async function abrirEditorComArquivo(arquivo) {
 
     // Photopea configurado pelo hash JSON oficial (sem scripts/CSS injetados, que quebravam a renderização)
     const configPhotopea = { environment: { intro: false } };
+    aplicarCorteAnuncios();
+    window.addEventListener('resize', aplicarCorteAnuncios);
     iframe.src = 'https://www.photopea.com#' + encodeURI(JSON.stringify(configPhotopea));
 
     let arquivoEnviado = false;
     let etapa = 0; // 0 = aguardando Photopea ficar pronto | 1 = PSD enviado | 2 = PSD aberto
-
-    const esconderAnuncios = () => {
-        try { iframe.contentWindow.postMessage('app.hideAds();', '*'); } catch (e) {}
-    };
 
     const enviarArquivo = () => {
         if (arquivoEnviado) return;
@@ -1297,7 +1314,6 @@ async function abrirEditorComArquivo(arquivo) {
         try {
             iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
             setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 6000);
-            setTimeout(esconderAnuncios, 8000); // garantia caso o Photopea não confirme a abertura
         } catch (err) {
             loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
         }
@@ -1314,11 +1330,7 @@ async function abrirEditorComArquivo(arquivo) {
         } else if (etapa === 1) {
             etapa = 2;                                         // 2º "done": PSD aberto
             if (loadingDiv.parentElement) loadingDiv.remove();
-            // Só depois do PSD aberto (enviar antes quebrava a renderização)
-            setTimeout(esconderAnuncios, 1000);
-            setTimeout(esconderAnuncios, 4000);
         }
-        // etapa 2: ignora os "done" seguintes (respostas aos próprios comandos)
     };
 
     window.addEventListener('message', photopeaHandler);
@@ -1354,6 +1366,8 @@ function editorFechar() {
         window.removeEventListener('message', window._photopeaHandler);
         window._photopeaHandler = null;
     }
+    window.removeEventListener('resize', aplicarCorteAnuncios);
+    if (iframe) iframe.style.width = '';
 }
 
 function editorToggleMenu() {

@@ -1283,14 +1283,21 @@ async function abrirEditorComArquivo(arquivo) {
     iframe.src = 'https://www.photopea.com#' + encodeURI(JSON.stringify(configPhotopea));
 
     let arquivoEnviado = false;
+    let etapa = 0; // 0 = aguardando Photopea ficar pronto | 1 = PSD enviado | 2 = PSD aberto
+
+    const esconderAnuncios = () => {
+        try { iframe.contentWindow.postMessage('app.hideAds();', '*'); } catch (e) {}
+    };
 
     const enviarArquivo = () => {
         if (arquivoEnviado) return;
         arquivoEnviado = true;
+        etapa = 1;
         statusEl().textContent = 'Enviando PSD...';
         try {
             iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
             setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 6000);
+            setTimeout(esconderAnuncios, 8000); // garantia caso o Photopea não confirme a abertura
         } catch (err) {
             loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
         }
@@ -1300,13 +1307,18 @@ async function abrirEditorComArquivo(arquivo) {
         if (event.source !== iframe.contentWindow) return;
         try { console.log('📨 Photopea:', event.data); } catch (err) {}
 
-        if (event.data === 'done') {
-            if (!arquivoEnviado) {
-                enviarArquivo();                                   // 1º "done": Photopea pronto para receber
-            } else if (loadingDiv.parentElement) {
-                loadingDiv.remove();                               // 2º "done": PSD aberto
-            }
+        if (event.data !== 'done') return;
+
+        if (etapa === 0) {
+            enviarArquivo();                                   // 1º "done": Photopea pronto para receber
+        } else if (etapa === 1) {
+            etapa = 2;                                         // 2º "done": PSD aberto
+            if (loadingDiv.parentElement) loadingDiv.remove();
+            // Só depois do PSD aberto (enviar antes quebrava a renderização)
+            setTimeout(esconderAnuncios, 1000);
+            setTimeout(esconderAnuncios, 4000);
         }
+        // etapa 2: ignora os "done" seguintes (respostas aos próprios comandos)
     };
 
     window.addEventListener('message', photopeaHandler);

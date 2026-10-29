@@ -1278,71 +1278,42 @@ async function abrirEditorComArquivo(arquivo) {
 
     statusEl().textContent = 'Abrindo editor...';
 
-    iframe.src = 'https://www.photopea.com/#menu';
+    // Photopea configurado pelo hash JSON oficial (sem scripts/CSS injetados, que quebravam a renderização)
+    const configPhotopea = { environment: { intro: false } };
+    iframe.src = 'https://www.photopea.com#' + encodeURI(JSON.stringify(configPhotopea));
 
     let arquivoEnviado = false;
+
+    const enviarArquivo = () => {
+        if (arquivoEnviado) return;
+        arquivoEnviado = true;
+        statusEl().textContent = 'Enviando PSD...';
+        try {
+            iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
+            setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 6000);
+        } catch (err) {
+            loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
+        }
+    };
 
     const photopeaHandler = (event) => {
         if (event.source !== iframe.contentWindow) return;
         try { console.log('📨 Photopea:', event.data); } catch (err) {}
+
+        if (event.data === 'done') {
+            if (!arquivoEnviado) {
+                enviarArquivo();                                   // 1º "done": Photopea pronto para receber
+            } else if (loadingDiv.parentElement) {
+                loadingDiv.remove();                               // 2º "done": PSD aberto
+            }
+        }
     };
 
     window.addEventListener('message', photopeaHandler);
     window._photopeaHandler = photopeaHandler;
 
-    iframe.onload = () => {
-        try {
-            iframe.contentWindow.postMessage('app.hideAds();', '*');
-            iframe.contentWindow.postMessage('app.showMenu();', '*');
-            
-            const cssInjection = `
-                const style = document.createElement('style');
-                style.innerHTML = \`
-                    #banner, #banner-container, div[id*="banner"], div[class*="banner"] { display: none !important; }
-                    body, html { overflow: hidden; }
-                \`;
-                document.head.appendChild(style);
-            `;
-            iframe.contentWindow.postMessage(cssInjection, '*');
-
-            setTimeout(() => { try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e){} }, 1000);
-            setTimeout(() => { try { iframe.contentWindow.postMessage('app.showMenu();', '*'); } catch(e){} }, 3000);
-            
-            const scriptAtalho = `
-                document.addEventListener('keydown', function(e) {
-                    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
-                        e.preventDefault();
-                        app.showExport();
-                    }
-                });
-            `;
-            iframe.contentWindow.postMessage(scriptAtalho, '*');
-
-        } catch (e) { console.error("Erro ao injetar comandos:", e); }
-
-        setTimeout(() => {
-            if (arquivoEnviado) return;
-            arquivoEnviado = true;
-
-            statusEl().textContent = 'Enviando PSD...';
-
-            try {
-                iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-                setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 1500);
-            } catch (err) {
-                loadingDiv.innerHTML = `<p style="color:#FF6B6B;">❌ ${err.message}</p>`;
-            }
-        }, 800);
-    };
-
-    setTimeout(() => {
-        if (arquivoEnviado) return;
-        arquivoEnviado = true;
-        try {
-            iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
-            setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 1500);
-        } catch (err) {}
-    }, 5000);
+    // Se o Photopea não avisar que está pronto, envia mesmo assim depois de 8s
+    setTimeout(enviarArquivo, 8000);
 
     setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 15000);
 }

@@ -1,6 +1,7 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v70
- * - Upload Direto para o Drive via Iframe (evita CORS e limite 50MB)
+ * SITE PÚBLICO - Marketing IEAD v71
+ * - Upload Direto para o Drive (Fatias de 4MB)
+ * - Ajuste no envio do PSD para o Photopea
  * ============================================================ */
 
 let estadoSite = {
@@ -136,14 +137,12 @@ async function iniciarSite() {
     }
 }
 
-// Inicia mesmo que o script seja carregado depois do evento DOMContentLoaded
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', iniciarSite);
 } else {
     iniciarSite();
 }
 
-// Rede de segurança final: se algo impedir a inicialização, libera a tela após 12s
 setTimeout(() => {
     if (!splashFechado) {
         console.warn('⚠️ Splash liberada pela rede de segurança.');
@@ -834,7 +833,7 @@ function inicializarBuscaCreative() {
 }
 
 // ============================================================
-// MODAL DE ENVIO (IFRAME METHOD)
+// MODAL DE ENVIO
 // ============================================================
 function inicializarModalEnvio() {
     const inputPSD = document.getElementById('modalInputPSD');
@@ -978,7 +977,6 @@ async function enviarPSDModal() {
     btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
     try {
-        // PSDs grandes são divididos em partes de 16 MB (cada parte fica abaixo do limite de leitura do Apps Script)
         const chunkSize = 4 * 1024 * 1024;            // fatia de envio (múltiplo de 256KB, exigido pelo Drive)
         const LIMITE_PARTE_UNICA = 40 * 1024 * 1024;  // até 40 MB: arquivo único
         const tamanhoParte = 16 * 1024 * 1024;        // acima disso: partes de 16 MB
@@ -993,7 +991,6 @@ async function enviarPSDModal() {
             const tamParte = fimParte - inicioParte;
             const nomeParte = dividir ? `${file.name}.parte${String(p + 1).padStart(3, '0')}` : file.name;
 
-            // 1. Abre a sessão de upload desta parte
             const initReq = await window.apiPost({
                 acao: 'iniciar_upload_fatiado',
                 nomeArquivo: nomeParte,
@@ -1009,7 +1006,6 @@ async function enviarPSDModal() {
             const { fileId, uploadUrl } = initReq;
             idsPartes.push(fileId);
 
-            // 2. Envia a parte em fatias de 4 MB
             const fatiasNaParte = Math.ceil(tamParte / chunkSize);
             let offsetParte = 0;
 
@@ -1126,7 +1122,6 @@ function creativeAbrirEditorPublico(fileId) {
     else alert('Arquivo não encontrado.');
 }
 
-// Plano B: baixa um arquivo em fatias de 3 MB pelo Apps Script (usado quando baixar o arquivo inteiro falha)
 async function baixarParteEmFatias(fileId, aoProgredir) {
     const info = await window.apiGet('baixar_psd_info', { fileId: fileId });
     if (!info || info.status !== 'ok') throw new Error(info?.mensagem || 'Não foi possível consultar a parte');
@@ -1208,7 +1203,6 @@ async function abrirEditorComArquivo(arquivo) {
             <button onclick="editorFechar()" style="margin-top:12px;padding:10px 18px;background:#D4AF37;color:#0A1C3A;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;">Fechar</button>`;
     };
 
-    // Baixa cada parte (PSDs grandes são guardados divididos) e junta tudo num único arquivo
     const idsPartes = String(fileId).split(',').map(s => s.trim()).filter(Boolean);
     const blocos = [];
     let totalBytes = 0;
@@ -1222,7 +1216,6 @@ async function abrirEditorComArquivo(arquivo) {
         let u8 = null;
         let erroMsg = '';
 
-        // Tentativa 1: a parte inteira de uma vez
         let resp = null;
         for (let tentativa = 1; tentativa <= 2; tentativa++) {
             try {
@@ -1231,7 +1224,7 @@ async function abrirEditorComArquivo(arquivo) {
                 resp = { status: 'erro', mensagem: e.message };
             }
             if (resp && resp.status === 'ok') break;
-            if (ehLimite(resp?.mensagem)) break; // não adianta repetir
+            if (ehLimite(resp?.mensagem)) break;
             if (tentativa < 2) await new Promise(r => setTimeout(r, 1500));
         }
 
@@ -1244,7 +1237,6 @@ async function abrirEditorComArquivo(arquivo) {
             erroMsg = resp?.mensagem || 'Erro ao baixar arquivo';
             console.warn(`Download inteiro falhou (${rotulo}):`, erroMsg);
 
-            // Tentativa 2: só para arquivos divididos (cada parte é pequena), baixa em fatias
             if (idsPartes.length > 1) {
                 try {
                     u8 = await baixarParteEmFatias(idsPartes[i], (pct) => {
@@ -1327,6 +1319,10 @@ async function abrirEditorComArquivo(arquivo) {
             statusEl().textContent = 'Enviando PSD...';
 
             try {
+                // ⭐ GARANTE QUE O ARRAY BUFFER ESTÁ INTACTO ANTES DE ENVIAR
+                const bytes = new Uint8Array(arrayBuffer);
+                console.log('📤 Enviando PSD para o Photopea. Tamanho:', bytes.length, 'bytes. Início:', bytes.slice(0, 10));
+                
                 iframe.contentWindow.postMessage(arrayBuffer, '*', [arrayBuffer]);
                 setTimeout(() => { if (loadingDiv.parentElement) loadingDiv.remove(); }, 1500);
             } catch (err) {

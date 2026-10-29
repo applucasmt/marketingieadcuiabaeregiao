@@ -1,7 +1,6 @@
 /* ============================================================
- * SITE PÚBLICO - Marketing IEAD v74
- * - Abertura direta de PSD no Photopea via URL (Suporta 5GB)
- * - Correção do envio de arquivos grandes
+ * SITE PÚBLICO - Marketing IEAD v75
+ * - Junção de Partes no Servidor (Resolve Photopea)
  * ============================================================ */
 
 let estadoSite = {
@@ -977,7 +976,6 @@ async function enviarPSDModal() {
     btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
     try {
-        // PSDs grandes são divididos em partes de 16 MB (cada parte fica abaixo do limite de leitura do Apps Script)
         const chunkSize = 4 * 1024 * 1024;            // fatia de envio (múltiplo de 256KB, exigido pelo Drive)
         const LIMITE_PARTE_UNICA = 40 * 1024 * 1024;  // até 40 MB: arquivo único
         const tamanhoParte = 16 * 1024 * 1024;        // acima disso: partes de 16 MB
@@ -992,7 +990,6 @@ async function enviarPSDModal() {
             const tamParte = fimParte - inicioParte;
             const nomeParte = dividir ? `${file.name}.parte${String(p + 1).padStart(3, '0')}` : file.name;
 
-            // 1. Abre a sessão de upload desta parte
             const initReq = await window.apiPost({
                 acao: 'iniciar_upload_fatiado',
                 nomeArquivo: nomeParte,
@@ -1008,7 +1005,6 @@ async function enviarPSDModal() {
             const { fileId, uploadUrl } = initReq;
             idsPartes.push(fileId);
 
-            // 2. Envia a parte em fatias de 4 MB
             const fatiasNaParte = Math.ceil(tamParte / chunkSize);
             let offsetParte = 0;
 
@@ -1169,7 +1165,7 @@ async function abrirEditorComArquivo(arquivo) {
     // O próprio Photopea baixa o arquivo, sem passar pela memória do site
     const urlDownload = "https://drive.google.com/uc?export=download&id=" + fileId;
     
-    iframe.src = 'https://www.photopea.com/#{"files":["' + urlDownload + '"],"environment":{"showtools":true,"menu":true}}';
+    iframe.src = 'https://www.photopea.com/#{"files":["' + encodeURIComponent(urlDownload) + '"],"environment":{"showtools":true,"menu":true}}';
 
     let arquivoEnviado = false;
 
